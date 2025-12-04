@@ -1,0 +1,40 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: app-backend
+    ports:
+      - "8080:8080"
+    environment:
+      - DATABASE_URL=postgres://user:password@db:5432/arch_db
+      - RUST_LOG=debug
+    depends_on:
+      - db
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: app-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8080
+    stdin_open: true
+    tty: true
+
+  db:
+    image: postgres:15-alpine
+    container_name: app-db
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=arch_db
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+volumes:
+  db-data:

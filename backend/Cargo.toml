@@ -1,0 +1,10 @@
+[package]
+name = "app"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# Webフレームワーク
+axum = "0.7"
+# 非同期ランタイム (macrosとrt-multi-threadが必要)
+tokio = { version = "1.0", features = ["full"] }

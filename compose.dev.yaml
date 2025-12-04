@@ -1,0 +1,26 @@
+services:
+  backend:
+    volumes:
+      - .:/workspace:cached
+      - cargo-cache:/usr/local/cargo/registry
+      - target-cache:/workspace/backend/target
+    working_dir: /workspace/backend
+    command: ["cargo", "watch", "-x", "run"]
+
+  frontend:
+    volumes:
+      - .:/workspace:cached
+      # node_modules をボリューム化（初回は空）
+      - node_modules:/workspace/frontend/node_modules
+    
+    working_dir: /workspace/frontend
+    
+    # 【修正】起動時に npm install を行い、その後に dev サーバーを起動するシェルスクリプトに変更
+    # これにより、node_modules が空でも自動修復されて起動します
+    command: /bin/sh -c "npm install && npm run dev -- --host"
+
+# 名前付きボリュームの定義
+volumes:
+  cargo-cache:
+  target-cache:
+  node_modules: # frontend用に追加
