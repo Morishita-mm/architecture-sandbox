@@ -144,7 +144,7 @@ pub async fn chat_with_customer(req: &ChatRequest) -> Result<String, Box<dyn std
     let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY must be set");
     // モデル指定: latest を使用
     let url = format!(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={}",
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={}",
         api_key
     );
 

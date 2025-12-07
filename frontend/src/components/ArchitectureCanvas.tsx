@@ -18,6 +18,7 @@ import { EvaluationModal } from "./EvaluatinModal";
 import type { EvaluationResult } from "../types";
 import { SCENARIOS } from "../scenarios";
 import { Header } from "./Header";
+import { ChatInterface } from "./ChatInterface"; // 追加
 
 let id = 0;
 const getId = () => `dndnode_${id++}`;
@@ -40,6 +41,7 @@ function ArchitectureFlow() {
   const [selectedScenarioId, setSelectedScenarioId] = useState<string>(
     SCENARIOS[0].id
   );
+  const [activeTab, setActiveTab] = useState<"chat" | "design">("chat"); // 最初はチャットからスタート
 
   const currentScenario =
     SCENARIOS.find((s) => s.id === selectedScenarioId) || SCENARIOS[0];
@@ -138,62 +140,126 @@ function ArchitectureFlow() {
         height: "100vh",
       }}
     >
-      {/* 1. 上部にヘッダーを配置 */}
       <Header
         selectedScenarioId={selectedScenarioId}
         onScenarioChange={setSelectedScenarioId}
       />
 
-      {/* 2. 下部にメインエリア（サイドバー + キャンバス）を配置 */}
-      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        {/* 左サイドバー */}
-        <Sidebar />
-
-        {/* 右キャンバス */}
-        <div
-          className="reactflow-wrapper"
-          ref={reactFlowWrapper}
-          style={{ flex: 1, height: "100%", position: "relative" }}
+      <div style={tabBarStyle}>
+        <button
+          style={activeTab === "chat" ? activeTabStyle : tabStyle}
+          onClick={() => setActiveTab("chat")}
         >
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            onDrop={onDrop}
-            onDragOver={onDragOver}
-            fitView
+          💬 要件定義 (Chat)
+        </button>
+        <button
+          style={activeTab === "design" ? activeTabStyle : tabStyle}
+          onClick={() => setActiveTab("design")}
+        >
+          🛠️ アーキテクチャ設計 (Canvas)
+        </button>
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          flex: 1,
+          overflow: "hidden",
+          position: "relative",
+        }}
+      >
+        {/* チャットモード */}
+        {activeTab === "chat" && (
+          <div style={{ width: "100%", height: "100%" }}>
+            <ChatInterface scenario={currentScenario} />
+          </div>
+        )}
+
+        {/* 設計モード (既存のキャンバス部分) */}
+        {/* Canvasは非表示時も状態を維持したいので display: none で制御するのがコツです */}
+        <div
+          style={{
+            display: activeTab === "design" ? "flex" : "none",
+            width: "100%",
+            height: "100%",
+          }}
+        >
+          <Sidebar />
+          <div
+            className="reactflow-wrapper"
+            ref={reactFlowWrapper}
+            style={{ flex: 1, height: "100%", position: "relative" }}
           >
-            <Background />
-            <Controls />
-            <MiniMap />
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+              onDrop={onDrop}
+              onDragOver={onDragOver}
+              fitView
+            >
+              <Background />
+              <Controls />
+              <MiniMap />
 
-            <Panel position="top-right">
-              <button
-                onClick={onEvaluate}
-                disabled={isLoading} // ロード中は押せないように
-                style={{
-                  // ... (既存のスタイル) ...
-                  backgroundColor: isLoading ? "#ccc" : "#4CAF50", // ロード中はグレー
-                  cursor: isLoading ? "wait" : "pointer",
-                }}
-              >
-                {isLoading ? "AIが評価中..." : "設計完了（評価する）"}
-              </button>
-            </Panel>
-          </ReactFlow>
+              <Panel position="top-right">
+                <button
+                  onClick={onEvaluate}
+                  disabled={isLoading}
+                  style={{
+                    padding: "10px 20px",
+                    fontSize: "16px",
+                    backgroundColor: isLoading ? "#ccc" : "#4CAF50",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "5px",
+                    cursor: isLoading ? "wait" : "pointer",
+                    boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
+                  }}
+                >
+                  {isLoading ? "AIが評価中..." : "設計完了（評価する）"}
+                </button>
+              </Panel>
+            </ReactFlow>
 
-          <EvaluationModal
-            isOpen={isModalOpen}
-            onClose={() => setIsModalOpen(false)}
-            result={evaluationResult}
-          />
+            <EvaluationModal
+              isOpen={isModalOpen}
+              onClose={() => setIsModalOpen(false)}
+              result={evaluationResult}
+            />
+          </div>
         </div>
       </div>
     </div>
   );
 }
+
+// --- Styles for Tabs ---
+const tabBarStyle: React.CSSProperties = {
+  display: "flex",
+  backgroundColor: "#f5f5f5",
+  borderBottom: "1px solid #ddd",
+  padding: "0 20px",
+};
+
+const tabStyle: React.CSSProperties = {
+  padding: "15px 30px",
+  border: "none",
+  background: "none",
+  cursor: "pointer",
+  fontSize: "16px",
+  color: "#666",
+  borderBottom: "3px solid transparent",
+};
+
+const activeTabStyle: React.CSSProperties = {
+  ...tabStyle,
+  color: "#2196F3",
+  fontWeight: "bold",
+  borderBottom: "3px solid #2196F3",
+};
 
 export function ArchitectureCanvas() {
   return (
