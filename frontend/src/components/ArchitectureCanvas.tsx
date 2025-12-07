@@ -59,17 +59,15 @@ function ArchitectureFlow() {
     [screenToFlowPosition, setNodes],
   );
 
-  // --- 追加機能: 設計データを保存・評価へ回す処理 ---
-  const onEvaluate = useCallback(() => {
-    // 現在のキャンバスの状態を取得
+// バックエンドAPIをコールする処理
+  const onEvaluate = useCallback(async () => { // asyncにする
     const currentNodes = getNodes();
     const currentEdges = getEdges();
 
-    // バックエンドに送る予定のデータ構造を作成
     const designData = {
       nodes: currentNodes.map(n => ({
         id: n.id,
-        type: n.data.label, // "Load Balancer" などのラベルをタイプとして扱う
+        type: n.data.label,
         position: n.position
       })),
       edges: currentEdges.map(e => ({
@@ -78,11 +76,32 @@ function ArchitectureFlow() {
       }))
     };
 
-    // 現段階ではコンソールに出力して確認
-    console.log("▼ バックエンドへ送信するアーキテクチャデータ ▼");
-    console.log(JSON.stringify(designData, null, 2));
-    
-    alert("コンソールにJSONデータを出力しました（F12で確認）");
+    console.log("Sending data to backend...", designData);
+
+    try {
+      // 開発環境のURL (project-info.yaml参照)
+      const response = await fetch('http://localhost:8080/api/evaluate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(designData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log("Response from Backend:", result);
+      
+      // バックエンドからの返事（モック）を表示
+      alert(`評価スコア: ${result.score}\nAIからのコメント: ${result.feedback}`);
+
+    } catch (error) {
+      console.error("API Error:", error);
+      alert("バックエンドへの送信に失敗しました。コンソールを確認してください。");
+    }
   }, [getNodes, getEdges]);
 
   return (
