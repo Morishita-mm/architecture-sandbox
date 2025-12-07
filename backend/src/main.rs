@@ -6,7 +6,8 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use models::ArchitectureDiagram;
+use gemini::chat_with_customer;
+use models::{ArchitectureDiagram, ChatRequest};
 use tower_http::cors::{Any, CorsLayer};
 
 #[tokio::main]
@@ -20,6 +21,7 @@ async fn main() {
     let app = Router::new()
         .route("/", get(|| async { "Hello, Architecture!" }))
         .route("/api/evaluate", post(evaluate_architecture))
+        .route("/api/chat", post(handle_chat))
         .layer(cors);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
@@ -62,6 +64,27 @@ async fn evaluate_architecture(
             Json(serde_json::json!({
                 "score": 0,
                 "feedback": "AI評価中にエラーが発生しました",
+                "status": "error"
+            }))
+        }
+    }
+}
+
+// チャットハンドラ
+async fn handle_chat(
+    Json(payload): Json<ChatRequest>,
+) -> Json<serde_json::Value> {
+    println!("Chat request for scenario: {}", payload.scenario_id);
+
+    match chat_with_customer(&payload).await {
+        Ok(reply) => Json(serde_json::json!({
+            "reply": reply,
+            "status": "success"
+        })),
+        Err(e) => {
+            eprintln!("Chat Error: {}", e);
+            Json(serde_json::json!({
+                "reply": "申し訳ありません、通信エラーが発生しました。",
                 "status": "error"
             }))
         }
