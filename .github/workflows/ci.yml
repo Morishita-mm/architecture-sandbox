@@ -1,0 +1,82 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+  # テストコードが読み込む環境変数と同じにする
+  DATABASE_URL: postgres://user:password@localhost:5432/arch_db
+
+jobs:
+  backend-test:
+    name: Backend Test & Lint
+    runs-on: ubuntu-latest
+
+    # 結合テスト用にPostgresを立ち上げる
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: arch_db
+        ports:
+          - 5432:5432
+        # DBが起動しきるまで待つヘルスチェック
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      # キャッシュを使ってビルド時間を短縮
+      - name: Cache cargo registry
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            backend/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('backend/Cargo.lock') }}
+
+      - name: Check Formatting
+        working-directory: ./backend
+        run: cargo fmt --all -- --check
+
+      - name: Run Linter (Clippy)
+        working-directory: ./backend
+        run: cargo clippy -- -D warnings
+
+      - name: Run Tests
+        working-directory: ./backend
+        # DBマイグレーション（テーブル作成）を行ってからテスト
+        # sqlx-cliが入っていない環境なので、簡易的にpsqlでテーブル作成する
+        run: |
+          sudo apt-get install -y postgresql-client
+          # テーブル作成SQLを流し込む (開発環境と同じSQL)
+          PGPASSWORD=password psql -h localhost -U user -d arch_db -c "
+            CREATE TABLE IF NOT EXISTS projects (
+              id UUID PRIMARY KEY,
+              title TEXT NOT NULL,
+              scenario_id TEXT NOT NULL,
+              last_modified TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+              diagram_data JSONB,
+              chat_history JSONB,
+              evaluation JSONB
+            );
+          "
+          # テスト実行
+          cargo test
