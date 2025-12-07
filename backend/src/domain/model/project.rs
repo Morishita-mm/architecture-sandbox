@@ -56,19 +56,65 @@ impl Project {
     }
 }
 
-// テストコードは diagram::Diagram を使うように微修正が必要ですが、
-// コンパイラが教えてくれるので後述します。
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::model::diagram::{Diagram, Node, Edge}; // インポート追加
+    // 外部ファイルに移った型をインポート
+    use crate::domain::model::diagram::{Diagram, Node, Position};
+    use crate::domain::model::chat::ChatLog;
 
+    // ヘルパー関数: テスト用のダミー図データ
     fn create_dummy_diagram() -> Diagram {
-        Diagram { nodes: vec![], edges: vec![] }
+        Diagram {
+            nodes: vec![
+                Node { 
+                    id: "1".to_string(), 
+                    type_label: "LB".to_string(), 
+                    position: Position { x: 0.0, y: 0.0 } 
+                }
+            ],
+            edges: vec![],
+        }
     }
-    
-    // ... (以下のテストコードはそのまま) ...
-    // ※ 先ほど書いたテストコードはそのままで動くはずですが、
-    // use super::*; で diagram が見えなくなる可能性があるため、
-    // 必要に応じて上記 use を追加してください。
+
+    #[test]
+    fn test_create_new_project() {
+        let id = ProjectId::new();
+        let title = "Test Project".to_string();
+        let scenario = "test_scenario".to_string();
+        let diagram = create_dummy_diagram();
+        let chat = vec![ChatLog { role: "user".to_string(), content: "hi".to_string() }];
+
+        let project = Project::new(
+            id.clone(),
+            title.clone(),
+            scenario.clone(),
+            diagram,
+            chat
+        );
+
+        assert_eq!(project.id, id);
+        assert_eq!(project.title, title);
+        assert_eq!(project.diagram.nodes.len(), 1);
+        assert_eq!(project.chat_history.len(), 1);
+    }
+
+    #[test]
+    fn test_change_title() {
+        let mut project = Project::new(
+            ProjectId::new(),
+            "Old Title".to_string(),
+            "s1".to_string(),
+            create_dummy_diagram(),
+            vec![]
+        );
+
+        // 正常系
+        project.change_title("New Title".to_string());
+        assert_eq!(project.title, "New Title");
+
+        // 異常系（空文字なら変更されないルール）
+        project.change_title("".to_string());
+        assert_eq!(project.title, "New Title");
+    }
 }
