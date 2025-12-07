@@ -1,2 +1,2 @@
-pub mod postgres;
 pub mod gemini;
+pub mod postgres;

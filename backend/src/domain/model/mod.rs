@@ -1,3 +1,3 @@
-pub mod project;
-pub mod diagram;
 pub mod chat;
+pub mod diagram;
+pub mod project;

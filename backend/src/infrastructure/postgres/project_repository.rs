@@ -4,9 +4,9 @@ use std::error::Error;
 
 use crate::domain::{
     model::{
-        project::{Project, ProjectId},
+        chat::ChatLog,
         diagram::Diagram,
-        chat::ChatLog
+        project::{Project, ProjectId},
     },
     repository::project_repository::ProjectRepository,
 };
@@ -69,11 +69,13 @@ impl ProjectRepository for PostgresProjectRepository {
             // DBのJSONB -> ドメインオブジェクト への変換
             // diagram_data が NULL の場合のハンドリング等は要件次第ですが、
             // ここではテーブル定義上データが入っている前提で変換します
-            let diagram: Diagram = serde_json::from_value(r.diagram_data.unwrap_or(serde_json::json!({
-                "nodes": [], "edges": []
-            })))?;
+            let diagram: Diagram =
+                serde_json::from_value(r.diagram_data.unwrap_or(serde_json::json!({
+                    "nodes": [], "edges": []
+                })))?;
 
-            let chat_history: Vec<ChatLog> = serde_json::from_value(r.chat_history.unwrap_or(serde_json::json!([])))?;
+            let chat_history: Vec<ChatLog> =
+                serde_json::from_value(r.chat_history.unwrap_or(serde_json::json!([])))?;
 
             // evaluationはまだOption<Value>のまま
             let evaluation = r.evaluation;
@@ -101,9 +103,9 @@ mod tests {
     use std::time::Duration;
     // ドメインモデルのインポートパスが少し変わるので注意
     use crate::domain::model::{
-        project::{Project, ProjectId},
-        diagram::{Diagram, Node, Position},
         chat::ChatLog,
+        diagram::{Diagram, Node, Position},
+        project::{Project, ProjectId},
     };
 
     async fn get_test_pool() -> PgPool {
@@ -148,10 +150,10 @@ mod tests {
         repo.save(&project).await.expect("Failed to save project");
 
         let found = repo.find_by_id(&project.id).await.expect("Failed to find");
-        
+
         assert!(found.is_some());
         let found_project = found.unwrap();
-        
+
         assert_eq!(found_project.id, project.id);
         assert_eq!(found_project.title, project.title);
         assert_eq!(found_project.diagram.nodes.len(), 1);
@@ -168,7 +170,11 @@ mod tests {
         project.change_title("Updated Title".to_string());
         repo.save(&project).await.expect("Failed to update");
 
-        let found = repo.find_by_id(&project.id).await.expect("Failed to find").unwrap();
+        let found = repo
+            .find_by_id(&project.id)
+            .await
+            .expect("Failed to find")
+            .unwrap();
         assert_eq!(found.title, "Updated Title");
     }
 }

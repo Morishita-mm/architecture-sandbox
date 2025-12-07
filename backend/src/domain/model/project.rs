@@ -1,10 +1,10 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use chrono::{DateTime, Utc};
 
 // 切り出したモジュールをインポート
-use super::diagram::Diagram;
 use super::chat::ChatLog;
+use super::diagram::Diagram;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ProjectId(pub Uuid);
@@ -22,10 +22,10 @@ pub struct Project {
     pub title: String,
     pub scenario_id: String,
     pub last_modified: DateTime<Utc>,
-    
-    pub diagram: Diagram,       // 外部ファイル定義を使用
+
+    pub diagram: Diagram,           // 外部ファイル定義を使用
     pub chat_history: Vec<ChatLog>, // 外部ファイル定義を使用
-    
+
     pub evaluation: Option<serde_json::Value>,
 }
 
@@ -60,19 +60,17 @@ impl Project {
 mod tests {
     use super::*;
     // 外部ファイルに移った型をインポート
-    use crate::domain::model::diagram::{Diagram, Node, Position};
     use crate::domain::model::chat::ChatLog;
+    use crate::domain::model::diagram::{Diagram, Node, Position};
 
     // ヘルパー関数: テスト用のダミー図データ
     fn create_dummy_diagram() -> Diagram {
         Diagram {
-            nodes: vec![
-                Node { 
-                    id: "1".to_string(), 
-                    type_label: "LB".to_string(), 
-                    position: Position { x: 0.0, y: 0.0 } 
-                }
-            ],
+            nodes: vec![Node {
+                id: "1".to_string(),
+                type_label: "LB".to_string(),
+                position: Position { x: 0.0, y: 0.0 },
+            }],
             edges: vec![],
         }
     }
@@ -83,15 +81,12 @@ mod tests {
         let title = "Test Project".to_string();
         let scenario = "test_scenario".to_string();
         let diagram = create_dummy_diagram();
-        let chat = vec![ChatLog { role: "user".to_string(), content: "hi".to_string() }];
+        let chat = vec![ChatLog {
+            role: "user".to_string(),
+            content: "hi".to_string(),
+        }];
 
-        let project = Project::new(
-            id.clone(),
-            title.clone(),
-            scenario.clone(),
-            diagram,
-            chat
-        );
+        let project = Project::new(id.clone(), title.clone(), scenario.clone(), diagram, chat);
 
         assert_eq!(project.id, id);
         assert_eq!(project.title, title);
@@ -106,7 +101,7 @@ mod tests {
             "Old Title".to_string(),
             "s1".to_string(),
             create_dummy_diagram(),
-            vec![]
+            vec![],
         );
 
         // 正常系

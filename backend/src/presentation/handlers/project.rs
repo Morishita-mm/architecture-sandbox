@@ -1,12 +1,12 @@
-use axum::{extract::State, Json};
-use sqlx::PgPool;
+use axum::{Json, extract::State};
 use serde::Deserialize;
+use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::domain::model::{
-    project::{Project, ProjectId},
+    chat::ChatLog,
     diagram::Diagram,
-    chat::ChatLog
+    project::{Project, ProjectId},
 };
 use crate::domain::repository::project_repository::ProjectRepository;
 use crate::infrastructure::postgres::project_repository::PostgresProjectRepository;

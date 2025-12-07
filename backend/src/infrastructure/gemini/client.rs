@@ -53,7 +53,7 @@ pub async fn evaluate_with_gemini(json_data: &Value) -> Result<String, Box<dyn s
     );
 
     // プロンプトの作成
-let yaml_prompt_template = r#"
+    let yaml_prompt_template = r#"
 system_context:
   role: "Senior System Architect & Educator"
   objective: "Evaluate if the user's design meets the SPECIFIC SCENARIO requirements."
@@ -88,11 +88,7 @@ input_json:
 "#;
 
     // プロンプト結合
-    let prompt = format!(
-        "{}\n{}", 
-        yaml_prompt_template, 
-        json_data
-    );
+    let prompt = format!("{}\n{}", yaml_prompt_template, json_data);
 
     let request_body = GeminiRequest {
         contents: vec![Content {
@@ -101,10 +97,7 @@ input_json:
     };
 
     let client = Client::new();
-    let res = client.post(&url)
-        .json(&request_body)
-        .send()
-        .await?;
+    let res = client.post(&url).json(&request_body).send().await?;
 
     // --- エラーハンドリングとデバッグ出力 ---
 
@@ -150,7 +143,8 @@ pub async fn chat_with_customer(req: &ChatRequest) -> Result<String, Box<dyn std
 
     // シナリオごとの「裏設定」定義
     let hidden_context = match req.scenario_id.as_str() {
-        "internal_tool" => "
+        "internal_tool" => {
+            "
             あなたは「社内勤怠管理ツール」の発注担当者（総務部）です。
             ITには詳しくありません。
             【裏要件】
@@ -158,8 +152,10 @@ pub async fn chat_with_customer(req: &ChatRequest) -> Result<String, Box<dyn std
             - 朝9時に社員50人が一斉にアクセスするが、それ以外は誰も使わない。
             - データは消えると困るが、数分止まるくらいなら許容できる。
             - セキュリティ（社外からのアクセス禁止）は気にしている。
-        ",
-        "sns_app" => "
+        "
+        }
+        "sns_app" => {
+            "
             あなたは「次世代SNSアプリ」のスタートアップCEOです。
             野心的で、急成長を想定しています。
             【裏要件】
@@ -167,8 +163,9 @@ pub async fn chat_with_customer(req: &ChatRequest) -> Result<String, Box<dyn std
             - とにかく「サクサク動く（低レイテンシ）」ことが最重要。
             - 24時間365日止まってはいけない（可用性重視）。
             - 予算はある程度確保している。
-        ",
-        _ => "あなたは一般的なシステムの顧客です。"
+        "
+        }
+        _ => "あなたは一般的なシステムの顧客です。",
     };
 
     // システムプロンプトの構築
@@ -189,9 +186,13 @@ pub async fn chat_with_customer(req: &ChatRequest) -> Result<String, Box<dyn std
     let mut full_prompt = String::new();
     full_prompt.push_str(&system_instruction); // ここで参照を使用
     full_prompt.push_str("\n\n--- 会話履歴 ---\n");
-    
+
     for msg in &req.messages {
-        let speaker = if msg.role == "user" { "Architect" } else { "Client" };
+        let speaker = if msg.role == "user" {
+            "Architect"
+        } else {
+            "Client"
+        };
         full_prompt.push_str(&format!("{}: {}\n", speaker, msg.content));
     }
     full_prompt.push_str("Client: "); // 続きを促す
@@ -207,7 +208,7 @@ pub async fn chat_with_customer(req: &ChatRequest) -> Result<String, Box<dyn std
     // HTTPリクエスト
     let client = Client::new();
     let res = client.post(&url).json(&request_body).send().await?;
-    
+
     // エラーハンドリング
     let status = res.status();
     if !status.is_success() {
@@ -219,7 +220,7 @@ pub async fn chat_with_customer(req: &ChatRequest) -> Result<String, Box<dyn std
 
     let body_text = res.text().await?;
     let response_json: GeminiResponse = serde_json::from_str(&body_text)?;
-    
+
     if let Some(candidates) = response_json.candidates {
         if let Some(first) = candidates.first() {
             if let Some(content) = &first.content {
@@ -231,6 +232,6 @@ pub async fn chat_with_customer(req: &ChatRequest) -> Result<String, Box<dyn std
             }
         }
     }
-    
+
     Err("No response".into())
 }

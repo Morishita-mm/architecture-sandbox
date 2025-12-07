@@ -12,7 +12,7 @@ pub struct Diagram {
 pub struct Node {
     pub id: String,
     #[serde(rename = "type")]
-    pub type_label: String, 
+    pub type_label: String,
     pub position: Position,
 }
 
