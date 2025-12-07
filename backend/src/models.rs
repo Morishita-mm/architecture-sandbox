@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 // フロントエンドから受け取る全体データ
 #[derive(Debug, Deserialize, Serialize)]
@@ -47,4 +48,22 @@ pub struct ChatMessage {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ChatResponse {
     pub reply: String,
+}
+
+// --- プロジェクト保存用 ---
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct SaveProjectRequest {
+    pub id: Uuid,              // プロジェクトID (フロント側で生成または管理)
+    pub title: String,         // プロジェクト名
+    pub scenario_id: String,   // 選択中のシナリオ
+    pub diagram_data: serde_json::Value, // ノードとエッジ (JSONB)
+    pub chat_history: serde_json::Value, // チャット履歴 (JSONB)
+    // evaluation はまだ保存しなくてOK（再評価すれば良いので）
+}
+
+#[derive(Debug, Serialize)]
+pub struct SaveProjectResponse {
+    pub id: Uuid,
+    pub status: String,
 }

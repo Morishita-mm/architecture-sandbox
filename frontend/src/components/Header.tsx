@@ -4,11 +4,15 @@ import { SCENARIOS } from "../scenarios";
 interface HeaderProps {
   selectedScenarioId: string;
   onScenarioChange: (id: string) => void;
+  onSave: () => void;
+  isSaving: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   selectedScenarioId,
   onScenarioChange,
+  onSave,
+  isSaving,
 }) => {
   return (
     <header style={headerStyle}>
@@ -18,7 +22,7 @@ export const Header: React.FC<HeaderProps> = ({
 
       <div style={controlsStyle}>
         <div style={selectorGroupStyle}>
-          <label style={labelStyle}>お題（シナリオ）:</label>
+          <label style={labelStyle}>お題:</label>
           <select
             value={selectedScenarioId}
             onChange={(e) => onScenarioChange(e.target.value)}
@@ -31,12 +35,35 @@ export const Header: React.FC<HeaderProps> = ({
             ))}
           </select>
         </div>
+
+        {/* ▼ 追加: 保存ボタン ▼ */}
+        <button
+          onClick={onSave}
+          disabled={isSaving}
+          style={{
+            ...saveButtonStyle,
+            opacity: isSaving ? 0.7 : 1,
+            cursor: isSaving ? "wait" : "pointer",
+          }}
+        >
+          {isSaving ? "保存中..." : "💾 プロジェクトを保存"}
+        </button>
       </div>
     </header>
   );
 };
 
 // --- Styles ---
+const saveButtonStyle: React.CSSProperties = {
+  padding: "6px 12px",
+  backgroundColor: "#238636", // GitHub Green
+  color: "white",
+  border: "1px solid rgba(240,246,252,0.1)",
+  borderRadius: "6px",
+  fontSize: "14px",
+  fontWeight: "bold",
+};
+
 const headerStyle: React.CSSProperties = {
   height: "60px",
   backgroundColor: "#24292e", // GitHubっぽいダークヘッダー

@@ -20,6 +20,7 @@ import { SCENARIOS } from "../scenarios";
 import { Header } from "./Header";
 import { ChatInterface } from "./ChatInterface";
 import { MemoPad } from "./MemoPad";
+import { v4 as uuidv4 } from 'uuid';
 
 let id = 0;
 const getId = () => `dndnode_${id++}`;
@@ -47,6 +48,10 @@ function ArchitectureFlow() {
   const [evaluationResult, setEvaluationResult] =
     useState<EvaluationResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // プロジェクトID (初回レンダリング時に生成)
+  const projectIdRef = useRef<string>(uuidv4());
+  const [isSaving, setIsSaving] = useState(false);
 
   // 現在のシナリオオブジェクト
   const currentScenario =
@@ -160,6 +165,43 @@ function ArchitectureFlow() {
     }
   }, [getNodes, getEdges, currentScenario]);
 
+  const onSaveProject = useCallback(async () => {
+    setIsSaving(true);
+    const currentNodes = getNodes();
+    const currentEdges = getEdges();
+
+    const payload = {
+      id: projectIdRef.current, // UUID
+      title: `${currentScenario.title}の設計`, // 簡易的にシナリオ名をタイトルに
+      scenario_id: currentScenario.id,
+      diagram_data: {
+        nodes: currentNodes,
+        edges: currentEdges
+      },
+      chat_history: chatMessages
+    };
+
+    try {
+      const response = await fetch('http://localhost:8080/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) throw new Error('Failed to save');
+
+      const result = await response.json();
+      console.log('Save result:', result);
+      alert('プロジェクトを保存しました！'); // 簡易通知
+
+    } catch (error) {
+      console.error(error);
+      alert('保存に失敗しました。');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [getNodes, getEdges, currentScenario, chatMessages]);
+
   return (
     <div
       style={{
@@ -173,6 +215,8 @@ function ArchitectureFlow() {
       <Header
         selectedScenarioId={selectedScenarioId}
         onScenarioChange={handleScenarioChange}
+        onSave={onSaveProject}
+        isSaving={isSaving}
       />
 
       {/* 2. タブバー */}

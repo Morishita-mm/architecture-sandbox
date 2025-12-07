@@ -7,21 +7,23 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use models::{ArchitectureDiagram, ChatRequest}; // 必要な型をインポート
+// SaveProjectRequest をインポートに追加
+use models::{ArchitectureDiagram, ChatRequest, SaveProjectRequest}; 
 use tower_http::cors::{Any, CorsLayer};
 use sqlx::postgres::PgPoolOptions;
-use sqlx::PgPool;
+// PgPool と Row をまとめてインポート
+use sqlx::{PgPool, Row}; 
 use std::env;
 use std::time::Duration;
 
 #[tokio::main]
 async fn main() {
+    // 1. データベース接続設定
     let database_url = env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgres://user:password@db:5432/arch_db".to_string());
 
     println!("Connecting to database...");
     
-    // 接続プールの作成 (最大5接続、タイムアウト3秒)
     let pool = PgPoolOptions::new()
         .max_connections(5)
         .acquire_timeout(Duration::from_secs(3))
@@ -31,17 +33,18 @@ async fn main() {
 
     println!("Database connected successfully!");
 
+    // 2. CORS設定
     let cors = CorsLayer::new()
         .allow_origin(Any)
         .allow_methods([Method::GET, Method::POST])
         .allow_headers(Any);
 
-    // .with_state(pool) でDBプールを全ハンドラに共有します
+    // 3. ルーティング設定
     let app = Router::new()
         .route("/", get(|| async { "Hello, Architecture!" }))
         .route("/api/evaluate", post(evaluate_architecture))
         .route("/api/chat", post(handle_chat))
-        // TODO: /api/projects などの保存用ルートを追加します ▼
+        .route("/api/projects", post(save_project)) // 保存用API
         .layer(cors)
         .with_state(pool); 
 
@@ -51,6 +54,7 @@ async fn main() {
 }
 
 // --- ハンドラ関数 ---
+
 async fn evaluate_architecture(
     Json(payload): Json<serde_json::Value>,
 ) -> Json<serde_json::Value> {
@@ -85,6 +89,50 @@ async fn handle_chat(
         Err(e) => {
             eprintln!("Chat Error: {}", e);
             Json(serde_json::json!({ "reply": "Error", "status": "error" }))
+        }
+    }
+}
+
+// プロジェクト保存ハンドラ
+async fn save_project(
+    State(pool): State<PgPool>,
+    Json(payload): Json<SaveProjectRequest>,
+) -> Json<serde_json::Value> {
+    println!("Saving project: {} ({})", payload.title, payload.id);
+
+    // Upsertクエリ
+    let query_result = sqlx::query!(
+        r#"
+        INSERT INTO projects (id, title, scenario_id, diagram_data, chat_history, last_modified)
+        VALUES ($1, $2, $3, $4, $5, NOW())
+        ON CONFLICT (id) DO UPDATE
+        SET title = EXCLUDED.title,
+            scenario_id = EXCLUDED.scenario_id,
+            diagram_data = EXCLUDED.diagram_data,
+            chat_history = EXCLUDED.chat_history,
+            last_modified = NOW()
+        "#,
+        payload.id,
+        payload.title,
+        payload.scenario_id,
+        payload.diagram_data,
+        payload.chat_history
+    )
+    .execute(&pool)
+    .await;
+
+    match query_result {
+        Ok(_) => Json(serde_json::json!({
+            "id": payload.id,
+            "status": "success",
+            "message": "Project saved successfully"
+        })),
+        Err(e) => {
+            eprintln!("Database Error: {}", e);
+            Json(serde_json::json!({
+                "status": "error",
+                "message": "Failed to save project"
+            }))
         }
     }
 }
