@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::domain::model::project::{Project, ProjectId};
 use async_trait::async_trait;
 use std::error::Error;
