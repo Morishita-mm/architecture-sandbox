@@ -20,7 +20,7 @@ import { SCENARIOS } from "../scenarios";
 import { Header } from "./Header";
 import { ChatInterface } from "./ChatInterface";
 import { MemoPad } from "./MemoPad";
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuidv4 } from "uuid";
 
 let id = 0;
 const getId = () => `dndnode_${id++}`;
@@ -29,6 +29,9 @@ const onDragOver = (event: React.DragEvent) => {
   event.preventDefault();
   event.dataTransfer.dropEffect = "move";
 };
+
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
 function ArchitectureFlow() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
@@ -144,7 +147,7 @@ function ArchitectureFlow() {
     };
 
     try {
-      const response = await fetch("http://localhost:8080/api/evaluate", {
+      const response = await fetch(`${API_BASE_URL}/api/evaluate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(designData),
@@ -176,27 +179,26 @@ function ArchitectureFlow() {
       scenario_id: currentScenario.id,
       diagram_data: {
         nodes: currentNodes,
-        edges: currentEdges
+        edges: currentEdges,
       },
-      chat_history: chatMessages
+      chat_history: chatMessages,
     };
 
     try {
-      const response = await fetch('http://localhost:8080/api/projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch(`${API_BASE_URL}/api/projects`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
-      if (!response.ok) throw new Error('Failed to save');
+      if (!response.ok) throw new Error("Failed to save");
 
       const result = await response.json();
-      console.log('Save result:', result);
-      alert('プロジェクトを保存しました！'); // 簡易通知
-
+      console.log("Save result:", result);
+      alert("プロジェクトを保存しました！"); // 簡易通知
     } catch (error) {
       console.error(error);
-      alert('保存に失敗しました。');
+      alert("保存に失敗しました。");
     } finally {
       setIsSaving(false);
     }

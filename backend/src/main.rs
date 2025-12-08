@@ -6,6 +6,7 @@ use axum::{
     Json, Router,
     http::Method,
     routing::{get, post},
+    response::IntoResponse,
 };
 use sqlx::postgres::PgPoolOptions;
 use std::env;
@@ -26,17 +27,33 @@ async fn main() {
 
     let pool = PgPoolOptions::new()
         .max_connections(5)
-        .acquire_timeout(Duration::from_secs(3))
+        .acquire_timeout(Duration::from_secs(30)) 
         .connect(&database_url)
         .await
         .expect("Failed to connect to database");
 
     println!("Database connected successfully!");
 
+    let migration_sql = r#"
+    CREATE TABLE IF NOT EXISTS projects (
+      id UUID PRIMARY KEY,
+      title TEXT NOT NULL,
+      scenario_id TEXT NOT NULL,
+      last_modified TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      diagram_data JSONB,
+      chat_history JSONB,
+      evaluation JSONB
+    );
+    "#;
+    sqlx::query(migration_sql)
+        .execute(&pool)
+        .await
+        .expect("Failed to run migration");
+
     // 2. CORS設定
     let cors = CorsLayer::new()
         .allow_origin(Any)
-        .allow_methods([Method::GET, Method::POST])
+        .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
         .allow_headers(Any);
 
     // 3. ルーティング設定
@@ -53,7 +70,7 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
-async fn evaluate_architecture(Json(payload): Json<serde_json::Value>) -> Json<serde_json::Value> {
+async fn evaluate_architecture(Json(payload): Json<serde_json::Value>) -> impl IntoResponse {
     println!("Evaluating with Gemini...");
     match gemini_client::evaluate_with_gemini(&payload).await {
         Ok(ai_response_text) => {
@@ -76,7 +93,7 @@ async fn evaluate_architecture(Json(payload): Json<serde_json::Value>) -> Json<s
     }
 }
 
-async fn handle_chat(Json(payload): Json<ChatRequest>) -> Json<serde_json::Value> {
+async fn handle_chat(Json(payload): Json<ChatRequest>) -> impl IntoResponse {
     println!("Chat request for scenario: {}", payload.scenario_id);
     match gemini_client::chat_with_customer(&payload).await {
         Ok(reply) => Json(serde_json::json!({ "reply": reply, "status": "success" })),

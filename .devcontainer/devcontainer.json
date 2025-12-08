@@ -1,0 +1,32 @@
+{
+  "name": "Architecture App Dev",
+  "dockerComposeFile": [
+    "../compose.yaml",
+    "../compose.dev.yaml"
+  ],
+  "service": "backend",
+  "workspaceFolder": "/workspace",
+
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {},
+    "ghcr.io/devcontainers/features/git:1": {}
+  },
+
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "rust-analyzer.check.command": "clippy"
+      },
+      "extensions": [
+        "rust-lang.rust-analyzer",
+        "tamasfe.even-better-toml",
+        "vadimcn.vscode-lldb",
+        "serayuzgur.crates",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "dsznajder.es7-react-js-snippets"
+      ]
+    }
+  },
+  "shutdownAction": "stopCompose"
+}

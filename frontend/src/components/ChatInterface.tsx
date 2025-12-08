@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import type { Scenario } from "../scenarios";
 import type { ChatMessage } from "../types"; // 共通型を使用
- // 共通型を使用
+
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
 interface Props {
   scenario: Scenario;
@@ -37,7 +39,7 @@ export const ChatInterface: React.FC<Props> = ({
     setIsLoading(true);
 
     try {
-      const response = await fetch("http://localhost:8080/api/chat", {
+      const response = await fetch(`${API_BASE_URL}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
