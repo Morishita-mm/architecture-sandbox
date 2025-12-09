@@ -2,8 +2,8 @@
 # Project Configuration Reference
 # ==============================================================================
 # プロジェクト名: architecture-sandbox
-# 最終更新: 2025-12-05 (開発環境構築完了時点)
-# 目的: コンテナ名、ポート番号、パス、環境変数の「正」となる情報の管理
+# 最終更新: 2025-12-09 (UI/UXフロー修正時点)
+# 目的: コンテナ名、ポート番号、パス、環境変数、およびアプリケーションの動作の「正」となる情報の管理
 # ==============================================================================
 
 architecture:
@@ -11,28 +11,36 @@ architecture:
   root_workspace: "/workspace"  # コンテナ内でのプロジェクトルートパス
 
 # ------------------------------------------------------------------------------
-# 1. Services (コンテナ構成)
+# 1. Services & Deployment (コンテナ構成とデプロイ)
 # ------------------------------------------------------------------------------
 services:
   # --- Backend Service ---
   backend:
     technology: "Rust (Axum + Tokio)"
-    container_name: "app-backend"   # docker ps で表示される名前
-    service_name: "backend"         # docker-compose内での参照名
+    container_name: "app-backend"
+    service_name: "backend"
     
     paths:
       host_dir: "./backend"
       container_workdir: "/workspace/backend"
     
     networking:
-      port_internal: 8080           # コンテナがListenしているポート
-      port_external: 8080           # ホスト(ブラウザ)からアクセスするポート
-      base_url_browser: "http://localhost:8080"  # ブラウザ(Frontend)からのアクセス用
-      base_url_internal: "http://backend:8080"   # 他コンテナからのアクセス用
+      port_internal: 8080
+      port_external: 8080
+      base_url_browser: "http://localhost:8080"
+      base_url_internal: "http://backend:8080"
     
     commands:
       dev_start: "cargo watch -x run"
       build: "cargo build"
+    
+    deployment_prod:
+      target: AWS App Runner
+      image_tag: architecture-sandbox-backend:latest
+      dockerfile: ./backend/Dockerfile.prod
+      runtime_env_vars: 
+        - GEMINI_API_KEY # (Google Gemini APIキー)
+        - ARCH_DEFS_PATH # (Frontendの定義ファイルパス)
 
   # --- Frontend Service ---
   frontend:
@@ -50,19 +58,21 @@ services:
       base_url: "http://localhost:5173"
     
     commands:
-      # 初回起動時に npm install が自動実行される設定になっている
       dev_start: "npm run dev -- --host"
       install: "npm install"
+    
+    deployment_prod:
+      target: AWS S3 + CloudFront (SPA Hosting)
 
   # --- Database Service ---
   database:
     technology: "PostgreSQL 15 (Alpine)"
     container_name: "app-db"
-    service_name: "db"  # 【重要】Backendから接続する際のホスト名
+    service_name: "db"
     
     networking:
       port_internal: 5432
-      port_external: 5432 # ホストのDBクライアントから接続する場合
+      port_external: 5432
     
     credentials:
       user: "user"
@@ -70,9 +80,7 @@ services:
       db_name: "arch_db"
     
     connection_strings:
-      # Rust(Backend)から接続用 (ホスト名は 'db')
       internal_url: "postgres://user:password@db:5432/arch_db"
-      # ホストPCのGUIツール(TablePlusなど)から接続用
       external_url: "postgres://user:password@localhost:5432/arch_db"
 
 # ------------------------------------------------------------------------------
@@ -80,20 +88,51 @@ services:
 # ------------------------------------------------------------------------------
 configuration_files:
   docker_compose:
-    production: "./compose.yaml"      # 基本設定 (ポート, DB定義)
-    development: "./compose.dev.yaml" # 開発用上書き (マウント, コマンド)
+    production: "./compose.yaml"
+    development: "./compose.dev.yaml"
   
   dev_container:
     config: "./.devcontainer/devcontainer.json"
     
-  rust:
-    manifest: "./backend/Cargo.toml"
-    
-  react:
-    config: "./frontend/vite.config.ts"
+  prod_docker:
+    backend_prod: "./backend/Dockerfile.prod"
 
 # ------------------------------------------------------------------------------
-# 3. Known Behaviors (挙動のメモ)
+# 3. Application Operational Details (アプリケーション動作詳細)
+# ------------------------------------------------------------------------------
+operational_details:
+  current_ui_flow:
+    description: UI/UX改善により、アプリケーションはシナリオ選択画面から開始する。
+    steps:
+      - 'SCENARIO_SELECTION': ユーザーはデフォルトシナリオまたはカスタムシナリオを選択
+      - 'CUSTOM_DEFINITION': カスタム選択の場合、ScenarioSetup画面で難易度と顧客役割を設定
+      - 'CANVAS': 設計・チャット画面へ遷移
+      - 'CANVAS_INIT': 選択/設定されたシナリオに基づき、チャットの初期メッセージとシステムプロンプトが構築される
+
+  core_features:
+    - name: AI交渉（チャット）
+      endpoint: POST /api/chat
+      role: '顧客（AI）'
+      logic: '役割に基づき、AIのペルソナと裏要件をプロンプトに注入し、Gemini APIを呼び出す。'
+    
+    - name: AI評価
+      endpoint: POST /api/evaluate
+      role: '上級システムアーキテクト（AI）'
+      logic: '図データとシナリオ設定を受け取り、難易度に応じた真の要件を注入。静的なアーキテクチャ定義ファイルを読み込み、評価プロンプトを構築し、Gemini APIを呼び出す。'
+
+  limitations:
+    - name: データ永続化
+      status: Mocked (未実装)
+      detail: 'POST /api/projects はダミー実装。データベースサービスは開発環境設定のみ。'
+    - name: セキュリティ（CORS）
+      status: Development Mode
+      detail: 'CORSは全て許可（Allow Any）。本番環境ではCloudFrontドメインに制限が必要。'
+    - name: 並行性
+      status: 安全
+      detail: 'アプリケーションはステートレス設計のため、複数ユーザーからの同時アクセスは安全に並列処理される。'
+
+# ------------------------------------------------------------------------------
+# 4. Known Behaviors (挙動のメモ)
 # ------------------------------------------------------------------------------
 behaviors:
   hot_reload:
