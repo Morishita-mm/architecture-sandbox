@@ -1,5 +1,6 @@
 import React from "react";
 import { SCENARIOS } from "../scenarios";
+import { BiSave } from "react-icons/bi";
 
 interface HeaderProps {
   selectedScenarioId: string;
@@ -44,9 +45,19 @@ export const Header: React.FC<HeaderProps> = ({
             ...saveButtonStyle,
             opacity: isSaving ? 0.7 : 1,
             cursor: isSaving ? "wait" : "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
           }}
         >
-          {isSaving ? "保存中..." : "💾 プロジェクトを保存"}
+          {isSaving ? (
+            "保存中..."
+          ) : (
+            <>
+              <BiSave size={16} />
+              プロジェクトを保存
+            </>
+          )}
         </button>
       </div>
     </header>

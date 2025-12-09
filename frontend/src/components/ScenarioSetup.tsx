@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { BiRocket, BiServer, BiWallet, BiSlider } from "react-icons/bi";
+
 import type { Scenario, ScenarioDifficulty, PartnerRole } from "../types";
 
 interface Props {
@@ -37,7 +39,9 @@ export const ScenarioSetup: React.FC<Props> = ({
   return (
     <div style={containerStyle}>
       <div style={cardStyle}>
-        <h2 style={titleStyle}>🛠️ テーマ設定</h2>
+        <h2 style={titleStyle}>
+          <BiSlider style={{ marginRight: '10px', color: '#555' }} />
+          テーマ設定</h2>
         <p style={descStyle}>
           あなたが設計したいシステム（ゲーム、EC、SNSなど）を定義してください。
           <br />
@@ -138,7 +142,9 @@ export const ScenarioSetup: React.FC<Props> = ({
                   style={{ marginRight: "8px" }}
                 />
                 <div>
-                  <div style={{ fontWeight: "bold" }}>🐰 非技術系CEO</div>
+                  <div style={{ fontWeight: "bold" }}>
+                    <BiRocket style={{ marginRight: '8px', color: '#E91E63' }} />
+                    非技術系CEO</div>
                   <div style={{ fontSize: "12px", color: "#666" }}>
                     夢を語る・要件がふわっとしている
                   </div>
@@ -155,7 +161,9 @@ export const ScenarioSetup: React.FC<Props> = ({
                   style={{ marginRight: "8px" }}
                 />
                 <div>
-                  <div style={{ fontWeight: "bold" }}>🦁 技術責任者 (CTO)</div>
+                  <div style={{ fontWeight: "bold" }}>
+                    <BiServer style={{ marginRight: '8px', color: '#2196F3' }} />
+                    技術責任者 (CTO)</div>
                   <div style={{ fontSize: "12px", color: "#666" }}>
                     品質・堅牢性重視・SPOF許さない
                   </div>
@@ -172,7 +180,9 @@ export const ScenarioSetup: React.FC<Props> = ({
                   style={{ marginRight: "8px" }}
                 />
                 <div>
-                  <div style={{ fontWeight: "bold" }}>🐿️ 財務担当 (CFO)</div>
+                  <div style={{ fontWeight: "bold" }}>
+                    <BiWallet style={{ marginRight: '8px', color: '#4CAF50' }} />
+                    財務担当 (CFO)</div>
                   <div style={{ fontSize: "12px", color: "#666" }}>
                     コスト重視・高額な構成に厳しい
                   </div>

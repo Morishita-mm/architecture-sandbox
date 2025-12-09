@@ -16,6 +16,7 @@ import ReactFlow, {
 import "reactflow/dist/style.css";
 import { Sidebar } from "./Sidebar";
 import { EvaluationModal } from "./EvaluationModal";
+import { BiChat, BiNetworkChart, BiBarChart } from "react-icons/bi";
 import type { EvaluationResult, ChatMessage, Scenario } from "../types";
 import { SCENARIOS } from "../scenarios";
 import { Header } from "./Header";
@@ -360,19 +361,22 @@ Please start the conversation by acknowledging the request for "${setupScenario.
               style={activeTab === "chat" ? activeTabStyle : tabStyle}
               onClick={() => setActiveTab("chat")}
             >
-              💬 要件定義・交渉
+              <BiChat style={{ marginRight: "6px", verticalAlign: "middle" }} />
+              要件定義・交渉
             </button>
             <button
               style={activeTab === "design" ? activeTabStyle : tabStyle}
               onClick={() => setActiveTab("design")}
             >
-              🛠️ アーキテクチャ設計
+              <BiNetworkChart style={{ marginRight: "6px", verticalAlign: "middle" }} />
+              アーキテクチャ設計
             </button>
             <button
               style={activeTab === "evaluate" ? activeTabStyle : tabStyle}
               onClick={() => setActiveTab("evaluate")}
             >
-              📊 評価結果
+              <BiBarChart style={{ marginRight: "6px", verticalAlign: "middle" }} />
+              評価結果
             </button>
           </div>
 

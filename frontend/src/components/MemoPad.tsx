@@ -1,4 +1,5 @@
 import React from 'react';
+import { BiNotepad } from 'react-icons/bi';
 
 interface Props {
   value: string;
@@ -8,7 +9,9 @@ interface Props {
 export const MemoPad: React.FC<Props> = ({ value, onChange }) => {
   return (
     <div style={containerStyle}>
-      <div style={headerStyle}>📝 要件メモ</div>
+      <div style={headerStyle}>
+        <BiNotepad style={{ marginRight: '8px', color: '#5d4037' }} />
+        要件メモ</div>
       <textarea
         style={textAreaStyle}
         value={value}

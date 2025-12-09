@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
+import { BiUser, BiBot } from "react-icons/bi";
+
 import type { Scenario, ChatMessage } from "../types"; // 共通型を使用
 
 const API_BASE_URL =
@@ -90,7 +92,9 @@ try {
               justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
             }}
           >
-            {msg.role === "model" && <div style={iconStyle}>🤖</div>}
+            {msg.role === "model" && <div style={iconStyle}>
+              <BiBot size={24} color="#666" />
+              </div>}
             <div
               style={{
                 ...bubbleStyle,
@@ -100,7 +104,9 @@ try {
             >
               {msg.content}
             </div>
-            {msg.role === "user" && <div style={iconStyle}>👤</div>}
+            {msg.role === "user" && <div style={iconStyle}>
+              <BiUser size={24} color="#2196F3" />
+              </div>}
           </div>
         ))}
         {isLoading && (
