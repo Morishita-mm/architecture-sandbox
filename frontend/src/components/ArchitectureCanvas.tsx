@@ -22,6 +22,10 @@ import { ChatInterface } from "./ChatInterface";
 import { MemoPad } from "./MemoPad";
 import { v4 as uuidv4 } from "uuid";
 
+// ▼ API_BASE_URLの定義 (import.meta.envが未定義の場合のフォールバック)
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+
 let id = 0;
 const getId = () => `dndnode_${id++}`;
 
@@ -29,9 +33,6 @@ const onDragOver = (event: React.DragEvent) => {
   event.preventDefault();
   event.dataTransfer.dropEffect = "move";
 };
-
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
 function ArchitectureFlow() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
@@ -60,28 +61,23 @@ function ArchitectureFlow() {
   const currentScenario =
     SCENARIOS.find((s) => s.id === selectedScenarioId) || SCENARIOS[0];
 
-  // シナリオ変更時の処理（履歴とメモのリセット）
+  // シナリオ変更時の処理
   const handleScenarioChange = (newId: string) => {
     setSelectedScenarioId(newId);
-
     const targetScenario =
       SCENARIOS.find((s) => s.id === newId) || SCENARIOS[0];
 
-    // チャット履歴をリセットし、最初の挨拶を入れる
     setChatMessages([
       {
         role: "model",
         content: `こんにちは。「${targetScenario.title}」の件についてですね。どのようなシステムをご提案いただけますか？`,
       },
     ]);
-
-    // メモもリセット
     setMemo("");
   };
 
   // 初回起動時の挨拶
   useEffect(() => {
-    // まだメッセージがない場合のみ初期化
     if (chatMessages.length === 0) {
       setChatMessages([
         {
@@ -90,19 +86,26 @@ function ArchitectureFlow() {
         },
       ]);
     }
-  }, []); // 初回のみ実行
+  }, []);
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
     [setEdges]
   );
 
+  // ▼▼▼ onDrop関数の修正箇所 ▼▼▼
   const onDrop = useCallback(
     (event: React.DragEvent) => {
       event.preventDefault();
 
       const type = event.dataTransfer.getData("application/reactflow/type");
       const label = event.dataTransfer.getData("application/reactflow/label");
+
+      // Sidebarから渡された色情報を取得
+      const color = event.dataTransfer.getData("application/reactflow/color");
+      const bgColor = event.dataTransfer.getData(
+        "application/reactflow/bgcolor"
+      );
 
       if (!reactFlowWrapper.current) return;
       const position = screenToFlowPosition({
@@ -112,15 +115,28 @@ function ArchitectureFlow() {
 
       const newNode = {
         id: getId(),
-        type,
+        type, // 基本的に 'default' が入ります
         position,
         data: { label: label },
+        // ここでスタイルを適用
+        style: {
+          border: `2px solid ${color || "#777"}`, // 色がない場合はデフォルトグレー
+          backgroundColor: bgColor || "#fff",
+          borderRadius: "8px",
+          padding: "10px",
+          fontWeight: "bold",
+          minWidth: "150px",
+          textAlign: "center",
+          fontSize: "14px",
+          color: "#333",
+        },
       };
 
       setNodes((nds) => nds.concat(newNode));
     },
     [screenToFlowPosition, setNodes]
   );
+  // ▲▲▲ 修正ここまで ▲▲▲
 
   const onEvaluate = useCallback(async () => {
     const currentNodes = getNodes();
@@ -174,8 +190,8 @@ function ArchitectureFlow() {
     const currentEdges = getEdges();
 
     const payload = {
-      id: projectIdRef.current, // UUID
-      title: `${currentScenario.title}の設計`, // 簡易的にシナリオ名をタイトルに
+      id: projectIdRef.current,
+      title: `${currentScenario.title}の設計`,
       scenario_id: currentScenario.id,
       diagram_data: {
         nodes: currentNodes,
@@ -195,7 +211,7 @@ function ArchitectureFlow() {
 
       const result = await response.json();
       console.log("Save result:", result);
-      alert("プロジェクトを保存しました！"); // 簡易通知
+      alert("プロジェクトを保存しました！");
     } catch (error) {
       console.error(error);
       alert("保存に失敗しました。");
@@ -213,7 +229,6 @@ function ArchitectureFlow() {
         height: "100vh",
       }}
     >
-      {/* 1. ヘッダー */}
       <Header
         selectedScenarioId={selectedScenarioId}
         onScenarioChange={handleScenarioChange}
@@ -221,7 +236,6 @@ function ArchitectureFlow() {
         isSaving={isSaving}
       />
 
-      {/* 2. タブバー */}
       <div style={tabBarStyle}>
         <button
           style={activeTab === "chat" ? activeTabStyle : tabStyle}
@@ -237,9 +251,7 @@ function ArchitectureFlow() {
         </button>
       </div>
 
-      {/* 3. メインコンテンツ + メモ帳 */}
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        {/* コンテンツエリア (チャット/キャンバス) */}
         <div
           style={{
             flex: 1,
@@ -248,7 +260,6 @@ function ArchitectureFlow() {
             position: "relative",
           }}
         >
-          {/* A. チャットモード */}
           {activeTab === "chat" && (
             <div style={{ width: "100%", height: "100%" }}>
               <ChatInterface
@@ -259,7 +270,6 @@ function ArchitectureFlow() {
             </div>
           )}
 
-          {/* B. 設計モード (非表示時は display: none で維持) */}
           <div
             style={{
               display: activeTab === "design" ? "flex" : "none",
@@ -314,14 +324,12 @@ function ArchitectureFlow() {
           </div>
         </div>
 
-        {/* 4. メモ帳 (常に右端に表示) */}
         <MemoPad value={memo} onChange={setMemo} />
       </div>
     </div>
   );
 }
 
-// --- export ---
 export function ArchitectureCanvas() {
   return (
     <ReactFlowProvider>
@@ -330,7 +338,6 @@ export function ArchitectureCanvas() {
   );
 }
 
-// --- Styles ---
 const tabBarStyle: React.CSSProperties = {
   display: "flex",
   backgroundColor: "#f5f5f5",
