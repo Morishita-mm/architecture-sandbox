@@ -1,4 +1,5 @@
 export type ScenarioDifficulty = 'small' | 'medium' | 'large';
+export type PartnerRole = 'cfo' | 'cto' | 'ceo';
 
 export interface ScenarioRequirements {
   users: string;
@@ -15,6 +16,7 @@ export interface Scenario {
 
   isCustom?: boolean;
   difficulty?: ScenarioDifficulty;
+  partnerRole?: PartnerRole;
 }
 
 export interface EvaluationResult {

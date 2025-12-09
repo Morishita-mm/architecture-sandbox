@@ -65,9 +65,8 @@ fn build_system_prompt() -> String {
     // 1. プロンプトテンプレートを読み込む (コンパイル時に埋め込み)
     let template = include_str!("system_prompt.txt");
 
-    // 2. フロントエンドのJSON定義を読み込む (相対パスに注意)
+    // 2. フロントエンドのJSON定義を読み込む
     // backend/src/infrastructure/gemini/client.rs から見たパス
-    // -> ../../../../frontend/src/constants/architecture_defs.json
     let json_str = include_str!("../../../../frontend/src/constants/architecture_defs.json");
 
     // 3. JSONをパースしてコンポーネントリストを作る
@@ -204,17 +203,15 @@ pub async fn chat_with_customer(req: &ChatRequest) -> Result<String, Box<dyn std
         api_key
     );
 
-    // カスタムシナリオと固定シナリオでコンテキストの取得元を切り替える
+    // 1. ベースとなるシステム指示の取得
     let mut system_instruction = String::new();
     let mut chat_history_start_index = 0;
 
     if req.scenario_id == "custom" {
-        // カスタムの場合、フロントエンドが送ってきた最初の system メッセージを探す
+        // カスタムの場合: フロントエンドからの system メッセージを採用
         if let Some(first_msg) = req.messages.first() {
             if first_msg.role == "system" {
-                // その内容をシステム指示として採用
                 system_instruction = first_msg.content.clone();
-                // 履歴ループではスキップする (Geminiに2回送らないため)
                 chat_history_start_index = 1;
             }
         }
@@ -222,7 +219,6 @@ pub async fn chat_with_customer(req: &ChatRequest) -> Result<String, Box<dyn std
             system_instruction = "あなたはシステムアーキテクチャのクライアントです。".to_string();
         }
     } else {
-        // 固定シナリオの場合はサーバー側の定義を使う
         let hidden_context = match req.scenario_id.as_str() {
             "internal_tool" => {
                 "
@@ -257,17 +253,26 @@ pub async fn chat_with_customer(req: &ChatRequest) -> Result<String, Box<dyn std
         );
     }
 
+    // パートナー役割の取得とプロンプト結合
+    let role = req.partner_role.as_deref().unwrap_or("ceo");
+    let partner_instruction = get_partner_instruction(role);
+
+    let final_system_instruction = format!("{}\n\n{}", system_instruction, partner_instruction);
+
     let mut full_prompt = String::new();
-    full_prompt.push_str(&system_instruction);
+    // ★修正箇所: system_instruction ではなく final_system_instruction を使用する
+    full_prompt.push_str(&final_system_instruction);
+    
+    // デバッグ出力
+    println!("--- Full System Prompt ---\n{}\n--------------------------", &full_prompt);
+    
     full_prompt.push_str("\n\n--- 会話履歴 ---\n");
 
-    // 会話履歴の構築 (customの場合は system メッセージをスキップ)
+    // 会話履歴の構築
     for (i, msg) in req.messages.iter().enumerate() {
         if i < chat_history_start_index {
             continue;
         }
-
-        // system ロールが履歴の途中に出てきた場合は無視する（念のため）
         if msg.role == "system" {
             continue;
         }
@@ -290,9 +295,12 @@ pub async fn chat_with_customer(req: &ChatRequest) -> Result<String, Box<dyn std
     let client = Client::new();
     let res = client.post(&url).json(&request_body).send().await?;
 
-    // エラーハンドリング (既存と同様)
+    // エラーハンドリング
     let status = res.status();
     if !status.is_success() {
+        let error_body = res.text().await?;
+        eprintln!("Gemini API Error! Status: {}", status);
+        eprintln!("Error Body: {}", error_body);
         return Err(format!("Gemini API error: {}", status).into());
     }
 
@@ -312,4 +320,40 @@ pub async fn chat_with_customer(req: &ChatRequest) -> Result<String, Box<dyn std
     }
 
     Err("No response".into())
+}
+
+fn get_partner_instruction(role: &str) -> &'static str {
+    match role {
+        "cfo" => concat!(
+            "\n【重要：あなたの役割 - 財務担当 (CFO)】\n",
+            "あなたはコスト意識が非常に高い財務責任者として振る舞ってください。\n",
+            "技術的な詳細は理解していませんが、「費用対効果」と「無駄の削減」には敏感です。\n",
+            "・「その機能は本当に売上に貢献するのか？」「もっと安い方法はないのか？」としつこく聞いてください。\n",
+            "・AWSやクラウドの高額なサービス名が出たら、コスト面での懸念を示してください。\n",
+            "・安易なオーバースペック（過剰品質）を許さないでください。"
+        ),
+        "cto" => concat!(
+            "\n【重要：あなたの役割 - 技術責任者 (CTO)】\n",
+            "あなたは技術に精通したCTOとして振る舞ってください。\n",
+            "・セキュリティ、可用性、スケーラビリティについて厳しくチェックしてください。\n",
+            "・単一障害点（SPOF）がある場合、即座に指摘してください。\n",
+            "・「なんとなく」選ばれた技術選定を嫌います。すべての構成に技術的な根拠を求めてください。\n",
+            "・甘い設計に対しては、プロフェッショナルとして厳しいフィードバックをしてください。"
+        ),
+        "ceo" => concat!(
+            "\n【重要：あなたの役割 - 非技術系オーナー (CEO)】\n",
+            "あなたは技術に詳しくないビジネスオーナーです。夢やビジョンを語りますが、具体的な要件（数値）はあいまいで、気分で変わることがあります。\n",
+            "\n",
+            "【最重要ルール：Hidden_Context情報の隠蔽】\n",
+            "あなたはシステム設定（Hidden_Context）として「正解の数値（ユーザー数や予算）」を知っていますが、**絶対にそれをそのまま答えないでください。**\n",
+            "前述の `Behavior_Rules` に「聞かれたら答える」とあっても、CEOの場合は**「曖昧にはぐらかす」**ことを優先してください。\n",
+            "\n",
+            "【回答ガイドライン】\n",
+            "1. ユーザーから「ユーザー数は？」「予算は？」と聞かれても、まずは「うーん、世界中でバズるくらい！」「安く済ませてよ」などと**感覚的な言葉**で返してください。\n",
+            "2. 具体的な数字（例: 100万人、50万円）は使わず、「桁違いの規模」「お小遣い程度」のように言い換えてください。\n",
+            "3. ユーザーが困って「具体的なサーバーのスペックを決めるために必要なんです」などと食い下がってきた場合のみ、「まあ、強いて言うなら...」と渋々、少しだけヒントを出してください。\n",
+            "4. 専門用語を使われても「よく分からないけど、実現できるの？」「なんかカッコいい感じで頼むよ」と返してください。"
+        ),
+        _ => "\n【役割】一般的なクライアントとして振る舞ってください。",
+    }
 }

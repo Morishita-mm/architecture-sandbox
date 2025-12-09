@@ -39,13 +39,14 @@ export const ChatInterface: React.FC<Props> = ({
     setInput("");
     setIsLoading(true);
 
-    try {
+try {
       const response = await fetch(`${API_BASE_URL}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           scenario_id: scenario.id,
           messages: newHistory,
+          partner_role: scenario.partnerRole || 'ceo', 
         }),
       });
 
