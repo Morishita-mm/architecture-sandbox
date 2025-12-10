@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, useEffect } from "react";
+import { useCallback, useRef, useState, useEffect, useMemo } from "react";
 import ReactFlow, {
   Background,
   Controls,
@@ -8,10 +8,11 @@ import ReactFlow, {
   addEdge,
   type Connection,
   type Edge,
+  type Node, // Node型を使用
+  type NodeMouseHandler, // イベントハンドラの型
   ReactFlowProvider,
   useReactFlow,
   Panel,
-  type Node,
 } from "reactflow";
 
 import "reactflow/dist/style.css";
@@ -24,12 +25,15 @@ import type {
   ProjectSaveData,
   SimpleNodeData,
   SimpleEdgeData,
+  AppNodeData,
 } from "../types";
 import { ChatInterface } from "./ChatInterface";
 import { MemoPad } from "./MemoPad";
 import { EvaluationPanel } from "./EvaluationPanel";
 import { v4 as uuidv4 } from "uuid";
-import { saveProjectToLocalFile } from "../utils/fileHandler"; // ★ 追加
+import { saveProjectToLocalFile } from "../utils/fileHandler";
+import { nodeTypes } from "../constants/nodeTypes";
+import { PropertiesPanel } from "./PropertiesPanel"; // ★ 追加
 
 interface ArchitectureCanvasProps {
   selectedScenario: Scenario;
@@ -70,12 +74,16 @@ function ArchitectureFlow({
   const [isSaving, setIsSaving] = useState(false);
   const [projectVersion, setProjectVersion] = useState<string>("1.0");
 
+  const [selectedNode, setSelectedNode] = useState<Node<AppNodeData> | null>(
+    null
+  );
+
   const currentScenario = selectedScenario;
+  const memoNodeTypes = useMemo(() => nodeTypes, []);
 
   useEffect(() => {
     if (loadedProjectData) {
       setNodes(loadedProjectData.diagram.nodes as Node[]);
-
       setEdges(
         loadedProjectData.diagram.edges.map((e) => ({
           id: e.id || `e_${e.source}-${e.target}`,
@@ -83,25 +91,19 @@ function ArchitectureFlow({
           target: e.target,
         })) as Edge[]
       );
-
       setChatMessages(loadedProjectData.chatHistory);
       setMemo(loadedProjectData.memo);
-
       if (loadedProjectData.evaluation) {
         setEvaluationResult(loadedProjectData.evaluation);
         setActiveTab("evaluate");
       }
-
       const loadedVer = parseFloat(loadedProjectData.version) || 1.0;
       const nextVer = (loadedVer + 1.0).toFixed(1);
       setProjectVersion(nextVer);
-
       return;
     }
-
     if (chatMessages.length === 0) {
       setProjectVersion("1.0");
-
       let initialMessages: ChatMessage[];
       if (currentScenario.isCustom) {
         const difficultySpecs = {
@@ -131,34 +133,27 @@ function ArchitectureFlow({
 ---
 Role: System Client
 Task: Simulate a client for system architecture design.
-
 Scenario:
   Title: "${currentScenario.title}"
   Description: "${currentScenario.description}"
   Scale: "${spec.scale}"
-
 Hidden_Context:
-  # DO NOT reveal these values unless explicitly asked.
   Users: "${spec.users}"
   Budget: "${spec.budget}"
   Critical_Constraint: "${spec.constraint}"
   Domain_Specific_Constraint: "Please invent one technical constraint specific to '${currentScenario.title}' (e.g., real-time requirement, legacy system integration)."
-
 Behavior_Rules:
   - Act as a non-technical stakeholder initially.
   - Reveal "Hidden_Context" information ONLY when the user asks specifically about relevant topics (e.g., "How many users?", "What is the budget?").
   - If the user presents a design without uncovering the "Critical_Constraint", point out the flaw in the evaluation phase, not during the chat.
   - Be professional but demanding.
-
 Evaluation_Criteria:
   - Did the user ask about the scale/users?
   - Did the user ask about the budget?
   - Does the proposed architecture solve the Critical_Constraint?
 ---
-
 Please start the conversation by acknowledging the request for "${currentScenario.title}" and waiting for the user to interview you.
 `.trim();
-
         initialMessages = [
           { role: "system", content: hiddenSystemPrompt },
           {
@@ -182,42 +177,68 @@ Please start the conversation by acknowledging the request for "${currentScenari
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
     [setEdges]
   );
+
+  // onDrop: ノード作成時
   const onDrop = useCallback(
     (event: React.DragEvent) => {
       event.preventDefault();
-      const type = event.dataTransfer.getData("application/reactflow/type");
+      const type = "custom";
       const label = event.dataTransfer.getData("application/reactflow/label");
-      const color = event.dataTransfer.getData("application/reactflow/color");
-      const bgColor = event.dataTransfer.getData(
-        "application/reactflow/bgcolor"
-      );
+
       if (!reactFlowWrapper.current) return;
       const position = screenToFlowPosition({
         x: event.clientX,
         y: event.clientY,
       });
-      const newNode: Node = {
+
+      const newNode: Node<AppNodeData> = {
         id: getId(),
         type,
         position,
-        data: { label: label },
-        style: {
-          border: `2px solid ${color || "#777"}`,
-          backgroundColor: bgColor || "#fff",
-          borderRadius: "8px",
-          padding: "10px",
-          fontWeight: "bold",
-          minWidth: "150px",
-          textAlign: "center",
-          fontSize: "14px",
-          color: "#333",
+        data: {
+          label: label,
+          originalType: label,
+          description: "",
         },
       };
       setNodes((nds) => nds.concat(newNode));
+      setSelectedNode(newNode);
     },
     [screenToFlowPosition, setNodes]
   );
 
+  const onNodeClick: NodeMouseHandler = useCallback((_, node) => {
+    // カスタムノード型の場合のみ選択
+    if (node.type === "custom") {
+      setSelectedNode(node as Node<AppNodeData>);
+    } else {
+      setSelectedNode(null);
+    }
+  }, []);
+
+  const onPaneClick = useCallback(() => {
+    setSelectedNode(null);
+  }, []);
+
+  const handleNodeUpdate = useCallback(
+    (id: string, newData: AppNodeData) => {
+      setNodes((nds) =>
+        nds.map((node) => {
+          if (node.id === id) {
+            // React Flowの仕様上、dataオブジェクト全体を新しくすることで再レンダリングをトリガー
+            const updatedNode = { ...node, data: { ...newData } };
+            // 選択状態のノードも更新しないとパネルが古いままになるため更新
+            setSelectedNode(updatedNode as Node<AppNodeData>);
+            return updatedNode;
+          }
+          return node;
+        })
+      );
+    },
+    [setNodes]
+  );
+
+  // ... (onEvaluate, onSaveProject は変更なしのため省略) ...
   const onEvaluate = useCallback(async () => {
     const currentNodes = getNodes();
     const currentEdges = getEdges();
@@ -228,11 +249,14 @@ Please start the conversation by acknowledging the request for "${currentScenari
     setIsLoading(true);
     const designData = {
       scenario: currentScenario,
-      nodes: currentNodes.map((n) => ({
-        id: n.id,
-        type: n.data.label,
-        position: n.position,
-      })),
+      nodes: currentNodes.map((n) => {
+        const data = n.data as AppNodeData;
+        return {
+          id: n.id,
+          type: data.originalType || data.label || "Unknown",
+          position: n.position,
+        };
+      }),
       edges: currentEdges.map((e) => ({ source: e.source, target: e.target })),
     };
     try {
@@ -258,7 +282,6 @@ Please start the conversation by acknowledging the request for "${currentScenari
     setIsSaving(true);
     const currentNodes = getNodes();
     const currentEdges = getEdges();
-
     try {
       const payload: ProjectSaveData = {
         version: projectVersion,
@@ -271,7 +294,7 @@ Please start the conversation by acknowledging the request for "${currentScenari
             id: n.id,
             type: n.type as string,
             position: n.position,
-            data: n.data as { label: string },
+            data: n.data as AppNodeData,
             style: n.style as React.CSSProperties,
           })) as SimpleNodeData[],
           edges: currentEdges.map((e) => ({
@@ -283,17 +306,10 @@ Please start the conversation by acknowledging the request for "${currentScenari
         chatHistory: chatMessages,
         evaluation: evaluationResult,
       };
-
-      const safeTitle =
-        currentScenario.title.trim() ||
-        "untitled";
+      const safeTitle = currentScenario.title.trim() || "untitled";
       const filename = `${safeTitle}_v${projectVersion}.json`;
-
-      // ★ 共通ロジックを使用
       saveProjectToLocalFile(payload, filename);
-
       alert(`「${filename}」をローカルに保存しました。`);
-
       setProjectVersion((currentVer) => {
         const v = parseFloat(currentVer) || 1.0;
         return (v + 1.0).toFixed(1);
@@ -444,6 +460,9 @@ Please start the conversation by acknowledging the request for "${currentScenari
                   onConnect={onConnect}
                   onDrop={onDrop}
                   onDragOver={onDragOver}
+                  nodeTypes={memoNodeTypes}
+                  onNodeClick={onNodeClick}
+                  onPaneClick={onPaneClick}
                   fitView
                 >
                   <Background />
@@ -468,6 +487,14 @@ Please start the conversation by acknowledging the request for "${currentScenari
                     </button>
                   </Panel>
                 </ReactFlow>
+
+                {selectedNode && (
+                  <PropertiesPanel
+                    selectedNode={selectedNode}
+                    onChange={handleNodeUpdate}
+                    onClose={() => setSelectedNode(null)}
+                  />
+                )}
               </div>
             </div>
           </div>

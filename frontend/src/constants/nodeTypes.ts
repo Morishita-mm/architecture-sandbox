@@ -1,4 +1,5 @@
-import defs from './architecture_defs.json';
+import defs from "./architecture_defs.json";
+import { CustomNode } from "../components/CustomNode";
 
 export type NodeTypeItem = {
   type: string;
@@ -13,5 +14,8 @@ export type NodeCategory = {
   items: NodeTypeItem[];
 };
 
-// JSONデータをそのまま型付けしてエクスポート
 export const NODE_CATEGORIES: NodeCategory[] = defs.categories;
+
+export const nodeTypes = {
+  custom: CustomNode,
+};

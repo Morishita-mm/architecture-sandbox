@@ -52,12 +52,19 @@ export interface ChatMessage {
   content: string;
 }
 
+export interface AppNodeData {
+  label: string;
+  originalType: string;
+  description?: string;
+  customColor?: string;
+}
+
 // --- プロジェクト保存のための定義 ---
 export interface SimpleNodeData {
   id: string;
   type: string;
   position: { x: number; y: number };
-  data: { label: string };
+  data: AppNodeData;
   style?: React.CSSProperties;
 }
 
