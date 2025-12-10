@@ -238,7 +238,6 @@ Please start the conversation by acknowledging the request for "${currentScenari
     [setNodes]
   );
 
-  // ... (onEvaluate, onSaveProject は変更なしのため省略) ...
   const onEvaluate = useCallback(async () => {
     const currentNodes = getNodes();
     const currentEdges = getEdges();
@@ -253,7 +252,9 @@ Please start the conversation by acknowledging the request for "${currentScenari
         const data = n.data as AppNodeData;
         return {
           id: n.id,
-          type: data.originalType || data.label || "Unknown",
+          type: data.originalType || "Unknown",
+          label: data.label,
+          description: data.description || "",
           position: n.position,
         };
       }),
