@@ -2,9 +2,11 @@ import React, { useState } from "react";
 import { SCENARIOS } from "../scenarios";
 import type { Scenario, ProjectSaveData } from "../types";
 import { FaCog, FaLightbulb, FaGithub } from "react-icons/fa";
-import { BiFolderOpen, BiHelpCircle, BiBookContent } from "react-icons/bi";
+import { BiFolderOpen, BiHelpCircle } from "react-icons/bi";
 import { loadProjectFromLocalFile } from "../utils/fileHandler";
 import { HelpModal } from "./HelpModal";
+
+import qiitaIcon from "../assets/qiita-icon.png";
 
 interface ScenarioSelectionScreenProps {
   onSelectScenario: (scenario: Scenario) => void;
@@ -299,7 +301,11 @@ export const ScenarioSelectionScreen: React.FC<
               (e.currentTarget.style.backgroundColor = "white")
             }
           >
-            <BiBookContent size={20} color="#55c500" />
+            <img
+              src={qiitaIcon}
+              alt="Qiita"
+              style={{ width: "20px", height: "20px", objectFit: "contain" }}
+            />
             <span>Qiita Article</span>
           </a>
         </div>
