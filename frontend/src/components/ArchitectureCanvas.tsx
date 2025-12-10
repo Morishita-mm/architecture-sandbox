@@ -17,7 +17,7 @@ import ReactFlow, {
 
 import "reactflow/dist/style.css";
 import { Sidebar } from "./Sidebar";
-import { BiChat, BiNetworkChart, BiBarChart } from "react-icons/bi";
+import { BiChat, BiNetworkChart, BiBarChart, BiHelpCircle } from "react-icons/bi";
 import type {
   EvaluationResult,
   ChatMessage,
@@ -33,7 +33,8 @@ import { EvaluationPanel } from "./EvaluationPanel";
 import { v4 as uuidv4 } from "uuid";
 import { saveProjectToLocalFile } from "../utils/fileHandler";
 import { nodeTypes } from "../constants/nodeTypes";
-import { PropertiesPanel } from "./PropertiesPanel"; // ★ 追加
+import { PropertiesPanel } from "./PropertiesPanel";
+import { HelpModal } from "./HelpModal";
 
 interface ArchitectureCanvasProps {
   selectedScenario: Scenario;
@@ -80,6 +81,8 @@ function ArchitectureFlow({
 
   const currentScenario = selectedScenario;
   const memoNodeTypes = useMemo(() => nodeTypes, []);
+
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   useEffect(() => {
     if (loadedProjectData) {
@@ -367,11 +370,33 @@ Please start the conversation by acknowledging the request for "${currentScenari
         <h1 style={{ fontSize: "1.2em", margin: 0 }}>
           {currentScenario.title}
         </h1>
+
+        <button
+          onClick={() => setIsHelpOpen(true)}
+          style={{
+            marginLeft: "auto", // 右寄せ
+            marginRight: "10px",
+            padding: "8px 12px",
+            border: "1px solid #ddd",
+            borderRadius: "4px",
+            backgroundColor: "white",
+            cursor: "pointer",
+            color: "#555",
+            display: "flex",
+            alignItems: "center",
+            gap: "5px",
+            fontSize: "14px",
+          }}
+          title="操作ガイドを見る"
+        >
+          <BiHelpCircle size={20} />
+          ガイド
+        </button>
+
         <button
           onClick={onSaveProject}
           disabled={isSaving}
           style={{
-            marginLeft: "auto",
             padding: "8px 15px",
             borderRadius: "4px",
             border: "none",
@@ -383,6 +408,8 @@ Please start the conversation by acknowledging the request for "${currentScenari
           {isSaving ? "保存中..." : "プロジェクト保存（ローカル）"}
         </button>
       </header>
+
+      <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
 
       <>
         <div style={tabBarStyle}>
