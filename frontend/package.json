@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "aws s3 sync ./dist s3://architecture-sandbox-frontend-f0e9c602 && aws cloudfront create-invalidation --distribution-id E2RYCC937BOQ6J --paths '/*'"
   },
   "dependencies": {
     "@types/uuid": "^10.0.0",
@@ -36,8 +37,5 @@
   },
   "overrides": {
     "vite": "npm:rolldown-vite@7.2.5"
-  },
-  "scripts": {
-    "deploy": "aws s3 sync ./dist s3://architecture-sandbox-frontend-f0e9c602 && aws cloudfront create-invalidation --distribution-id E2RYCC937BOQ6J --paths '/*'"
   }
 }
