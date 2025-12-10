@@ -17,7 +17,7 @@ import ReactFlow, {
 
 import "reactflow/dist/style.css";
 import { Sidebar } from "./Sidebar";
-import { BiChat, BiNetworkChart, BiBarChart, BiHelpCircle } from "react-icons/bi";
+import { BiChat, BiNetworkChart, BiBarChart } from "react-icons/bi";
 import type {
   EvaluationResult,
   ChatMessage,
@@ -27,6 +27,7 @@ import type {
   SimpleEdgeData,
   AppNodeData,
 } from "../types";
+import { Header } from "./Header";
 import { ChatInterface } from "./ChatInterface";
 import { MemoPad } from "./MemoPad";
 import { EvaluationPanel } from "./EvaluationPanel";
@@ -343,71 +344,13 @@ Please start the conversation by acknowledging the request for "${currentScenari
         height: "100vh",
       }}
     >
-      <header
-        style={{
-          padding: "10px 20px",
-          backgroundColor: "#f5f5f5",
-          borderBottom: "1px solid #ddd",
-          display: "flex",
-          alignItems: "center",
-          gap: "20px",
-          flexShrink: 0,
-        }}
-      >
-        <button
-          onClick={onBackToSelection}
-          style={{
-            padding: "8px 15px",
-            border: "1px solid #007bff",
-            borderRadius: "4px",
-            backgroundColor: "white",
-            cursor: "pointer",
-            color: "#007bff",
-          }}
-        >
-          ⬅ シナリオ選択に戻る
-        </button>
-        <h1 style={{ fontSize: "1.2em", margin: 0 }}>
-          {currentScenario.title}
-        </h1>
-
-        <button
-          onClick={() => setIsHelpOpen(true)}
-          style={{
-            marginLeft: "auto", // 右寄せ
-            marginRight: "10px",
-            padding: "8px 12px",
-            border: "1px solid #ddd",
-            borderRadius: "4px",
-            backgroundColor: "white",
-            cursor: "pointer",
-            color: "#555",
-            display: "flex",
-            alignItems: "center",
-            gap: "5px",
-            fontSize: "14px",
-          }}
-          title="操作ガイドを見る"
-        >
-          <BiHelpCircle size={20} />
-          ガイド
-        </button>
-
-        <button
-          onClick={onSaveProject}
-          disabled={isSaving}
-          style={{
-            padding: "8px 15px",
-            borderRadius: "4px",
-            border: "none",
-            backgroundColor: isSaving ? "#ccc" : "#28a745",
-            color: "white",
-            cursor: isSaving ? "wait" : "pointer",
-          }}
-        >
-          {isSaving ? "保存中..." : "プロジェクト保存（ローカル）"}
-        </button>
-      </header>
+      <Header
+        title={currentScenario.title}
+        onBack={onBackToSelection}
+        onSave={onSaveProject}
+        isSaving={isSaving}
+        onOpenHelp={() => setIsHelpOpen(true)}
+      />
 
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
 
