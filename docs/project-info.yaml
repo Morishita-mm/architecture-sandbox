@@ -1,13 +1,13 @@
 # ==============================================================================
 # Development Status Update
 # ==============================================================================
-# 最終更新: 2025-12-10
-# 更新内容: UI/UX刷新、ヘルプ機能実装、評価ロジックの改善、各種バグ修正
+# 最終更新: 2025-12-11
+# 更新内容: 挑戦状機能(URL共有)、SNSシェア連携、URL短縮API実装
 # ==============================================================================
 
 project_status:
-  phase: "UI/UX Refinement & Usability Polish"
-  latest_milestone: "Help System & Rich UI Implementation"
+  phase: "Social & Challenge Features Implementation"
+  latest_milestone: "Scenario Sharing via URL & SNS Integration"
 
 # ------------------------------------------------------------------------------
 # Updated Operational Details (動作仕様の更新)
@@ -17,9 +17,9 @@ operational_details:
     description: "トップ画面で「新規開始」か「続きから再開」を選択可能なフローに変更"
     steps:
       - "ENTRY_SCREEN":
-          action: "ユーザーは「シナリオカード選択」または「既存プロジェクト読み込み」を行う"
+          action: "ユーザーは「シナリオカード選択」、「既存プロジェクト読み込み」、または「共有URLからの挑戦」を行う"
           component: "ScenarioSelectionScreen.tsx"
-          updates: "リッチフォント(Montserrat)適用、フッター(GitHub/Qiitaリンク)追加、ヘルプボタン設置"
+          updates: "URLパラメータ(?challenge=...)検知ロジックと、受諾確認用モーダルの追加"
       - "LOAD_FLOW":
           trigger: "「既存プロジェクトを読み込む」ボタン（ホバーエフェクト付）"
           process: "JSONファイル選択 -> Base64デコード -> 構造/バージョン検証 -> 状態復元"
@@ -29,8 +29,32 @@ operational_details:
           process: "全StateをJSON化 -> Base64エンコード -> ファイル出力"
           naming_convention: "<シナリオ名>_v<バージョン>.json"
           version_control: "保存実行後、内部バージョンを自動インクリメント (例: 1.0 -> 2.0)"
+      - "SHARE_FLOW":
+          trigger: "評価結果画面の「結果をシェア」ボタン"
+          process: "シナリオデータをBase64エンコード -> Backend経由でTinyURL短縮 -> X投稿画面起動"
+          data_payload: "隠し要件(Users/Budget)を含む全シナリオ設定"
 
   new_features:
+    - name: "チャレンジモード（シナリオ共有）"
+      status: "Implemented"
+      details:
+        method: "URL Query Parameter (Base64 Encoded JSON)"
+        ux: "評価結果画面から発行 -> 受信者はトップ画面で「挑戦状モーダル」経由で開始"
+        privacy: "開始前モーダルでは隠し要件(Users/Budget)を伏せ、難易度とペルソナのみ表示"
+
+    - name: "URL短縮機能 (Backend Proxy)"
+      status: "Implemented"
+      details:
+        endpoint: "POST /api/shorten"
+        service: "TinyURL API (No Auth required)"
+        purpose: "SNS投稿時の文字数制限回避とURLの可読性向上"
+
+    - name: "SNSシェア連携"
+      status: "Implemented"
+      details:
+        target: "X (Twitter)"
+        content: "評価スコア、ハッシュタグ、および挑戦用短縮URLを含む投稿テキストの自動生成"
+
     - name: "ローカルデータ永続化"
       status: "Implemented"
       details:
@@ -45,15 +69,27 @@ operational_details:
         features: "タブ切り替え式(基本フロー/操作/AIコツ/評価)、React Iconsによる視覚化"
         access: "ウェルカム画面およびキャンバスヘッダーから常時アクセス可能"
 
-    - name: "プロパティパネルのドラッグ移動"
-      status: "Implemented"
-      details:
-        logic: "親要素基準の相対座標計算によるスムーズなドラッグ＆ドロップ実装"
-
 # ------------------------------------------------------------------------------
 # Recent Changes (直近の変更点)
 # ------------------------------------------------------------------------------
 recent_changes:
+  # --- Challenge Mode & Sharing ---
+  - id: feat_challenge_mode
+    category: "Feature"
+    description: "シナリオ設定をBase64エンコードしてURLで共有する機能(Challenge Mode)を実装。受信側でのデコードと状態復元ロジックを追加"
+
+  - id: feat_url_shortener_api
+    category: "Backend"
+    description: "TinyURL APIを叩くプロキシエンドポイント(POST /api/shorten)をRustバックエンドに追加。CORS回避とURL短縮を実現"
+
+  - id: ux_share_buttons
+    category: "UI/UX"
+    description: "評価パネル(EvaluationPanel)に「リンクコピー」「結果をシェア(X)」ボタンを追加"
+
+  - id: ux_challenge_modal
+    category: "UI/UX"
+    description: "共有URLアクセス時に表示される「挑戦状モーダル」を実装。ネタバレ防止のため詳細パラメータを隠蔽して表示"
+
   # --- Logic / Backend Integration ---
   - id: feat_evaluation_context
     category: "Logic"
@@ -74,7 +110,7 @@ recent_changes:
 
   - id: ux_rich_welcome
     category: "UI/UX"
-    description: "ウェルカム画面のデザイン刷新。Google Fonts(Montserrat)の導入、タイトル装飾、フッターエリア(GitHub/Qiita)の追加"
+    description: "ウェルカム画面のデザイン刷新。Google Fonts(Montserrat)の導入、タイトル装飾、フッター(GitHub/Qiitaリンク)の追加"
 
   - id: ux_node_handles
     category: "UI/UX"
@@ -88,18 +124,10 @@ recent_changes:
     category: "Asset"
     description: "Qiitaアイコンなどの外部リソースをローカルアセットとして配置し、リンク切れリスクとパフォーマンスを改善"
 
-  # --- Previous Changes (Archive) ---
-  - id: feat_local_persistence
-    category: "Feature"
-    description: "RDSを使用せず、ローカルファイル(JSON)によるデータの完全な保存・復元機能を実装"
-  - id: feat_versioning
-    category: "Logic"
-    description: "保存ファイル名にバージョンを含め、読み込み→保存のサイクルでバージョンを自動更新するロジックを追加"
-
 # ------------------------------------------------------------------------------
 # Updated Limitations (制約事項の更新)
 # ------------------------------------------------------------------------------
 limitations_update:
   - name: "データ共有"
-    status: "Manual"
-    detail: "サーバーに保存しないため、他者への共有はJSONファイルの送付が必要"
+    status: "Hybrid"
+    detail: "設計図の共有はJSONファイルの手動送付が必要だが、シナリオ（お題）の共有はURL経由で可能になった"
