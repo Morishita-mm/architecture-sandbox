@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -9,39 +9,102 @@ import {
   PolarRadiusAxis,
   ResponsiveContainer,
 } from "recharts";
-import { BiSearchAlt, BiRevision, BiBot, BiBulb } from "react-icons/bi";
+import { BiSearchAlt, BiRevision, BiBot, BiBulb, BiLink } from "react-icons/bi";
 import { SiX } from "react-icons/si";
-import type { EvaluationResult } from "../types";
+import type { EvaluationResult, Scenario } from "../types";
+
+// 環境変数の読み込み
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+const SHARE_BASE_URL =
+  import.meta.env.VITE_APP_SHARE_URL || window.location.origin;
 
 interface Props {
   result: EvaluationResult | null;
   onEvaluate: () => void;
   isLoading: boolean;
-  scenarioTitle: string;
+  scenario: Scenario;
 }
 
 export const EvaluationPanel: React.FC<Props> = ({
   result,
   onEvaluate,
   isLoading,
-  scenarioTitle,
+  scenario,
 }) => {
-  // シェアボタンのハンドラ
-  const handleShare = () => {
+  const [isSharing, setIsSharing] = useState(false);
+  const [copyFeedback, setCopyFeedback] = useState("");
+
+  // 完全なシナリオデータをエンコードしてロングURLを生成する関数
+  const createLongUrl = () => {
+    const challengeData: Scenario = {
+      ...scenario,
+      id: `challenge_${Date.now()}`,
+      isCustom: true,
+    };
+
+    try {
+      const jsonString = JSON.stringify(challengeData);
+      // 日本語対応Base64エンコード
+      const encoded = btoa(unescape(encodeURIComponent(jsonString)));
+
+      const cleanBaseUrl = SHARE_BASE_URL.endsWith("/")
+        ? SHARE_BASE_URL.slice(0, -1)
+        : SHARE_BASE_URL;
+
+      // encoded を encodeURIComponent でエスケープする
+      // これにより '+' が '%2B' になり、URLパラメータとして安全に渡せるようになります
+      return `${cleanBaseUrl}/?challenge=${encodeURIComponent(encoded)}`;
+    } catch (e) {
+      console.error("Encoding error:", e);
+      return null;
+    }
+  };
+
+  // バックエンド経由で短縮URLを取得してシェアする
+  const handleShare = async () => {
     if (!result) return;
+    setIsSharing(true);
 
-    const score = result.totalScore || result.score || 0;
+    try {
+      const longUrl = createLongUrl();
+      if (!longUrl) throw new Error("URL generation failed");
 
-    // 投稿テキストの作成
-    const text = `Architecture Sandboxで「${scenarioTitle}」を設計しました！\n総合スコア: ${score}点\n`;
-    const hashtags = "ArchitectureSandbox,システム設計";
-    const url = import.meta.env.VITE_APP_SHARE_URL || window.location.origin;
+      const response = await fetch(`${API_BASE_URL}/api/shorten`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ target_url: longUrl }),
+      });
 
-    // Xの投稿画面を開く
-    const shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
-      text
-    )}&hashtags=${hashtags}&url=${encodeURIComponent(url)}`;
-    window.open(shareUrl, "_blank");
+      if (!response.ok) throw new Error("Shorten API failed");
+
+      const data = await response.json();
+      const shortUrl = data.short_url;
+
+      const score = result.totalScore || result.score || 0;
+      const text = `Architecture Sandboxで「${scenario.title}」を設計しました！\n総合スコア: ${score}点\n\n▼この要件で設計に挑戦する`;
+      const hashtags = "ArchitectureSandbox,システム設計";
+
+      const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
+        text
+      )}&hashtags=${hashtags}&url=${encodeURIComponent(shortUrl)}`;
+      window.open(tweetUrl, "_blank");
+    } catch (error) {
+      console.error(error);
+      alert("シェア用URLの生成に失敗しました。");
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  const handleCopyLink = () => {
+    const url = createLongUrl();
+    if (url) {
+      navigator.clipboard.writeText(url).then(() => {
+        setCopyFeedback("Copied!");
+        setTimeout(() => setCopyFeedback(""), 2000);
+      });
+    }
   };
 
   if (!result) {
@@ -113,9 +176,30 @@ export const EvaluationPanel: React.FC<Props> = ({
         <h2 style={{ margin: 0 }}>アーキテクチャ評価レポート</h2>
 
         <div style={{ display: "flex", gap: "10px" }}>
-          {/* ★追加: シェアボタン */}
-          <button onClick={handleShare} style={shareButtonStyle}>
-            <SiX size={14} /> 結果をシェア
+          <button
+            onClick={handleCopyLink}
+            style={iconButtonStyle}
+            title="URLをコピー"
+          >
+            <BiLink size={18} />
+            {copyFeedback ? (
+              <span style={{ fontSize: "12px" }}>{copyFeedback}</span>
+            ) : (
+              "リンク"
+            )}
+          </button>
+
+          <button
+            onClick={handleShare}
+            disabled={isSharing}
+            style={{
+              ...shareButtonStyle,
+              opacity: isSharing ? 0.7 : 1,
+              cursor: isSharing ? "wait" : "pointer",
+            }}
+          >
+            <SiX size={14} />
+            {isSharing ? "生成中..." : "結果をシェア"}
           </button>
 
           <button
@@ -191,6 +275,21 @@ export const EvaluationPanel: React.FC<Props> = ({
 };
 
 // --- Styles ---
+const iconButtonStyle: React.CSSProperties = {
+  padding: "8px 12px",
+  backgroundColor: "white",
+  color: "#555",
+  border: "1px solid #ccc",
+  borderRadius: "6px",
+  cursor: "pointer",
+  fontSize: "13px",
+  display: "flex",
+  alignItems: "center",
+  gap: "6px",
+  minWidth: "80px",
+  justifyContent: "center",
+};
+
 const containerStyle: React.CSSProperties = {
   padding: "30px",
   height: "100%",
@@ -318,7 +417,7 @@ const retryButtonStyle: React.CSSProperties = {
 
 const shareButtonStyle: React.CSSProperties = {
   padding: "8px 16px",
-  backgroundColor: "black", // Xのブランドカラー
+  backgroundColor: "black",
   color: "white",
   border: "none",
   borderRadius: "6px",

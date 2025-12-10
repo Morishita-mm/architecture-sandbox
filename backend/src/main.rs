@@ -7,10 +7,12 @@ use axum::{
     response::IntoResponse,
     routing::{get, post},
 };
+use reqwest::Client;
 use reqwest::header::HeaderValue;
 use std::env;
 use tower_http::cors::{Any, CorsLayer};
 
+use crate::domain::model::url_shorten::{ShortenRequest, ShortenResponse};
 use domain::model::chat::ChatRequest;
 use infrastructure::gemini::client as gemini_client;
 
@@ -36,7 +38,8 @@ async fn main() {
         .route("/", get(|| async { "Hello, Architecture (Stateless)!" }))
         .route("/api/evaluate", post(evaluate_architecture))
         .route("/api/chat", post(handle_chat))
-        .route("/api/projects", post(mock_save_project)) // ダミーハンドラに変更
+        .route("/api/projects", post(mock_save_project))
+        .route("/api/shorten", post(shorten_url_handler))
         .layer(cors);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
@@ -88,4 +91,28 @@ async fn mock_save_project(Json(payload): Json<serde_json::Value>) -> impl IntoR
     Json(
         serde_json::json!({ "status": "success", "id": payload["id"], "message": "Saved to session (mock)" }),
     )
+}
+
+async fn shorten_url_handler(
+    Json(payload): Json<ShortenRequest>,
+) -> Result<Json<ShortenResponse>, String> {
+    let client = Client::new();
+
+    let api_url = format!(
+        "https://tinyurl.com/api-create.php?url={}",
+        payload.target_url
+    );
+
+    let resp = client
+        .get(&api_url)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if resp.status().is_success() {
+        let short_url = resp.text().await.map_err(|e| e.to_string())?;
+        Ok(Json(ShortenResponse { short_url }))
+    } else {
+        Err("Failed to shorten URL".to_string())
+    }
 }

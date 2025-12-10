@@ -1,12 +1,24 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { SCENARIOS } from "../scenarios";
 import type { Scenario, ProjectSaveData } from "../types";
-import { FaCog, FaLightbulb, FaGithub } from "react-icons/fa";
-import { BiFolderOpen, BiHelpCircle } from "react-icons/bi";
+import { FaCog, FaLightbulb, FaGithub, FaFire } from "react-icons/fa";
+import { BiFolderOpen, BiHelpCircle, BiRocket } from "react-icons/bi";
 import { loadProjectFromLocalFile } from "../utils/fileHandler";
 import { HelpModal } from "./HelpModal";
 
 import qiitaIcon from "../assets/qiita-icon.png";
+
+const difficultyLabels: Record<string, string> = {
+  small: "★☆☆ 小規模",
+  medium: "★★☆ 中規模",
+  large: "★★★ 大規模",
+};
+
+const roleLabels: Record<string, string> = {
+  ceo: "非技術系CEO (夢を語る)",
+  cto: "技術責任者 CTO (品質重視)",
+  cfo: "財務担当 CFO (コスト重視)",
+};
 
 interface ScenarioSelectionScreenProps {
   onSelectScenario: (scenario: Scenario) => void;
@@ -17,6 +29,31 @@ export const ScenarioSelectionScreen: React.FC<
   ScenarioSelectionScreenProps
 > = ({ onSelectScenario, onProjectLoad }) => {
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [pendingChallenge, setPendingChallenge] = useState<Scenario | null>(
+    null
+  );
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const challengeData = params.get("challenge");
+
+    if (challengeData) {
+      try {
+        // スペースを+に戻す（フェイルセーフ）
+        const fixedBase64 = challengeData.replace(/ /g, "+");
+
+        const jsonString = decodeURIComponent(escape(atob(fixedBase64)));
+        const scenario = JSON.parse(jsonString);
+
+        if (scenario && scenario.title && scenario.requirements) {
+          setPendingChallenge(scenario);
+          window.history.replaceState({}, "", window.location.pathname);
+        }
+      } catch (error) {
+        console.error("Failed to parse challenge data:", error);
+      }
+    }
+  }, []);
 
   const handleFileChange = async (
     event: React.ChangeEvent<HTMLInputElement>
@@ -39,6 +76,7 @@ export const ScenarioSelectionScreen: React.FC<
   };
 
   // --- レイアウト ---
+  // (既存のスタイル定義は変更なし。そのまま使用してください)
   const containerStyle: React.CSSProperties = {
     display: "flex",
     flexDirection: "column",
@@ -102,6 +140,93 @@ export const ScenarioSelectionScreen: React.FC<
     border: "1px solid #eee",
   };
 
+  const challengeOverlayStyle: React.CSSProperties = {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 3000,
+    backdropFilter: "blur(4px)",
+  };
+
+  const challengeModalStyle: React.CSSProperties = {
+    backgroundColor: "white",
+    width: "90%",
+    maxWidth: "500px",
+    borderRadius: "12px",
+    overflow: "hidden",
+    boxShadow: "0 10px 30px rgba(0,0,0,0.3)",
+    animation: "popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+  };
+
+  const challengeHeaderStyle: React.CSSProperties = {
+    backgroundColor: "#FFCCBC",
+    padding: "20px",
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    borderBottom: "1px solid #FFAB91",
+  };
+
+  const challengeInfoStyle: React.CSSProperties = {
+    backgroundColor: "#f9f9f9",
+    padding: "15px",
+    borderRadius: "8px",
+    border: "1px solid #eee",
+    marginTop: "10px",
+  };
+
+  const challengeFooterStyle: React.CSSProperties = {
+    padding: "15px 20px",
+    backgroundColor: "#f5f5f5",
+    display: "flex",
+    justifyContent: "flex-end",
+    gap: "10px",
+    borderTop: "1px solid #eee",
+  };
+
+  const cancelButtonStyle: React.CSSProperties = {
+    padding: "10px 20px",
+    border: "1px solid #ccc",
+    borderRadius: "6px",
+    backgroundColor: "white",
+    cursor: "pointer",
+    fontWeight: "bold",
+    color: "#666",
+  };
+
+  const startChallengeButtonStyle: React.CSSProperties = {
+    padding: "10px 25px",
+    border: "none",
+    borderRadius: "6px",
+    backgroundColor: "#FF5722",
+    color: "white",
+    cursor: "pointer",
+    fontWeight: "bold",
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    boxShadow: "0 2px 5px rgba(255, 87, 34, 0.4)",
+  };
+
+  // アニメーション用Styleタグ
+  const styleSheet = document.createElement("style");
+  styleSheet.innerText = `
+  @keyframes popIn {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  `;
+  if (!document.getElementById("challenge-modal-style")) {
+    styleSheet.id = "challenge-modal-style";
+    document.head.appendChild(styleSheet);
+  }
+
   return (
     <div style={containerStyle}>
       <div style={headerBarStyle}>
@@ -128,6 +253,71 @@ export const ScenarioSelectionScreen: React.FC<
 
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
 
+      {/* 挑戦状受け取りモーダル */}
+      {pendingChallenge && (
+        <div style={challengeOverlayStyle}>
+          <div style={challengeModalStyle}>
+            <div style={challengeHeaderStyle}>
+              <FaFire size={24} color="#FF5722" />
+              <h2 style={{ margin: 0, color: "#BF360C" }}>
+                設計チャレンジが届きました！
+              </h2>
+            </div>
+            <div style={{ padding: "20px", textAlign: "left" }}>
+              <p style={{ color: "#555", marginBottom: "15px" }}>
+                以下の設定でアーキテクチャ設計を開始しますか？
+              </p>
+              <div style={challengeInfoStyle}>
+                <h3 style={{ margin: "0 0 5px 0", fontSize: "18px" }}>
+                  {pendingChallenge.title}
+                </h3>
+                <p style={{ fontSize: "14px", color: "#666", margin: 0 }}>
+                  {pendingChallenge.description}
+                </p>
+
+                <div
+                  style={{
+                    marginTop: "15px",
+                    fontSize: "13px",
+                    color: "#444",
+                  }}
+                >
+                  <strong>シナリオ設定:</strong>
+                  <ul style={{ paddingLeft: "20px", margin: "5px 0" }}>
+                    <li>
+                      <strong>難易度: </strong>
+                      {
+                        difficultyLabels[
+                          pendingChallenge.difficulty || "medium"
+                        ]
+                      }
+                    </li>
+                    <li>
+                      <strong>相手役: </strong>
+                      {roleLabels[pendingChallenge.partnerRole || "ceo"]}
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <div style={challengeFooterStyle}>
+              <button
+                onClick={() => setPendingChallenge(null)}
+                style={cancelButtonStyle}
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={() => onSelectScenario(pendingChallenge)}
+                style={startChallengeButtonStyle}
+              >
+                <BiRocket size={18} /> 挑戦を受ける
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* メインコンテンツ */}
       <div style={{ marginTop: "40px", textAlign: "center" }}>
         <h1
@@ -144,14 +334,13 @@ export const ScenarioSelectionScreen: React.FC<
           Architecture Sandbox
         </h1>
         <p style={{ color: "#666", marginBottom: "30px", fontSize: "1.1em" }}>
-          {" "}
           AIパートナーと対話しながら、システムアーキテクチャを設計・評価しよう
         </p>
 
         {/* ファイル読み込みボタン */}
         <div
           style={{
-            marginBottom: "40px", // 50px -> 40px
+            marginBottom: "40px",
             display: "flex",
             justifyContent: "center",
           }}

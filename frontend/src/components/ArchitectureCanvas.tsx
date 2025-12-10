@@ -407,7 +407,7 @@ Please start the conversation by acknowledging the request for "${currentScenari
                   result={evaluationResult}
                   onEvaluate={onEvaluate}
                   isLoading={isLoading}
-                  scenarioTitle={currentScenario.title}
+                  scenario={currentScenario}
                 />
               </div>
             )}
