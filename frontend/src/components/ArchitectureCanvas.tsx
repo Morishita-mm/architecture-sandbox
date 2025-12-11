@@ -186,10 +186,18 @@ Please start the conversation by acknowledging the request for "${currentScenari
   const onDrop = useCallback(
     (event: React.DragEvent) => {
       event.preventDefault();
-      const type = "custom";
+
       const label = event.dataTransfer.getData("application/reactflow/label");
+      const groupTypes = [
+        "VPC (Network)",
+        "Availability Zone",
+        "Subnet",
+        "Security Group",
+      ];
+      const type = groupTypes.includes(label) ? "group" : "custom";
 
       if (!reactFlowWrapper.current) return;
+
       const position = screenToFlowPosition({
         x: event.clientX,
         y: event.clientY,
@@ -197,14 +205,20 @@ Please start the conversation by acknowledging the request for "${currentScenari
 
       const newNode: Node<AppNodeData> = {
         id: getId(),
-        type,
+        type, // ここが 'group' になると GroupNode がレンダリングされる
         position,
         data: {
           label: label,
           originalType: label,
           description: "",
         },
+        // グループの場合は初期サイズを指定（styleプロパティで管理）
+        style:
+          type === "group"
+            ? { width: 300, height: 200, zIndex: -1 }
+            : undefined,
       };
+
       setNodes((nds) => nds.concat(newNode));
       setSelectedNode(newNode);
     },
@@ -213,7 +227,7 @@ Please start the conversation by acknowledging the request for "${currentScenari
 
   const onNodeClick: NodeMouseHandler = useCallback((_, node) => {
     // カスタムノード型の場合のみ選択
-    if (node.type === "custom") {
+    if (node.type === "custom" || node.type === "group") {
       setSelectedNode(node as Node<AppNodeData>);
     } else {
       setSelectedNode(null);

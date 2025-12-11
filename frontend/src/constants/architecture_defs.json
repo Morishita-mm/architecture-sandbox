@@ -1,6 +1,18 @@
 {
   "categories": [
     {
+      "id": "group",
+      "label": "Zone / Group",
+      "color": "#9e9e9e",
+      "bgColor": "rgba(245, 245, 245, 0.5)",
+      "items": [
+        { "type": "VPC (Network)", "label": "VPC (Network)" },
+        { "type": "Availability Zone", "label": "Availability Zone" },
+        { "type": "Subnet", "label": "Subnet" },
+        { "type": "Security Group", "label": "Security Group" }
+      ]
+    },
+    {
       "id": "client",
       "label": "Client / User",
       "color": "#3b82f6",
