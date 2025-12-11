@@ -1,3 +1,4 @@
+/* eslint-disable no-constant-binary-expression */
 import { useCallback, useRef, useState, useEffect, useMemo } from "react";
 import ReactFlow, {
   Background,
@@ -10,6 +11,7 @@ import ReactFlow, {
   type Edge,
   type Node,
   type NodeMouseHandler,
+  type NodeDragHandler,
   ReactFlowProvider,
   useReactFlow,
   Panel,
@@ -23,9 +25,9 @@ import type {
   ChatMessage,
   Scenario,
   ProjectSaveData,
+  AppNodeData,
   SimpleNodeData,
   SimpleEdgeData,
-  AppNodeData,
 } from "../types";
 import { Header } from "./Header";
 import { ChatInterface } from "./ChatInterface";
@@ -54,7 +56,7 @@ const onDragOver = (event: React.DragEvent) => {
   event.dataTransfer.dropEffect = "move";
 };
 
-// グループとして扱うタイプ定義
+// グループとして扱うタイプ定義（新規作成時のラベル判定用）
 const GROUP_TYPES = [
   "VPC",
   "VPC (Network)",
@@ -72,7 +74,6 @@ function ArchitectureFlow({
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
-  // getIntersectingNodes を取得
   const { screenToFlowPosition, getNodes, getEdges, getIntersectingNodes } =
     useReactFlow();
 
@@ -204,6 +205,140 @@ Please start the conversation by acknowledging the request for "${currentScenari
     [setEdges]
   );
 
+  // ----------------------------------------------------------------
+  // 親子関係を解除する関数 (プロパティパネル用)
+  // ----------------------------------------------------------------
+  const handleDetachNode = useCallback(
+    (id: string) => {
+      setNodes((nds) => {
+        // 対象ノードを探す
+        const node = nds.find((n) => n.id === id);
+        if (!node || !node.parentNode) return nds;
+
+        // 親ノードを探す（絶対座標計算用）
+        const parent = nds.find((p) => p.id === node.parentNode);
+
+        let newPos = { ...node.position };
+        if (parent) {
+          // 現在の相対座標 + 親の絶対座標 = 新しい絶対座標
+          const parentPos = parent.positionAbsolute || parent.position;
+          newPos = {
+            x: parentPos.x + node.position.x,
+            y: parentPos.y + node.position.y,
+          };
+        }
+
+        // 更新
+        return nds.map((n) => {
+          if (n.id === id) {
+            return {
+              ...n,
+              parentNode: undefined,
+              position: newPos,
+              extent: undefined, // 範囲制限解除
+            };
+          }
+          return n;
+        });
+      });
+      // 選択状態を解除
+      setSelectedNode(null);
+    },
+    [setNodes]
+  );
+
+  // ----------------------------------------------------------------
+  // ドラッグ終了時: 親子関係の設定 + 親の自動拡大
+  // ----------------------------------------------------------------
+  const onNodeDragStop: NodeDragHandler = useCallback(
+    (_, node) => {
+      // ★修正: グループノード自身は何もしない (type === 'group' で判定)
+      if (node.type === "group") return;
+
+      // ★修正: 重なっているグループノードを探す (type === 'group' で判定)
+      const intersections = getIntersectingNodes(node).filter(
+        (n) => n.type === "group"
+      );
+
+      const targetGroup = intersections[intersections.length - 1];
+
+      if (targetGroup) {
+        // 親の絶対座標
+        const parentPos = targetGroup.positionAbsolute || targetGroup.position;
+        // 子の絶対座標
+        const childPos = node.positionAbsolute || node.position;
+
+        // 相対座標に変換
+        const relativePos = {
+          x: childPos.x - parentPos.x,
+          y: childPos.y - parentPos.y,
+        };
+
+        // 親のサイズを拡張するか判定
+        const childWidth = node.width || 150;
+        const childHeight = node.height || 40;
+        const padding = 20;
+
+        const requiredWidth = relativePos.x + childWidth + padding;
+        const requiredHeight = relativePos.y + childHeight + padding;
+
+        setNodes((nds) =>
+          nds.map((n) => {
+            // 親ノードのサイズ更新
+            if (n.id === targetGroup.id) {
+              const currentWidth = n.width || Number(n.style?.width) || 300;
+              const currentHeight = n.height || Number(n.style?.height) || 200;
+
+              let newWidth = currentWidth;
+              let newHeight = currentHeight;
+              let updated = false;
+
+              if (requiredWidth > currentWidth) {
+                newWidth = requiredWidth;
+                updated = true;
+              }
+              if (requiredHeight > currentHeight) {
+                newHeight = requiredHeight;
+                updated = true;
+              }
+
+              if (updated) {
+                return {
+                  ...n,
+                  style: { ...n.style, width: newWidth, height: newHeight },
+                  width: newWidth,
+                  height: newHeight,
+                };
+              }
+              return n;
+            }
+
+            // 子ノードの更新
+            if (n.id === node.id) {
+              // 親が変わらない場合も、相対位置がずれている可能性があるため更新はかけるが、
+              // すでにparentNodeが正しいならReactFlowが制御している
+              if (n.parentNode === targetGroup.id) {
+                return n;
+              }
+
+              return {
+                ...n,
+                parentNode: targetGroup.id,
+                position: relativePos,
+                extent: "parent", // 親から出られない
+              };
+            }
+            return n;
+          })
+        );
+      }
+    },
+    [getIntersectingNodes, setNodes]
+  );
+
+  // ----------------------------------------------------------------
+  // ドロップ時: 親子関係の設定 + 親の自動拡大
+  // ----------------------------------------------------------------
   const onDrop = useCallback(
     (event: React.DragEvent) => {
       event.preventDefault();
@@ -213,30 +348,25 @@ Please start the conversation by acknowledging the request for "${currentScenari
 
       if (!reactFlowWrapper.current) return;
 
-      // 1. ドロップした位置の「全体座標」を取得
       const position = screenToFlowPosition({
         x: event.clientX,
         y: event.clientY,
       });
 
-      // 2. その位置にある「グループノード」を探す
-      // (intersectingNodes等のヘルパーを使わず、生の座標データで判定するのが最も確実です)
       const allNodes = getNodes();
-
-      // 手前にある（配列の後ろの方の）グループを優先して探す
+      // ★修正: 重なり判定のターゲットを type === 'group' に限定
       const targetGroup = allNodes
         .slice()
         .reverse()
         .find((g) => {
-          // 自分自身がグループなら、他のグループには入れない（ネスト回避）
+          if (g.type !== "group") return false;
+          // 自分自身がグループなら入れない
           if (type === "group") return false;
-          // グループ以外は親になれない
-          if (!GROUP_TYPES.includes(g.data.label || g.type)) return false;
 
-          // グループの領域判定
-          const gPos = g.position; // ※親がいないグループはこれが絶対座標
-          const gW = g.width ?? 300;
-          const gH = g.height ?? 200;
+          const gPos = g.positionAbsolute || g.position;
+          // eslint-disable-next-line no-constant-binary-expression
+          const gW = g.width ?? Number(g.style?.width) ?? 300;
+          const gH = g.height ?? Number(g.style?.height) ?? 200;
 
           return (
             position.x >= gPos.x &&
@@ -246,46 +376,84 @@ Please start the conversation by acknowledging the request for "${currentScenari
           );
         });
 
-      // 3. 親子関係と座標の決定
-      let newNodePos = position;
-      let parentId = undefined;
+      let finalPosition = position;
+      let parentNodeId = undefined;
+      let groupUpdate = null;
 
-      if (targetGroup) {
-        // ★重要: 親が見つかったら、座標を「親の左上からの距離」に変換する
-        parentId = targetGroup.id;
-        newNodePos = {
-          x: position.x - targetGroup.position.x,
-          y: position.y - targetGroup.position.y,
+      if (targetGroup && type !== "group") {
+        parentNodeId = targetGroup.id;
+        const parentPos = targetGroup.positionAbsolute || targetGroup.position;
+        finalPosition = {
+          x: position.x - parentPos.x,
+          y: position.y - parentPos.y,
         };
-        console.log(
-          "Parent found!",
-          targetGroup.id,
-          "Relative Pos:",
-          newNodePos
-        );
+
+        // 親のサイズ拡張チェック
+        const childWidth = 150;
+        const childHeight = 40;
+        const padding = 20;
+
+        const requiredWidth = finalPosition.x + childWidth + padding;
+        const requiredHeight = finalPosition.y + childHeight + padding;
+
+        const currentWidth =
+          targetGroup.width || Number(targetGroup.style?.width) || 300;
+        const currentHeight =
+          targetGroup.height || Number(targetGroup.style?.height) || 200;
+
+        let newWidth = currentWidth;
+        let newHeight = currentHeight;
+
+        if (requiredWidth > currentWidth) newWidth = requiredWidth;
+        if (requiredHeight > currentHeight) newHeight = requiredHeight;
+
+        if (newWidth !== currentWidth || newHeight !== currentHeight) {
+          groupUpdate = {
+            id: targetGroup.id,
+            width: newWidth,
+            height: newHeight,
+          };
+        }
       }
 
-      // 4. ノード生成
       const newNode: Node<AppNodeData> = {
         id: getId(),
         type,
-        position: newNodePos, // 相対座標 or 絶対座標
-        parentNode: parentId, // 親ID (これがあれば自動追従する)
+        position: finalPosition,
+        parentNode: parentNodeId,
         data: {
           label: label,
           originalType: label,
           description: "",
         },
-        // グループの場合は最背面に、それ以外は前面に
         style:
           type === "group"
             ? { width: 300, height: 200, zIndex: -1 }
             : { zIndex: 10 },
-        // 親がいる場合は、親の範囲外に出られないようにする（吸着感を出すため）
-        extent: parentId ? "parent" : undefined,
+        extent: parentNodeId ? "parent" : undefined,
       };
 
-      setNodes((nds) => nds.concat(newNode));
+      setNodes((nds) => {
+        let nextNodes = nds.concat(newNode);
+        if (groupUpdate) {
+          nextNodes = nextNodes.map((n) => {
+            if (n.id === groupUpdate!.id) {
+              return {
+                ...n,
+                width: groupUpdate!.width,
+                height: groupUpdate!.height,
+                style: {
+                  ...n.style,
+                  width: groupUpdate!.width,
+                  height: groupUpdate!.height,
+                },
+              };
+            }
+            return n;
+          });
+        }
+        return nextNodes;
+      });
       setSelectedNode(newNode);
     },
     [screenToFlowPosition, setNodes, getNodes]
@@ -440,19 +608,26 @@ Please start the conversation by acknowledging the request for "${currentScenari
             style={activeTab === "chat" ? activeTabStyle : tabStyle}
             onClick={() => setActiveTab("chat")}
           >
-            <BiChat style={{ marginRight: "6px" }} /> 要件定義・交渉
+            <BiChat style={{ marginRight: "6px", verticalAlign: "middle" }} />{" "}
+            要件定義・交渉
           </button>
           <button
             style={activeTab === "design" ? activeTabStyle : tabStyle}
             onClick={() => setActiveTab("design")}
           >
-            <BiNetworkChart style={{ marginRight: "6px" }} /> アーキテクチャ設計
+            <BiNetworkChart
+              style={{ marginRight: "6px", verticalAlign: "middle" }}
+            />{" "}
+            アーキテクチャ設計
           </button>
           <button
             style={activeTab === "evaluate" ? activeTabStyle : tabStyle}
             onClick={() => setActiveTab("evaluate")}
           >
-            <BiBarChart style={{ marginRight: "6px" }} /> 評価結果
+            <BiBarChart
+              style={{ marginRight: "6px", verticalAlign: "middle" }}
+            />{" "}
+            評価結果
           </button>
         </div>
 
@@ -505,6 +680,7 @@ Please start the conversation by acknowledging the request for "${currentScenari
                   onConnect={onConnect}
                   onDrop={onDrop}
                   onDragOver={onDragOver}
+                  onNodeDragStop={onNodeDragStop}
                   nodeTypes={memoNodeTypes}
                   onNodeClick={onNodeClick}
                   onPaneClick={onPaneClick}
@@ -538,6 +714,7 @@ Please start the conversation by acknowledging the request for "${currentScenari
                     selectedNode={selectedNode}
                     onChange={handleNodeUpdate}
                     onClose={() => setSelectedNode(null)}
+                    onDetach={handleDetachNode} // 切り離し関数を渡す
                   />
                 )}
               </div>
