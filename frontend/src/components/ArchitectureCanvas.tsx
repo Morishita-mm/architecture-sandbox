@@ -8,8 +8,8 @@ import ReactFlow, {
   addEdge,
   type Connection,
   type Edge,
-  type Node, // Node型を使用
-  type NodeMouseHandler, // イベントハンドラの型
+  type Node,
+  type NodeMouseHandler,
   ReactFlowProvider,
   useReactFlow,
   Panel,
@@ -54,6 +54,15 @@ const onDragOver = (event: React.DragEvent) => {
   event.dataTransfer.dropEffect = "move";
 };
 
+// グループとして扱うタイプ定義
+const GROUP_TYPES = [
+  "VPC",
+  "VPC (Network)",
+  "Availability Zone",
+  "Subnet",
+  "Security Group",
+];
+
 function ArchitectureFlow({
   selectedScenario,
   onBackToSelection,
@@ -62,7 +71,10 @@ function ArchitectureFlow({
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const { screenToFlowPosition, getNodes, getEdges } = useReactFlow();
+
+  // getIntersectingNodes を取得
+  const { screenToFlowPosition, getNodes, getEdges, getIntersectingNodes } =
+    useReactFlow();
 
   const [activeTab, setActiveTab] = useState<"chat" | "design" | "evaluate">(
     "chat"
@@ -82,9 +94,9 @@ function ArchitectureFlow({
 
   const currentScenario = selectedScenario;
   const memoNodeTypes = useMemo(() => nodeTypes, []);
-
   const [isHelpOpen, setIsHelpOpen] = useState(false);
 
+  // 初期化処理
   useEffect(() => {
     if (loadedProjectData) {
       setNodes(loadedProjectData.diagram.nodes as Node[]);
@@ -175,58 +187,111 @@ Please start the conversation by acknowledging the request for "${currentScenari
       }
       setChatMessages(initialMessages);
     }
-  }, [selectedScenario.id, loadedProjectData]);
+  }, [
+    selectedScenario.id,
+    loadedProjectData,
+    chatMessages.length,
+    setNodes,
+    setEdges,
+    currentScenario.isCustom,
+    currentScenario.difficulty,
+    currentScenario.title,
+    currentScenario.description,
+  ]);
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
     [setEdges]
   );
 
-  // onDrop: ノード作成時
   const onDrop = useCallback(
     (event: React.DragEvent) => {
       event.preventDefault();
 
       const label = event.dataTransfer.getData("application/reactflow/label");
-      const groupTypes = [
-        "VPC (Network)",
-        "Availability Zone",
-        "Subnet",
-        "Security Group",
-      ];
-      const type = groupTypes.includes(label) ? "group" : "custom";
+      const type = GROUP_TYPES.includes(label) ? "group" : "custom";
 
       if (!reactFlowWrapper.current) return;
 
+      // 1. ドロップした位置の「全体座標」を取得
       const position = screenToFlowPosition({
         x: event.clientX,
         y: event.clientY,
       });
 
+      // 2. その位置にある「グループノード」を探す
+      // (intersectingNodes等のヘルパーを使わず、生の座標データで判定するのが最も確実です)
+      const allNodes = getNodes();
+
+      // 手前にある（配列の後ろの方の）グループを優先して探す
+      const targetGroup = allNodes
+        .slice()
+        .reverse()
+        .find((g) => {
+          // 自分自身がグループなら、他のグループには入れない（ネスト回避）
+          if (type === "group") return false;
+          // グループ以外は親になれない
+          if (!GROUP_TYPES.includes(g.data.label || g.type)) return false;
+
+          // グループの領域判定
+          const gPos = g.position; // ※親がいないグループはこれが絶対座標
+          const gW = g.width ?? 300;
+          const gH = g.height ?? 200;
+
+          return (
+            position.x >= gPos.x &&
+            position.x <= gPos.x + gW &&
+            position.y >= gPos.y &&
+            position.y <= gPos.y + gH
+          );
+        });
+
+      // 3. 親子関係と座標の決定
+      let newNodePos = position;
+      let parentId = undefined;
+
+      if (targetGroup) {
+        // ★重要: 親が見つかったら、座標を「親の左上からの距離」に変換する
+        parentId = targetGroup.id;
+        newNodePos = {
+          x: position.x - targetGroup.position.x,
+          y: position.y - targetGroup.position.y,
+        };
+        console.log(
+          "Parent found!",
+          targetGroup.id,
+          "Relative Pos:",
+          newNodePos
+        );
+      }
+
+      // 4. ノード生成
       const newNode: Node<AppNodeData> = {
         id: getId(),
-        type, // ここが 'group' になると GroupNode がレンダリングされる
-        position,
+        type,
+        position: newNodePos, // 相対座標 or 絶対座標
+        parentNode: parentId, // 親ID (これがあれば自動追従する)
         data: {
           label: label,
           originalType: label,
           description: "",
         },
-        // グループの場合は初期サイズを指定（styleプロパティで管理）
+        // グループの場合は最背面に、それ以外は前面に
         style:
           type === "group"
             ? { width: 300, height: 200, zIndex: -1 }
-            : undefined,
+            : { zIndex: 10 },
+        // 親がいる場合は、親の範囲外に出られないようにする（吸着感を出すため）
+        extent: parentId ? "parent" : undefined,
       };
 
       setNodes((nds) => nds.concat(newNode));
       setSelectedNode(newNode);
     },
-    [screenToFlowPosition, setNodes]
+    [screenToFlowPosition, setNodes, getNodes]
   );
 
   const onNodeClick: NodeMouseHandler = useCallback((_, node) => {
-    // カスタムノード型の場合のみ選択
     if (node.type === "custom" || node.type === "group") {
       setSelectedNode(node as Node<AppNodeData>);
     } else {
@@ -243,9 +308,7 @@ Please start the conversation by acknowledging the request for "${currentScenari
       setNodes((nds) =>
         nds.map((node) => {
           if (node.id === id) {
-            // React Flowの仕様上、dataオブジェクト全体を新しくすることで再レンダリングをトリガー
             const updatedNode = { ...node, data: { ...newData } };
-            // 選択状態のノードも更新しないとパネルが古いままになるため更新
             setSelectedNode(updatedNode as Node<AppNodeData>);
             return updatedNode;
           }
@@ -274,6 +337,7 @@ Please start the conversation by acknowledging the request for "${currentScenari
           label: data.label,
           description: data.description || "",
           position: n.position,
+          parentNode: n.parentNode,
         };
       }),
       edges: currentEdges.map((e) => ({ source: e.source, target: e.target })),
@@ -315,6 +379,8 @@ Please start the conversation by acknowledging the request for "${currentScenari
             position: n.position,
             data: n.data as AppNodeData,
             style: n.style as React.CSSProperties,
+            parentNode: n.parentNode,
+            extent: n.extent,
           })) as SimpleNodeData[],
           edges: currentEdges.map((e) => ({
             source: e.source,
@@ -374,26 +440,19 @@ Please start the conversation by acknowledging the request for "${currentScenari
             style={activeTab === "chat" ? activeTabStyle : tabStyle}
             onClick={() => setActiveTab("chat")}
           >
-            <BiChat style={{ marginRight: "6px", verticalAlign: "middle" }} />{" "}
-            要件定義・交渉
+            <BiChat style={{ marginRight: "6px" }} /> 要件定義・交渉
           </button>
           <button
             style={activeTab === "design" ? activeTabStyle : tabStyle}
             onClick={() => setActiveTab("design")}
           >
-            <BiNetworkChart
-              style={{ marginRight: "6px", verticalAlign: "middle" }}
-            />{" "}
-            アーキテクチャ設計
+            <BiNetworkChart style={{ marginRight: "6px" }} /> アーキテクチャ設計
           </button>
           <button
             style={activeTab === "evaluate" ? activeTabStyle : tabStyle}
             onClick={() => setActiveTab("evaluate")}
           >
-            <BiBarChart
-              style={{ marginRight: "6px", verticalAlign: "middle" }}
-            />{" "}
-            評価結果
+            <BiBarChart style={{ marginRight: "6px" }} /> 評価結果
           </button>
         </div>
 
