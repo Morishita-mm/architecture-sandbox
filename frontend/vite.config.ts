@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'node:path'
+import { securityHeaders } from './securityHeaders'
 
 export default defineConfig(({ command, mode }) => {
   const envDir = path.resolve(__dirname, '..')
@@ -14,7 +15,12 @@ export default defineConfig(({ command, mode }) => {
     }
   }
   return {
-    plugins: [react()],
+    plugins: [react(), {
+      name: 'production-security-headers',
+      generateBundle() {
+        this.emitFile({ type: 'asset', fileName: '_headers', source: securityHeaders(new URL(env.VITE_API_BASE_URL!).origin) })
+      },
+    }],
     envDir,
     resolve: { alias: { '@': path.resolve(__dirname, './src') } },
   }

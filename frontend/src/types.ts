@@ -1,18 +1,10 @@
 export type ScenarioDifficulty = 'small' | 'medium' | 'large';
 export type PartnerRole = 'cfo' | 'cto' | 'ceo';
 
-export interface ScenarioRequirements {
-  users: string;
-  traffic: string;
-  availability: string;
-  budget: string;
-}
-
 export interface Scenario {
   id: string;
   title: string;
   description: string;
-  requirements: ScenarioRequirements;
 
   isCustom?: boolean;
   difficulty?: ScenarioDifficulty;
@@ -29,26 +21,14 @@ export interface DetailedScores {
 }
 
 export interface EvaluationResult {
-  score: number;
   totalScore: number;
   details: DetailedScores;
   feedback: string;
   improvement: string;
 }
 
-export interface NodeData {
-  id: string;
-  type: string;
-  position: { x: number; y: number };
-}
-
-export interface EdgeData {
-  source: string;
-  target: string;
-}
-
 export interface ChatMessage {
-  role: 'user' | 'model' | 'system';
+  role: 'user' | 'model';
   content: string;
 }
 
@@ -65,7 +45,9 @@ export interface SimpleNodeData {
   type: string;
   position: { x: number; y: number };
   data: AppNodeData;
-  style?: React.CSSProperties;
+  style?: Pick<React.CSSProperties, "width" | "height" | "zIndex">;
+  parentNode?: string;
+  extent?: "parent";
 }
 
 export interface SimpleEdgeData {
@@ -78,6 +60,7 @@ export interface SimpleEdgeData {
  * プロジェクトの保存ファイル全体の構造
  */
 export interface ProjectSaveData {
+  schemaVersion: 2;
   version: string;
   timestamp: string;
   projectId: string;

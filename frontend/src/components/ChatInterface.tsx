@@ -3,6 +3,8 @@ import { BiUser, BiBot } from "react-icons/bi";
 
 import type { Scenario, ChatMessage } from "../types"; // 共通型を使用
 
+import { chatContext, publicScenario } from "../utils/projectFormat";
+import { postJson } from "../utils/api";
 import { API_BASE_URL } from "../config";
 
 interface Props {
@@ -18,6 +20,9 @@ export const ChatInterface: React.FC<Props> = ({
 }) => {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const request = useRef<AbortController | null>(null);
+  useEffect(() => () => request.current?.abort(), []);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // 自動スクロール
@@ -25,10 +30,14 @@ export const ChatInterface: React.FC<Props> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const displayMessages = messages.filter((msg) => msg.role !== "system");
+  const displayMessages = messages;
 
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || request.current) return;
+    if (messages.length >= 998) { setError("会話の上限に達しました。プロジェクトを保存して新しい設計を始めてください。"); return; }
+    const controller = new AbortController();
+    request.current = controller;
+    setError("");
 
     // ユーザーメッセージを追加して親へ通知
     const userMessage: ChatMessage = { role: "user", content: input };
@@ -40,31 +49,21 @@ export const ChatInterface: React.FC<Props> = ({
     setInput("");
     setIsLoading(true);
 
-try {
-      const response = await fetch(`${API_BASE_URL}/api/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          scenario_id: scenario.id,
-          messages: newHistory,
-          partner_role: scenario.partnerRole || 'ceo', 
-        }),
-      });
-
-      if (!response.ok) throw new Error("API Error");
-
-      const data = await response.json();
-
-      // AIの返信を追加して親へ通知
-      onSendMessage([...newHistory, { role: "model", content: data.reply }]);
+    try {
+      const data = await postJson(`${API_BASE_URL}/api/chat`, {
+        scenario: publicScenario(scenario), messages: chatContext(newHistory),
+      }, controller.signal);
+      if (!data || typeof data !== "object" || !("reply" in data) || typeof data.reply !== "string" || !data.reply.trim() || data.reply.length > 8000) throw new Error("応答の形式が不正です。");
+      if (!controller.signal.aborted) onSendMessage([...newHistory, { role: "model", content: data.reply }]);
     } catch (error) {
-      console.error(error);
-      onSendMessage([
-        ...newHistory,
-        { role: "model", content: "すみません、通信エラーが発生しました。" },
-      ]);
+      if (!controller.signal.aborted) {
+        setError(error instanceof Error ? error.message : "通信エラーが発生しました。");
+        setInput(userMessage.content);
+        onSendMessage(messages);
+      }
     } finally {
-      setIsLoading(false);
+      request.current = null;
+      if (!controller.signal.aborted) setIsLoading(false);
     }
   };
 
@@ -114,9 +113,11 @@ try {
         <div ref={messagesEndRef} />
       </div>
 
+      {error && <p role="alert" style={{ color: "#b71c1c", padding: "0 20px" }}>{error}</p>}
       <div style={inputAreaStyle}>
         <input
           type="text"
+          maxLength={4000}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}

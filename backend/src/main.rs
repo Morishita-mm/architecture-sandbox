@@ -3,38 +3,165 @@ mod infrastructure;
 
 use axum::{
     Json, Router,
-    http::Method,
-    response::IntoResponse,
+    extract::{DefaultBodyLimit, State},
+    http::{Method, StatusCode, header},
+    response::{IntoResponse, Response},
     routing::{get, post},
 };
-use reqwest::Client;
-use reqwest::header::HeaderValue;
-use std::{env, time::Duration};
-use tower_http::cors::{Any, CorsLayer};
+use domain::model::{
+    chat::ChatRequest,
+    evaluation::{EvaluationRequest, EvaluationResult},
+    url_shorten::{ShortenRequest, ShortenResponse},
+};
+use infrastructure::gemini::client::{GeminiClient, bounded_body};
+use reqwest::Url;
+use std::{
+    env,
+    sync::{Arc, Mutex},
+    time::{Duration, Instant},
+};
+use tokio::sync::{Semaphore, SemaphorePermit};
+use tower_http::cors::CorsLayer;
 
-use crate::domain::model::url_shorten::{ShortenRequest, ShortenResponse};
-use domain::model::chat::ChatRequest;
-use infrastructure::gemini::client as gemini_client;
+struct AppState {
+    gemini: GeminiClient,
+    origin: Url,
+    concurrent: Semaphore,
+    budget: Mutex<Budget>,
+}
+
+// Per-process circuit breakers, not identity-based quotas or a billing cap.
+struct Budget {
+    minute: (Instant, u32),
+    hour: (Instant, u32),
+}
+impl Budget {
+    fn new() -> Self {
+        Self {
+            minute: (Instant::now(), 0),
+            hour: (Instant::now(), 0),
+        }
+    }
+    fn take(&mut self) -> bool {
+        if self.minute.0.elapsed() >= Duration::from_secs(60) {
+            self.minute = (Instant::now(), 0);
+        }
+        if self.hour.0.elapsed() >= Duration::from_secs(3600) {
+            self.hour = (Instant::now(), 0);
+        }
+        if self.minute.1 >= 30 || self.hour.1 >= 300 {
+            return false;
+        }
+        self.minute.1 += 1;
+        self.hour.1 += 1;
+        true
+    }
+}
+impl AppState {
+    fn admit(&self) -> Result<SemaphorePermit<'_>, ApiError> {
+        let permit = self.concurrent.try_acquire().map_err(|_| ApiError::Busy)?;
+        if !self
+            .budget
+            .lock()
+            .map_err(|_| ApiError::Unavailable)?
+            .take()
+        {
+            return Err(ApiError::Busy);
+        }
+        Ok(permit)
+    }
+}
+
+enum ApiError {
+    Invalid,
+    Upstream,
+    Busy,
+    Unavailable,
+}
+impl IntoResponse for ApiError {
+    fn into_response(self) -> Response {
+        let (status, message) = match self {
+            Self::Invalid => (
+                StatusCode::BAD_REQUEST,
+                "入力内容またはサイズを確認してください。",
+            ),
+            Self::Upstream => (
+                StatusCode::BAD_GATEWAY,
+                "外部サービスの応答を取得できませんでした。時間を置いて再度お試しください。",
+            ),
+            Self::Busy => (
+                StatusCode::TOO_MANY_REQUESTS,
+                "利用が集中しています。時間を置いて再度お試しください。",
+            ),
+            Self::Unavailable => (
+                StatusCode::SERVICE_UNAVAILABLE,
+                "現在サービスを利用できません。",
+            ),
+        };
+        let mut response = (status, Json(serde_json::json!({"error":message}))).into_response();
+        if status == StatusCode::TOO_MANY_REQUESTS {
+            response
+                .headers_mut()
+                .insert(header::RETRY_AFTER, "60".parse().unwrap());
+        }
+        response
+    }
+}
 
 #[tokio::main]
 async fn main() {
-    // Fail before accepting traffic when a deployment is missing its configuration.
-    let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY must be set");
-    assert!(
-        !api_key.trim().is_empty(),
-        "GEMINI_API_KEY must not be empty"
-    );
-    gemini_client::validate_architecture_defs().expect("Invalid architecture definitions");
+    let gemini = GeminiClient::from_env()
+        .expect("Invalid architecture definitions or provider configuration");
     let port: u16 = env::var("PORT")
         .unwrap_or_else(|_| "8080".into())
         .parse()
         .expect("PORT must be an integer between 1 and 65535");
     assert!(port > 0, "PORT must not be zero");
-
     let frontend_origin =
-        env::var("FRONTEND_ORIGIN").unwrap_or_else(|_| "http://localhost:5173".to_string());
-
-    let app = app(&frontend_origin);
+        env::var("FRONTEND_ORIGIN").unwrap_or_else(|_| "http://localhost:5173".into());
+    let origin = Url::parse(&frontend_origin).expect("Invalid FRONTEND_ORIGIN");
+    assert!(
+        origin.origin().ascii_serialization() == frontend_origin
+            && origin.username().is_empty()
+            && origin.password().is_none()
+            && (origin.scheme() == "https"
+                || (origin.scheme() == "http"
+                    && matches!(origin.host_str(), Some("localhost" | "127.0.0.1" | "[::1]")))),
+        "FRONTEND_ORIGIN must be an HTTPS origin (HTTP only for localhost)"
+    );
+    let state = Arc::new(AppState {
+        gemini,
+        origin,
+        concurrent: Semaphore::new(2),
+        budget: Mutex::new(Budget::new()),
+    });
+    let cors = CorsLayer::new()
+        .allow_origin(frontend_origin.parse::<header::HeaderValue>().unwrap())
+        .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
+        .allow_headers([header::CONTENT_TYPE]);
+    let app = Router::new()
+        .route("/", get(|| async { "Hello, Architecture (Stateless)!" }))
+        .route(
+            "/healthz",
+            get(|| async { Json(serde_json::json!({"status":"ok"})) }),
+        )
+        .route("/api/evaluate", post(evaluate_architecture))
+        .route("/api/chat", post(handle_chat))
+        .route("/api/shorten", post(shorten_url_handler))
+        .layer(DefaultBodyLimit::max(128 * 1024))
+        .layer(axum::middleware::map_response(
+            |mut response: Response| async move {
+                response
+                    .headers_mut()
+                    .insert(header::CACHE_CONTROL, "no-store".parse().unwrap());
+                response
+                    .headers_mut()
+                    .insert(header::X_CONTENT_TYPE_OPTIONS, "nosniff".parse().unwrap());
+                response
+            },
+        ))
+        .layer(cors)
+        .with_state(state);
     let listener = tokio::net::TcpListener::bind(("0.0.0.0", port))
         .await
         .expect("Failed to bind HTTP listener");
@@ -44,31 +171,6 @@ async fn main() {
         .await
         .expect("HTTP server failed");
 }
-
-fn app(frontend_origin: &str) -> Router {
-    let cors = CorsLayer::new()
-        .allow_origin(
-            frontend_origin
-                .parse::<HeaderValue>()
-                .expect("Invalid FRONTEND_ORIGIN value"),
-        )
-        .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
-        .allow_headers(Any);
-
-    // 3. ルーティング設定
-    Router::new()
-        .route("/", get(|| async { "Hello, Architecture (Stateless)!" }))
-        .route(
-            "/healthz",
-            get(|| async { Json(serde_json::json!({ "status": "ok" })) }),
-        )
-        .route("/api/evaluate", post(evaluate_architecture))
-        .route("/api/chat", post(handle_chat))
-        .route("/api/projects", post(mock_save_project))
-        .route("/api/shorten", post(shorten_url_handler))
-        .layer(cors)
-}
-
 async fn shutdown_signal() {
     let interrupt = async {
         tokio::signal::ctrl_c()
@@ -87,68 +189,132 @@ async fn shutdown_signal() {
     tokio::select! { _ = interrupt => {}, _ = terminate => {} }
 }
 
-// --- ハンドラー関数 ---
-
-async fn evaluate_architecture(Json(payload): Json<serde_json::Value>) -> impl IntoResponse {
-    println!("Evaluating with Gemini...");
-    match gemini_client::evaluate_with_gemini(&payload).await {
-        Ok(ai_response_text) => {
-            let clean_text = ai_response_text
-                .replace("```json", "")
-                .replace("```", "")
-                .trim()
-                .to_string();
-            match serde_json::from_str::<serde_json::Value>(&clean_text) {
-                Ok(json) => Json(json),
-                Err(_) => Json(serde_json::json!({
-                    "score": 0, "feedback": clean_text, "status": "partial_success"
-                })),
-            }
-        }
-        Err(e) => {
-            eprintln!("Gemini Error: {}", e);
-            Json(serde_json::json!({ "score": 0, "feedback": e.to_string(), "status": "error" }))
-        }
+async fn evaluate_architecture(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<EvaluationRequest>,
+) -> Result<Json<EvaluationResult>, ApiError> {
+    if !payload.validate(&state.gemini.available_types) {
+        return Err(ApiError::Invalid);
     }
+    let _permit = state.admit()?;
+    state
+        .gemini
+        .evaluate(&payload)
+        .await
+        .map(Json)
+        .map_err(|_| ApiError::Upstream)
 }
 
-async fn handle_chat(Json(payload): Json<ChatRequest>) -> impl IntoResponse {
-    println!("Chat request for scenario: {}", payload.scenario_id);
-    match gemini_client::chat_with_customer(&payload).await {
-        Ok(reply) => Json(serde_json::json!({ "reply": reply, "status": "success" })),
-        Err(e) => {
-            eprintln!("Chat Error: {}", e);
-            Json(serde_json::json!({ "reply": e.to_string(), "status": "error" }))
-        }
+async fn handle_chat(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<ChatRequest>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    if !payload.validate() {
+        return Err(ApiError::Invalid);
     }
+    let _permit = state.admit()?;
+    let reply = state
+        .gemini
+        .chat(&payload)
+        .await
+        .map_err(|_| ApiError::Upstream)?;
+    Ok(Json(serde_json::json!({"reply":reply})))
 }
 
-async fn mock_save_project(Json(payload): Json<serde_json::Value>) -> impl IntoResponse {
-    // 成功レスポンスを返す
-    Json(
-        serde_json::json!({ "status": "success", "id": payload["id"], "message": "Saved to session (mock)" }),
-    )
+fn valid_share_url(target: &str, origin: &Url) -> bool {
+    if target.len() > 24000 {
+        return false;
+    }
+    let Ok(url) = Url::parse(target) else {
+        return false;
+    };
+    let params: Vec<_> = url.query_pairs().collect();
+    url.origin() == origin.origin()
+        && url.username().is_empty()
+        && url.password().is_none()
+        && url.fragment().is_none()
+        && url.path() == "/"
+        && params.len() == 1
+        && params[0].0 == "challenge"
+        && !params[0].1.is_empty()
 }
 
 async fn shorten_url_handler(
+    State(state): State<Arc<AppState>>,
     Json(payload): Json<ShortenRequest>,
-) -> Result<Json<ShortenResponse>, String> {
-    let client = Client::builder()
-        .timeout(Duration::from_secs(15))
-        .build()
-        .map_err(|_| "Failed to initialize URL shortener".to_string())?;
-
-    let resp = client
+) -> Result<Json<ShortenResponse>, ApiError> {
+    if !valid_share_url(&payload.target_url, &state.origin) {
+        return Err(ApiError::Invalid);
+    }
+    let _permit = state.admit()?;
+    let response = state
+        .gemini
+        .http
         .get("https://tinyurl.com/api-create.php")
+        .timeout(Duration::from_secs(15))
         .query(&[("url", &payload.target_url)])
         .send()
         .await
-        .map_err(|_| "Failed to reach URL shortener".to_string())?;
+        .map_err(|_| ApiError::Upstream)?;
+    if !response.status().is_success() {
+        return Err(ApiError::Upstream);
+    }
+    let bytes = bounded_body(response, 2048)
+        .await
+        .map_err(|_| ApiError::Upstream)?;
+    let short_url = String::from_utf8(bytes)
+        .map_err(|_| ApiError::Upstream)?
+        .trim()
+        .to_owned();
+    let url = Url::parse(&short_url).map_err(|_| ApiError::Upstream)?;
+    if url.scheme() != "https"
+        || url.host_str() != Some("tinyurl.com")
+        || url.port().is_some()
+        || !url.username().is_empty()
+        || url.password().is_some()
+        || url.query().is_some()
+        || url.fragment().is_some()
+        || url.path() == "/"
+    {
+        return Err(ApiError::Upstream);
+    }
+    Ok(Json(ShortenResponse { short_url }))
+}
 
-    if resp.status().is_success() {
-        let short_url = resp.text().await.map_err(|e| e.to_string())?;
-        Ok(Json(ShortenResponse { short_url }))
-    } else {
-        Err("Failed to shorten URL".to_string())
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn share_destination_is_exact() {
+        let origin = Url::parse("https://sandbox.morimizu.dev").unwrap();
+        assert!(valid_share_url(
+            "https://sandbox.morimizu.dev/?challenge=test",
+            &origin
+        ));
+        for url in [
+            "https://evil.example/?challenge=x",
+            "https://sandbox.morimizu.dev.evil.example/?challenge=x",
+            "https://user@sandbox.morimizu.dev/?challenge=x",
+            "http://sandbox.morimizu.dev/?challenge=x",
+            "https://sandbox.morimizu.dev/redirect?challenge=x",
+            "https://sandbox.morimizu.dev/?challenge=x&next=https://evil.example",
+            "https://sandbox.morimizu.dev/?challenge=x#secret",
+        ] {
+            assert!(!valid_share_url(url, &origin), "{url}");
+        }
+    }
+    #[test]
+    fn budget_has_minute_and_hour_limits() {
+        let mut budget = Budget::new();
+        for _ in 0..30 {
+            assert!(budget.take());
+        }
+        assert!(!budget.take());
+        budget.minute.0 = Instant::now() - Duration::from_secs(61);
+        assert!(budget.take());
+        budget.hour.1 = 300;
+        assert!(!budget.take());
+        budget.hour.0 = Instant::now() - Duration::from_secs(3601);
+        assert!(budget.take());
     }
 }

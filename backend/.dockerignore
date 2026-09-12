@@ -1,0 +1,5 @@
+target
+.sqlx
+.env
+.env.*
+.git

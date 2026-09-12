@@ -26,3 +26,13 @@ for (const [api, mode, valid] of [
     }
   });
 }
+
+test('Cloudflare headers permit only the configured API, local assets and required inline styles', async () => {
+  const { securityHeaders } = await import('../securityHeaders.ts');
+  const headers = securityHeaders('https://api.example.com');
+  assert.match(headers, /connect-src 'self' https:\/\/api\.example\.com;/);
+  assert.match(headers, /script-src 'self';/);
+  assert.match(headers, /frame-ancestors 'none'/);
+  assert.match(headers, /Referrer-Policy: no-referrer/);
+  assert.doesNotMatch(headers, /unsafe-eval|script-src[^;]*unsafe-inline/);
+});

@@ -7,40 +7,16 @@ export const GroupNode = memo(
   ({ id, data, selected }: NodeProps<AppNodeData>) => {
     const styleConfig = getNodeStyle(data.originalType, data.customColor);
 
-    // --- 子ノードの配置に基づいて最小サイズを計算 ---
-
-    // 最小幅の計算
-    const minWidth = useStore((store) => {
-      const childNodes = Array.from(store.nodeInternals.values()).filter(
-        (n) => n.parentNode === id
-      );
-      if (childNodes.length === 0) return 100;
-
-      let maxX = 0;
-      childNodes.forEach((child) => {
-        // 子ノードの右端座標 = 相対X + 幅 + 余白(20px)
-        const childRight = child.position.x + (child.width || 0) + 20;
-        if (childRight > maxX) maxX = childRight;
-      });
-      // 今の幅より小さい値にならないようにmaxをとる（または最低100）
-      return Math.max(100, maxX);
-    });
-
-    // 最小高さの計算
-    const minHeight = useStore((store) => {
-      const childNodes = Array.from(store.nodeInternals.values()).filter(
-        (n) => n.parentNode === id
-      );
-      if (childNodes.length === 0) return 100;
-
-      let maxY = 0;
-      childNodes.forEach((child) => {
-        // 子ノードの下端座標 = 相対Y + 高さ + 余白(20px)
-        const childBottom = child.position.y + (child.height || 0) + 20;
-        if (childBottom > maxY) maxY = childBottom;
-      });
-      return Math.max(100, maxY);
-    });
+    const [minWidth, minHeight] = useStore((store) => {
+      let width = 100;
+      let height = 100;
+      for (const child of store.nodeInternals.values()) {
+        if (child.parentNode !== id) continue;
+        width = Math.max(width, child.position.x + (child.width || 0) + 20);
+        height = Math.max(height, child.position.y + (child.height || 0) + 20);
+      }
+      return [width, height];
+    }, (previous, next) => previous[0] === next[0] && previous[1] === next[1]);
 
     const containerStyle: React.CSSProperties = {
       width: "100%",
@@ -80,6 +56,8 @@ export const GroupNode = memo(
           isVisible={selected}
           minWidth={minWidth}
           minHeight={minHeight}
+          maxWidth={10000}
+          maxHeight={10000}
         />
 
         <div style={containerStyle}>

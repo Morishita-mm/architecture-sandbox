@@ -87,7 +87,7 @@ export const PropertiesPanel: React.FC<Props> = ({
   const currentPanelStyle: React.CSSProperties = {
     // ... (既存スタイル)
     position: "absolute",
-    top: 20,
+    top: 80,
     right: 20,
     width: 300,
     backgroundColor: "white",
@@ -112,6 +112,7 @@ export const PropertiesPanel: React.FC<Props> = ({
           プロパティ編集
         </span>
         <button
+          aria-label="プロパティを閉じる"
           onClick={onClose}
           style={closeButtonStyle}
           onMouseDown={(e) => e.stopPropagation()}
@@ -131,6 +132,7 @@ export const PropertiesPanel: React.FC<Props> = ({
           <label style={labelStyle}>表示名 (Label)</label>
           <input
             type="text"
+            maxLength={120}
             value={data.label}
             onChange={handleLabelChange}
             style={inputStyle}
@@ -141,6 +143,7 @@ export const PropertiesPanel: React.FC<Props> = ({
         <div style={fieldStyle}>
           <label style={labelStyle}>詳細・メモ (Description)</label>
           <textarea
+            maxLength={2000}
             value={data.description || ""}
             onChange={handleDescriptionChange}
             style={textareaStyle}

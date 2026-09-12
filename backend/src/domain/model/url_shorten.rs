@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 // リクエスト/レスポンスの型定義
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ShortenRequest {
     pub target_url: String,
 }

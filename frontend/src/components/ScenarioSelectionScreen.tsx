@@ -6,6 +6,8 @@ import { BiFolderOpen, BiHelpCircle, BiRocket } from "react-icons/bi";
 import { loadProjectFromLocalFile } from "../utils/fileHandler";
 import { HelpModal } from "./HelpModal";
 
+import { parseChallenge } from "../utils/projectFormat";
+
 import qiitaIcon from "../assets/qiita-icon.png";
 
 const difficultyLabels: Record<string, string> = {
@@ -28,6 +30,7 @@ interface ScenarioSelectionScreenProps {
 export const ScenarioSelectionScreen: React.FC<
   ScenarioSelectionScreenProps
 > = ({ onSelectScenario, onProjectLoad }) => {
+  const [loadError, setLoadError] = useState("");
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [pendingChallenge, setPendingChallenge] = useState<Scenario | null>(
     null
@@ -39,16 +42,8 @@ export const ScenarioSelectionScreen: React.FC<
 
     if (challengeData) {
       try {
-        // スペースを+に戻す（フェイルセーフ）
-        const fixedBase64 = challengeData.replace(/ /g, "+");
-
-        const jsonString = decodeURIComponent(escape(atob(fixedBase64)));
-        const scenario = JSON.parse(jsonString);
-
-        if (scenario && scenario.title && scenario.requirements) {
-          setPendingChallenge(scenario);
-          window.history.replaceState({}, "", window.location.pathname);
-        }
+        setPendingChallenge(parseChallenge(challengeData));
+        window.history.replaceState({}, "", window.location.pathname);
       } catch (error) {
         console.error("Failed to parse challenge data:", error);
       }
@@ -65,7 +60,7 @@ export const ScenarioSelectionScreen: React.FC<
       const data = await loadProjectFromLocalFile(file);
       onProjectLoad(data);
     } catch (error) {
-      alert(
+      setLoadError(
         error instanceof Error
           ? error.message
           : "ファイルの読み込みに失敗しました。"
@@ -214,19 +209,6 @@ export const ScenarioSelectionScreen: React.FC<
     boxShadow: "0 2px 5px rgba(255, 87, 34, 0.4)",
   };
 
-  // アニメーション用Styleタグ
-  const styleSheet = document.createElement("style");
-  styleSheet.innerText = `
-  @keyframes popIn {
-    from { opacity: 0; transform: scale(0.9); }
-    to { opacity: 1; transform: scale(1); }
-  }
-  `;
-  if (!document.getElementById("challenge-modal-style")) {
-    styleSheet.id = "challenge-modal-style";
-    document.head.appendChild(styleSheet);
-  }
-
   return (
     <div style={containerStyle}>
       <div style={headerBarStyle}>
@@ -251,6 +233,7 @@ export const ScenarioSelectionScreen: React.FC<
         </button>
       </div>
 
+      {loadError && <p role="alert">{loadError}</p>}
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
 
       {/* 挑戦状受け取りモーダル */}

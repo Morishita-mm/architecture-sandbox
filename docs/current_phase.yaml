@@ -1,7 +1,7 @@
 project_info:
   name: Architecture Sandbox
   last_updated: 2026-09-13
-  status: Cloudflare/GCP migration implementation and local verification
+  status: Cloudflare/GCP migration and security review; independent acceptance pending
 current_status:
   deployment:
     frontend_target: Cloudflare Workers Static Assets
@@ -13,6 +13,9 @@ current_status:
     database: None
     persistence: Local JSON save/load
 remaining:
+  - Complete authorized ChatGPT connector setup and independent acceptance review
+  - Complete final browser restore verification
+  - Decide anonymous API exposure and provider quota / billing controls before publication
   - Select GCP project and billing account; register Gemini Secret
   - Approve and perform GCP / Cloudflare deployment and public access
   - Verify real Gemini, custom domain, share links and production UI

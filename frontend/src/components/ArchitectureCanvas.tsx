@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, useEffect, useMemo } from "react";
+import { useCallback, useRef, useState, useEffect, lazy, Suspense } from "react";
 import ReactFlow, {
   Background,
   Controls,
@@ -7,7 +7,6 @@ import ReactFlow, {
   useEdgesState,
   addEdge,
   type Connection,
-  type Edge,
   type Node,
   type NodeMouseHandler,
   type NodeDragHandler,
@@ -25,16 +24,14 @@ import type {
   Scenario,
   ProjectSaveData,
   AppNodeData,
-  SimpleNodeData,
-  SimpleEdgeData,
 } from "../types";
 import { Header } from "./Header";
 import { ChatInterface } from "./ChatInterface";
 import { MemoPad } from "./MemoPad";
-import { EvaluationPanel } from "./EvaluationPanel";
+const EvaluationPanel = lazy(() => import("./EvaluationPanel").then(module => ({ default: module.EvaluationPanel })));
 import { v4 as uuidv4 } from "uuid";
 import { saveProjectToLocalFile } from "../utils/fileHandler";
-import { nodeTypes } from "../constants/nodeTypes";
+import { nodeTypes, NODE_CATEGORIES } from "../constants/nodeTypes";
 import { PropertiesPanel } from "./PropertiesPanel";
 import { HelpModal } from "./HelpModal";
 
@@ -45,9 +42,10 @@ interface ArchitectureCanvasProps {
 }
 
 import { API_BASE_URL } from "../config";
+import { parseEvaluation, publicScenario } from "../utils/projectFormat";
+import { postJson } from "../utils/api";
 
-let id = 0;
-const getId = () => `dndnode_${id++}`;
+const getId = () => uuidv4();
 
 const onDragOver = (event: React.DragEvent) => {
   event.preventDefault();
@@ -55,13 +53,8 @@ const onDragOver = (event: React.DragEvent) => {
 };
 
 // グループとして扱うタイプ定義（新規作成時のラベル判定用）
-const GROUP_TYPES = [
-  "VPC",
-  "VPC (Network)",
-  "Availability Zone",
-  "Subnet",
-  "Security Group",
-];
+const GROUP_TYPES = NODE_CATEGORIES.find(c => c.id === 'group')!.items.map(i => i.type);
+const COMPONENT_TYPES = new Set(NODE_CATEGORIES.flatMap(c => c.items.map(i => i.type)));
 
 function ArchitectureFlow({
   selectedScenario,
@@ -69,138 +62,28 @@ function ArchitectureFlow({
   loadedProjectData,
 }: ArchitectureCanvasProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-
-  const { screenToFlowPosition, getNodes, getEdges, getIntersectingNodes } =
-    useReactFlow();
-
-  const [activeTab, setActiveTab] = useState<"chat" | "design" | "evaluate">(
-    "chat"
-  );
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [memo, setMemo] = useState<string>("");
-  const [evaluationResult, setEvaluationResult] =
-    useState<EvaluationResult | null>(null);
+  const [nodes, setNodes, onNodesChange] = useNodesState<AppNodeData>(loadedProjectData?.diagram.nodes ?? []);
+  const [edges, setEdges, onEdgesChange] = useEdgesState((loadedProjectData?.diagram.edges ?? []).map((e, index) => ({ ...e, id: e.id ?? `loaded-edge-${index}` })));
+  const { screenToFlowPosition, getNodes, getEdges, getIntersectingNodes } = useReactFlow();
+  const [activeTab, setActiveTab] = useState<"chat" | "design" | "evaluate">(loadedProjectData?.evaluation ? "evaluate" : "chat");
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => loadedProjectData?.chatHistory ?? [{ role: "model", content: `こんにちは。「${selectedScenario.title}」について、どのような点から詳細を詰めていきましょうか？` }]);
+  const [memo, setMemo] = useState(loadedProjectData?.memo ?? "");
+  const [evaluationResult, setEvaluationResult] = useState<EvaluationResult | null>(loadedProjectData?.evaluation ?? null);
   const [isLoading, setIsLoading] = useState(false);
-  const projectIdRef = useRef<string>(uuidv4());
+  const [projectId] = useState(() => loadedProjectData?.projectId ?? uuidv4());
+  const [notice, setNotice] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [projectVersion, setProjectVersion] = useState<string>("1.0");
-
-  const [selectedNode, setSelectedNode] = useState<Node<AppNodeData> | null>(
-    null
-  );
-
+  const [projectVersion, setProjectVersion] = useState(() => loadedProjectData ? (Number(loadedProjectData.version) + 1).toFixed(1) : "1.0");
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const selectedNode = nodes.find(n => n.id === selectedNodeId) ?? null;
+  const setSelectedNode = useCallback((node: Node<AppNodeData> | null) => setSelectedNodeId(node?.id ?? null), []);
   const currentScenario = selectedScenario;
-  const memoNodeTypes = useMemo(() => nodeTypes, []);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
-
-  // 初期化処理
-  useEffect(() => {
-    if (loadedProjectData) {
-      setNodes(loadedProjectData.diagram.nodes as Node[]);
-      setEdges(
-        loadedProjectData.diagram.edges.map((e) => ({
-          id: e.id || `e_${e.source}-${e.target}`,
-          source: e.source,
-          target: e.target,
-        })) as Edge[]
-      );
-      setChatMessages(loadedProjectData.chatHistory);
-      setMemo(loadedProjectData.memo);
-      if (loadedProjectData.evaluation) {
-        setEvaluationResult(loadedProjectData.evaluation);
-        setActiveTab("evaluate");
-      }
-      const loadedVer = parseFloat(loadedProjectData.version) || 1.0;
-      const nextVer = (loadedVer + 1.0).toFixed(1);
-      setProjectVersion(nextVer);
-      return;
-    }
-    if (chatMessages.length === 0) {
-      setProjectVersion("1.0");
-      let initialMessages: ChatMessage[];
-      if (currentScenario.isCustom) {
-        const difficultySpecs = {
-          small: {
-            scale: "小規模（個人開発・社内ツール）",
-            users: "50〜100人程度",
-            budget: "月額5,000円以内 (可能な限り安く)",
-            constraint:
-              "運用コストをかけられないため、メンテナンスフリーな構成を好む",
-          },
-          medium: {
-            scale: "中規模（急成長スタートアップ）",
-            users: "10万DAU, ピーク時秒間100リクエスト",
-            budget: "月額50万円〜100万円",
-            constraint: "急激なアクセス増に耐えられるスケーラビリティが必須",
-          },
-          large: {
-            scale: "大規模（ミッションクリティカル）",
-            users: "1000万ユーザー, グローバル展開",
-            budget: "無制限（可用性とレイテンシが最優先）",
-            constraint:
-              "単一障害点(SPOF)の完全排除と、データロス発生時の法的リスク回避",
-          },
-        };
-        const spec = difficultySpecs[currentScenario.difficulty || "medium"];
-        const hiddenSystemPrompt = `
----
-Role: System Client
-Task: Simulate a client for system architecture design.
-Scenario:
-  Title: "${currentScenario.title}"
-  Description: "${currentScenario.description}"
-  Scale: "${spec.scale}"
-Hidden_Context:
-  Users: "${spec.users}"
-  Budget: "${spec.budget}"
-  Critical_Constraint: "${spec.constraint}"
-  Domain_Specific_Constraint: "Please invent one technical constraint specific to '${currentScenario.title}' (e.g., real-time requirement, legacy system integration)."
-Behavior_Rules:
-  - Act as a non-technical stakeholder initially.
-  - Reveal "Hidden_Context" information ONLY when the user asks specifically about relevant topics (e.g., "How many users?", "What is the budget?").
-  - If the user presents a design without uncovering the "Critical_Constraint", point out the flaw in the evaluation phase, not during the chat.
-  - Be professional but demanding.
-Evaluation_Criteria:
-  - Did the user ask about the scale/users?
-  - Did the user ask about the budget?
-  - Does the proposed architecture solve the Critical_Constraint?
----
-Please start the conversation by acknowledging the request for "${currentScenario.title}" and waiting for the user to interview you.
-`.trim();
-        initialMessages = [
-          { role: "system", content: hiddenSystemPrompt },
-          {
-            role: "model",
-            content: `ご依頼ありがとうございます。「${currentScenario.title}」のシステム構築ですね。\n\n今回のプロジェクトについて、どのような点から詳細を詰めていきましょうか？`,
-          },
-        ];
-      } else {
-        initialMessages = [
-          {
-            role: "model",
-            content: `こんにちは。「${currentScenario.title}」の件についてですね。どのようなシステムをご提案いただけますか？`,
-          },
-        ];
-      }
-      setChatMessages(initialMessages);
-    }
-  // Initialize only when opening a scenario/project; sending a chat must not reload saved data.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    selectedScenario.id,
-    loadedProjectData,
-    setNodes,
-    setEdges,
-    currentScenario.isCustom,
-    currentScenario.difficulty,
-    currentScenario.title,
-    currentScenario.description,
-  ]);
+  const evaluationRequest = useRef<AbortController | null>(null);
+  useEffect(() => () => evaluationRequest.current?.abort(), []);
 
   const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge(params, eds)),
+    (params: Connection) => setEdges((eds) => eds.length < 400 ? addEdge(params, eds) : eds),
     [setEdges]
   );
 
@@ -243,7 +126,7 @@ Please start the conversation by acknowledging the request for "${currentScenari
       // 選択状態を解除
       setSelectedNode(null);
     },
-    [setNodes]
+    [setNodes, setSelectedNode]
   );
 
   // ----------------------------------------------------------------
@@ -343,6 +226,8 @@ Please start the conversation by acknowledging the request for "${currentScenari
       event.preventDefault();
 
       const label = event.dataTransfer.getData("application/reactflow/label");
+      if (!COMPONENT_TYPES.has(label)) return;
+      if (getNodes().length >= 200) { setNotice("コンポーネントは200個まで配置できます。"); return; }
       const type = GROUP_TYPES.includes(label) ? "group" : "custom";
 
       if (!reactFlowWrapper.current) return;
@@ -454,7 +339,7 @@ Please start the conversation by acknowledging the request for "${currentScenari
       });
       setSelectedNode(newNode);
     },
-    [screenToFlowPosition, setNodes, getNodes]
+    [screenToFlowPosition, setNodes, getNodes, setSelectedNode]
   );
 
   const onNodeClick: NodeMouseHandler = useCallback((_, node) => {
@@ -463,11 +348,11 @@ Please start the conversation by acknowledging the request for "${currentScenari
     } else {
       setSelectedNode(null);
     }
-  }, []);
+  }, [setSelectedNode]);
 
   const onPaneClick = useCallback(() => {
     setSelectedNode(null);
-  }, []);
+  }, [setSelectedNode]);
 
   const handleNodeUpdate = useCallback(
     (id: string, newData: AppNodeData) => {
@@ -475,7 +360,6 @@ Please start the conversation by acknowledging the request for "${currentScenari
         nds.map((node) => {
           if (node.id === id) {
             const updatedNode = { ...node, data: { ...newData } };
-            setSelectedNode(updatedNode as Node<AppNodeData>);
             return updatedNode;
           }
           return node;
@@ -489,12 +373,15 @@ Please start the conversation by acknowledging the request for "${currentScenari
     const currentNodes = getNodes();
     const currentEdges = getEdges();
     if (currentNodes.length === 0) {
-      alert("コンポーネントを配置してください");
+      setNotice("コンポーネントを配置してください");
       return;
     }
+    if (evaluationRequest.current) return;
+    const controller = new AbortController();
+    evaluationRequest.current = controller;
     setIsLoading(true);
     const designData = {
-      scenario: currentScenario,
+      scenario: publicScenario(currentScenario),
       nodes: currentNodes.map((n) => {
         const data = n.data as AppNodeData;
         return {
@@ -502,28 +389,21 @@ Please start the conversation by acknowledging the request for "${currentScenari
           type: data.originalType || "Unknown",
           label: data.label,
           description: data.description || "",
-          position: n.position,
           parentNode: n.parentNode,
         };
       }),
       edges: currentEdges.map((e) => ({ source: e.source, target: e.target })),
     };
     try {
-      const response = await fetch(`${API_BASE_URL}/api/evaluate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(designData),
-      });
-      if (!response.ok)
-        throw new Error(`HTTP error! status: ${response.status}`);
-      const result: EvaluationResult = await response.json();
+      const result = parseEvaluation(await postJson(`${API_BASE_URL}/api/evaluate`, designData, controller.signal));
+      if (controller.signal.aborted) return;
       setEvaluationResult(result);
       setActiveTab("evaluate");
     } catch (error) {
-      console.error("API Error:", error);
-      alert("評価中にエラーが発生しました。");
+      if (!controller.signal.aborted) setNotice(error instanceof Error ? error.message : "評価中にエラーが発生しました。");
     } finally {
-      setIsLoading(false);
+      evaluationRequest.current = null;
+      if (!controller.signal.aborted) setIsLoading(false);
     }
   }, [getNodes, getEdges, currentScenario]);
 
@@ -533,10 +413,11 @@ Please start the conversation by acknowledging the request for "${currentScenari
     const currentEdges = getEdges();
     try {
       const payload: ProjectSaveData = {
+        schemaVersion: 2,
         version: projectVersion,
         timestamp: new Date().toISOString(),
-        projectId: projectIdRef.current,
-        scenario: currentScenario,
+        projectId: projectId,
+        scenario: publicScenario(currentScenario),
         memo: memo,
         diagram: {
           nodes: currentNodes.map((n) => ({
@@ -546,13 +427,13 @@ Please start the conversation by acknowledging the request for "${currentScenari
             data: n.data as AppNodeData,
             style: n.style as React.CSSProperties,
             parentNode: n.parentNode,
-            extent: n.extent,
-          })) as SimpleNodeData[],
+            extent: n.extent === "parent" ? "parent" : undefined,
+          })),
           edges: currentEdges.map((e) => ({
             source: e.source,
             target: e.target,
             id: e.id,
-          })) as SimpleEdgeData[],
+          })),
         },
         chatHistory: chatMessages,
         evaluation: evaluationResult,
@@ -560,14 +441,14 @@ Please start the conversation by acknowledging the request for "${currentScenari
       const safeTitle = currentScenario.title.trim() || "untitled";
       const filename = `${safeTitle}_v${projectVersion}.json`;
       saveProjectToLocalFile(payload, filename);
-      alert(`「${filename}」をローカルに保存しました。`);
+      setNotice(`「${filename}」をローカルに保存しました。`);
       setProjectVersion((currentVer) => {
         const v = parseFloat(currentVer) || 1.0;
         return (v + 1.0).toFixed(1);
       });
     } catch (error) {
       console.error("Save Error:", error);
-      alert("プロジェクトの保存中にエラーが発生しました。");
+      setNotice(error instanceof Error ? error.message : "プロジェクトの保存中にエラーが発生しました。");
     } finally {
       setIsSaving(false);
     }
@@ -579,6 +460,7 @@ Please start the conversation by acknowledging the request for "${currentScenari
     memo,
     evaluationResult,
     projectVersion,
+    projectId,
   ]);
 
   return (
@@ -597,6 +479,8 @@ Please start the conversation by acknowledging the request for "${currentScenari
         isSaving={isSaving}
         onOpenHelp={() => setIsHelpOpen(true)}
       />
+
+      {notice && <div role="status" style={{ padding: "8px 20px", background: "#fff3cd", display: "flex", justifyContent: "space-between" }}><span>{notice}</span><button onClick={() => setNotice("")} aria-label="通知を閉じる">閉じる</button></div>}
 
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
 
@@ -649,12 +533,14 @@ Please start the conversation by acknowledging the request for "${currentScenari
             )}
             {activeTab === "evaluate" && (
               <div style={{ width: "100%", height: "100%" }}>
-                <EvaluationPanel
+                <Suspense fallback={<div role="status">評価画面を読み込み中...</div>}>
+              <EvaluationPanel
                   result={evaluationResult}
                   onEvaluate={onEvaluate}
                   isLoading={isLoading}
                   scenario={currentScenario}
                 />
+                </Suspense>
               </div>
             )}
             <div
@@ -679,7 +565,7 @@ Please start the conversation by acknowledging the request for "${currentScenari
                   onDrop={onDrop}
                   onDragOver={onDragOver}
                   onNodeDragStop={onNodeDragStop}
-                  nodeTypes={memoNodeTypes}
+                  nodeTypes={nodeTypes}
                   onNodeClick={onNodeClick}
                   onPaneClick={onPaneClick}
                   fitView

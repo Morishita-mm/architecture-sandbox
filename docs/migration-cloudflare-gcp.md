@@ -18,7 +18,7 @@ Browser ── HTTPS ── sandbox.morimizu.dev (Cloudflare Workers Static Asse
 | Terraformの平文APIキー変数 | Secret Manager、数値version固定、専用runtime SAへのsecret単位のaccessor |
 | 手動AWS deploy scripts | `deploy_b.sh`（image push）、`deploy_f.sh`（Cloudflare）、GCP Terraform |
 
-`/api/chat`、`/api/evaluate`、`/api/projects`（mock）、`/api/shorten`の契約を維持する。ファイル保存・復元と既存の挑戦状データ形式も維持する。短縮URL生成ではtarget URLをqueryとして正しくエンコードする。CORSは公開origin一つだけに制限するが、従来同様にAPIは匿名利用を想定する。CORSやインスタンス上限は認証・厳密な費用上限ではない。
+移植後の全体レビューで、内部要件をサーバーへ移し、公開Scenarioだけを受け取るAPIへ変更した。フロントエンドとバックエンドを同じ版で配置する。旧Base64ファイル・挑戦状は読み込みを維持し、新規保存・共有は公開データのJSONを使う。詳しい互換性、制限、匿名APIの残存リスクは[セキュリティレビュー](security-review.md)を参照。
 
 ## 費用
 
@@ -122,7 +122,9 @@ Cloudflare認証には既存のWrangler認証、または必要範囲のAPI toke
 - [Cloud Run / Secret Manager](https://docs.cloud.google.com/run/docs/configuring/services/secrets)
 - [Cloudflare SPA routing](https://developers.cloudflare.com/workers/static-assets/routing/single-page-application/)
 
-## 2026-09-13の検証結果
+## 移植実装時点（bb5f34e）の検証結果
+
+以降のセキュリティ修正と最新の検証は[セキュリティレビュー](security-review.md)を参照。
 
 - Rust: fmt / clippy（warningsをエラー扱い）/ build / test成功。HTTP統合テスト13件成功（実Gemini呼び出し0）。
 - Frontend: lint成功、Vite設定テスト7件成功、production / development build成功、Wrangler dry-run成功。npm auditは全依存で既知脆弱性0件。
@@ -131,6 +133,6 @@ Cloudflare認証には既存のWrangler認証、または必要範囲のAPI toke
 - Browser: Cloudflareローカル配信→Rust→疑似Geminiでチャット、ノード追加、プロパティの編集・閉じる・再選択、評価82点表示、実ファイルへの保存とそのファイルからの復元を確認。確認時のbrowser console errorは0件。HTTPでSPA深いパス・queryとヘッダーを確認。
 - Cloudflare: `morimizu.dev` zoneがactive、`sandbox.morimizu.dev`に既存DNS / Worker Custom Domainがないことを読み取り確認。
 - 本番未実施: project / billing / Secret登録、GCP apply、Cloudflare deploy、実Gemini・TinyURL、実ドメインのTLS・CORS、AWS切替・撤去。GitHub CI結果はPRを参照。
-- ChatGPT: このworkspaceの既存連携先が未設定のため独立レビューは未実施。新規連携・認証・権限変更はしていない。
+- ChatGPT: このworkspaceの既存連携先が未設定のため独立レビューは未実施。この時点では新規連携・認証・権限変更はしていない。
 
 Viteは大きなbundle（約828 kB、gzip約256 kB）を警告する。buildは成功しており、今回の移植では既存画面の分割は行っていない。

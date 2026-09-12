@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -11,6 +11,8 @@ import {
 } from "recharts";
 import { BiSearchAlt, BiRevision, BiBot, BiBulb, BiLink } from "react-icons/bi";
 import { SiX } from "react-icons/si";
+import { createChallengeUrl } from "../utils/projectFormat";
+import { postJson } from "../utils/api";
 import type { EvaluationResult, Scenario } from "../types";
 
 // 環境変数の読み込み
@@ -32,31 +34,9 @@ export const EvaluationPanel: React.FC<Props> = ({
   const [isSharing, setIsSharing] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState("");
 
-  // 完全なシナリオデータをエンコードしてロングURLを生成する関数
-  const createLongUrl = () => {
-    const challengeData: Scenario = {
-      ...scenario,
-      id: `challenge_${Date.now()}`,
-      isCustom: true,
-    };
-
-    try {
-      const jsonString = JSON.stringify(challengeData);
-      // 日本語対応Base64エンコード
-      const encoded = btoa(unescape(encodeURIComponent(jsonString)));
-
-      const cleanBaseUrl = SHARE_BASE_URL.endsWith("/")
-        ? SHARE_BASE_URL.slice(0, -1)
-        : SHARE_BASE_URL;
-
-      // encoded を encodeURIComponent でエスケープする
-      // これにより '+' が '%2B' になり、URLパラメータとして安全に渡せるようになります
-      return `${cleanBaseUrl}/?challenge=${encodeURIComponent(encoded)}`;
-    } catch (e) {
-      console.error("Encoding error:", e);
-      return null;
-    }
-  };
+  const feedbackTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(feedbackTimer.current), []);
+  const createLongUrl = () => createChallengeUrl(scenario, SHARE_BASE_URL);
 
   // バックエンド経由で短縮URLを取得してシェアする
   const handleShare = async () => {
@@ -67,28 +47,22 @@ export const EvaluationPanel: React.FC<Props> = ({
       const longUrl = createLongUrl();
       if (!longUrl) throw new Error("URL generation failed");
 
-      const response = await fetch(`${API_BASE_URL}/api/shorten`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ target_url: longUrl }),
-      });
+      const data = await postJson(`${API_BASE_URL}/api/shorten`, { target_url: longUrl });
+      if (!data || typeof data !== "object" || !("short_url" in data) || typeof data.short_url !== "string") throw new Error("Invalid short URL");
+      const shortUrl = new URL(data.short_url);
+      if (shortUrl.protocol !== "https:" || shortUrl.hostname !== "tinyurl.com" || shortUrl.username || shortUrl.password || shortUrl.port) throw new Error("Invalid short URL");
 
-      if (!response.ok) throw new Error("Shorten API failed");
-
-      const data = await response.json();
-      const shortUrl = data.short_url;
-
-      const score = result.totalScore || result.score || 0;
+      const score = result.totalScore;
       const text = `Architecture Sandboxで「${scenario.title}」を設計しました！\n総合スコア: ${score}点\n\n▼この要件で設計に挑戦する`;
       const hashtags = "ArchitectureSandbox,システム設計";
 
       const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
         text
-      )}&hashtags=${hashtags}&url=${encodeURIComponent(shortUrl)}`;
-      window.open(tweetUrl, "_blank");
+      )}&hashtags=${hashtags}&url=${encodeURIComponent(shortUrl.toString())}`;
+      window.open(tweetUrl, "_blank", "noopener,noreferrer");
     } catch (error) {
       console.error(error);
-      alert("シェア用URLの生成に失敗しました。");
+      setCopyFeedback("共有リンクを作成できませんでした");
     } finally {
       setIsSharing(false);
     }
@@ -99,8 +73,9 @@ export const EvaluationPanel: React.FC<Props> = ({
     if (url) {
       navigator.clipboard.writeText(url).then(() => {
         setCopyFeedback("Copied!");
-        setTimeout(() => setCopyFeedback(""), 2000);
-      });
+        clearTimeout(feedbackTimer.current);
+        feedbackTimer.current = setTimeout(() => setCopyFeedback(""), 2000);
+      }).catch(() => setCopyFeedback("コピーできませんでした"));
     }
   };
 
@@ -156,7 +131,7 @@ export const EvaluationPanel: React.FC<Props> = ({
     feasibility: 0,
   };
 
-  const totalScore = result.totalScore || result.score || 0;
+  const totalScore = result.totalScore;
 
   const chartData = [
     { subject: "可用性", A: details.availability, fullMark: 100 },
@@ -250,7 +225,7 @@ export const EvaluationPanel: React.FC<Props> = ({
             <BiBot size={24} color="#2196F3" /> AIからのフィードバック
           </h3>
           <div style={markdownContainerStyle}>
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} disallowedElements={["img"]} components={{ a: ({ children }) => <span>{children}</span> }}>
               {result.feedback}
             </ReactMarkdown>
           </div>
@@ -261,7 +236,7 @@ export const EvaluationPanel: React.FC<Props> = ({
             <BiBulb size={24} color="#FFC107" /> 改善のための提案
           </h3>
           <div style={markdownContainerStyle}>
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} disallowedElements={["img"]} components={{ a: ({ children }) => <span>{children}</span> }}>
               {result.improvement}
             </ReactMarkdown>
           </div>
