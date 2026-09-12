@@ -28,7 +28,7 @@ GCPは請求先の有効化が必要。Cloud Runはリクエスト課金・min i
 
 Artifact Registryは請求先全体の最初の0.5 GiBが無料で、超過した保存容量は課金される。Secret Managerは有効version数とアクセス回数、Terraform用GCSは保存・操作に料金がある。既存イメージはrollbackに必要なものを確認してから整理する。[Artifact Registry](https://cloud.google.com/artifact-registry/pricing)、[Secret Manager](https://cloud.google.com/secret-manager/pricing)、[Cloud Storage](https://cloud.google.com/storage/pricing)
 
-Geminiは移植先のキーで `gemini-2.5-flash` が404となったため、安定版 `gemini-3.5-flash-lite` を既定候補に変更した。テキスト標準料金は入力$0.30・出力$2.50 / 100万tokenで、従来2.5 Flashと同じ単価。利用枠と実際の入出力・思考token量で費用が変わり、総額が同じになる保証はない。モデル名は設定で変更可能。新しい課金契約や実API呼び出しはローカル検証に不要。[Gemini料金](https://ai.google.dev/gemini-api/docs/pricing)
+Geminiは移植先のキーで `gemini-2.5-flash` が404となったため、実接続を確認できた安定版 `gemini-3.5-flash-lite` を既定値に変更した。テキスト標準料金は入力$0.30・出力$2.50 / 100万tokenで、従来2.5 Flashと同じ単価。利用枠と実際の入出力・思考token量で費用が変わり、総額が同じになる保証はない。モデル名は設定で変更可能。新しい課金契約や実API呼び出しはローカル検証に不要。[Gemini料金](https://ai.google.dev/gemini-api/docs/pricing)
 
 利用頻度・既存請求先の無料枠消費量が未確定なので月額合計は未算出。公開前にGemini側のquotaとGCP予算通知を確認する。予算通知は自動停止ではなく、max instances 2も月額上限ではない。AWSを停止・削除するまでは旧環境の費用が残る。
 
@@ -120,7 +120,26 @@ Terraform 1.9.8 / Google provider 7.46.1を使用。事前のvalidateとmock pla
 
 外部確認で `/healthz` がGoogle Frontendの404になる不具合を検出した。Cloud Runは末尾が `z` の一部パスを予約しているため、API・probe・検証スクリプト・手順を `/health` に統一した。修正版5f291c2を配置し、認証あり200・認証なし403、CORS、無効入力422、廃止ルート404を確認。Terraformの再planも差分なしとなった。[予約パスの公式仕様](https://docs.cloud.google.com/run/docs/known-issues#reserved-url-paths)
 
-実Geminiの初回呼び出しは失敗した。eed933bで上流HTTPステータスの数字だけをログに追加し、2.5 Flashから404が返っていることを確認。3.5 Flash-Liteへ設定を変更すると400となった。2.5向けの `thinkingBudget: 0` を3系にも送っていたため、3系は `thinkingLevel` を使う実装に変更した。Flash-Liteはminimal、その他の3系はlow、2.5系は従来の設定を維持する。出力上限4096は思考tokenを含み、応答が途中で切れた場合は成功扱いにしない。修正後の実接続結果は別途記録する。[モデル利用制限のGoogle案内](https://discuss.ai.google.dev/t/gemini-2-5-flash-deprecated-without-warning-earlier-than-shutdown-date/174217/27)、[思考設定の仕様](https://ai.google.dev/gemini-api/docs/generate-content/thinking)
+実Geminiの初回呼び出しは失敗した。eed933bで上流HTTPステータスの数字だけをログに追加し、2.5 Flashから404が返っていることを確認。3.5 Flash-Liteへ設定を変更すると400となった。2.5向けの `thinkingBudget: 0` を3系にも送っていたため、3系は `thinkingLevel` を使う実装に変更した。Flash-Liteはminimal、その他の3系はlow、2.5系は従来の設定を維持する。出力上限4096は思考tokenを含み、応答が途中で切れた場合は成功扱いにしない。修正後に実チャット・評価が成功した。[モデル利用制限のGoogle案内](https://discuss.ai.google.dev/t/gemini-2-5-flash-deprecated-without-warning-earlier-than-shutdown-date/174217/27)、[思考設定の仕様](https://ai.google.dev/gemini-api/docs/generate-content/thinking)
+
+最終配置は次のとおり。Secretの値は取得せず、GCP上の数値version参照だけを使用した。
+
+| 項目 | 検証結果 |
+| --- | --- |
+| Imageのソースcommit | `13a4aa0221b83976a1e7836442c2814734253976` |
+| Image digest | `sha256:9dab1637167dab92c429471b1e3c289d73c01377735358fa7ad005409869ece7` |
+| Cloud Run revision | `architecture-sandbox-api-00005-gnh`（Ready） |
+| API URL | `https://architecture-sandbox-api-h5zlhkux4q-an.a.run.app` |
+| モデル / Secret version | `gemini-3.5-flash-lite` / `1` |
+| リソースとIAM | 1 vCPU / 512 MiB、revision最小0・最大2、concurrency 8、timeout 120秒、専用SA、serviceの匿名bindingなし |
+| Health / CORS / 入力 | 認証ありhealth 200、認証なし403、正しいoriginのpreflight、無効入力422、廃止保存route 404 |
+| 実Gemini | チャット1回・評価1回とも200。ブラウザ1個だけの検証構成は10点となり、6軸の整数scoreと日本語の改善説明を確認 |
+| Terraform | 最終配置後の実リソース再取得planはexit 0・差分なし |
+| フロントエンド | 実API URLを指定したproduction build、CSP接続先、Wrangler dry-run成功。Cloudflareへの公開は未実施 |
+
+全ローカル検証はRust fmt/clippy/単体2件/build、API統合22件、Terraform validate/mock plan 4件、Compose構文、Linux amd64 imageの非root実行・PORT変更・health・SIGTERMを通過した。実Geminiで旧モデル404、旧思考設定400を確認した失敗要求と、入力不足でアプリが422を返した検証要求もあり、各修正後に再確認した。自動リトライは行っていない。実AIの確認は合成データでの最小の疎通・応答形式確認で、広範な採点品質や本番UIの受入は含まない。
+
+非公開サービスの構築・疎通は完了。ChatGPT独立レビューと匿名公開の判断、Gemini quota・予算通知、Cloudflareの実ドメインでの画面・共有リンクの受入は残っている。新しい課金プラン・前払い残高の購入、GitHubへの未レビュー変更のpush、アプリ公開、AWS停止は行っていない。
 
 ## 初回配置
 

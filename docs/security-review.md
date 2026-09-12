@@ -52,17 +52,18 @@ APIは利用者認証を持ちません。CORSはブラウザの読み取り制�
 
 公開前に、Gemini側の利用枠と請求設定・監視を確認し、匿名公開での悪用と費用を許容するか判断する必要があります。保証された利用者別枠が必要なら認証と共有ストアなどを選定します。今回はそれらのサービス・費用を追加していません。Terraformの公開invokerは初期値falseを維持しています。
 
-実Geminiの応答品質、実TinyURLの成功経路、ドメイン・TLS、実クラウドの受入は未実施です。ローカルfixtureで実APIを代替しても、本番受入の証明にはなりません。
+非公開Cloud Runで実Geminiのチャットと評価を各1回確認しました。広範な応答品質、実TinyURLの成功経路、公開ドメイン・TLS、本番画面の受入は未実施です。ローカルfixtureで実APIを代替しても、本番受入の証明にはなりません。
 
 ## 検証・独立レビュー
 
-- 自動検証: フロントエンド32件、Rust単体2件、API統合21件が成功。lint / 型検査 / build / clippy成功。production build / Wrangler dry-run / linux/amd64 Docker buildが成功。非root UID 10001、PORT変更、health、SIGTERM終了を確認。Composeの構文確認も成功。
+- 自動検証: フロントエンド32件、Rust単体2件、API統合22件が成功。lint / 型検査 / build / clippy成功。production build / Wrangler dry-run / linux/amd64 Docker buildが成功。非root UID 10001、PORT変更、health、SIGTERM終了を確認。Composeの構文確認も成功。
 - 依存監査: npm audit、cargo auditとも既知脆弱性0件（2026-09-13）。
 - ブラウザ: 偽Geminiを使ったカスタムチャット・ノード配置・編集・82点の評価表示・外部画像/リンク抑止・実JSONファイル保存を確認。ブラウザの送信JSONと保存ファイルに内部定義がないことを確認。
 - 最終ローカル画面確認（2026-09-13）: 新JSONと旧Base64の実保存ファイルを画面から読み込み、タイトル・会話・ノード・評価結果を復元できた。旧ファイルの再保存はschemaVersion 2の通常JSONとなり、projectIdを維持し、隠し要件・systemメッセージを含めない。保存完了は画面内通知で表示され、操作を継続できた。
 - グループ操作: 既存ノードの後にグループを追加し、所属・切り離し・再所属を確認。保存時に親が子より前に並び、画面から親を削除すると子も削除されることを確認。
 - 評価グラフ: 初回表示でサイズ未確定の警告が出る問題を修正。既存レイアウトの高さをグラフにも明示し、修正後の評価表示でconsole warning/errorが0件。frontendの32テスト・lint・型検査を含むlocal/production build・Wrangler dry-runも成功。
-- Cloud Run初回配置: Secret version 1の読み込みと内部probeは成功。外部から `/healthz` が予約パスに衝突する問題を検出し、`/health` に変更。Rust fmt/clippy/test/build、API統合21件、Terraform validateとmock plan test 4件が成功。mockテストはローカル本番tfvarsの影響を受けないよう入力を固定した。修正版のクラウド確認は移植手順へ記録する。
+- Cloud Run初回配置: Secret version 1の読み込みと内部probeは成功。外部から `/healthz` が予約パスに衝突する問題を検出し、`/health` に変更。Rust fmt/clippy/test/build、API統合21件、Terraform validateとmock plan test 4件が成功。mockテストはローカル本番tfvarsの影響を受けないよう入力を固定した。修正版のクラウド確認は移植手順へ記録した。
+- 最終非公開Cloud Run: 認証ありhealth 200・認証なし403、CORS・入力拒否を確認。Secret version 1を固定参照し、実Geminiの旧モデル404と旧思考設定400を修正した。Gemini 3.5 Flash-Liteでチャット・評価が成功。思考設定の互換性テストを追加し、API統合22件、Rust単体2件、fmt/clippy/build、Terraform 4件、Docker smoke、実URLのfrontend build / Wrangler dry-runが成功。上流エラーのログはHTTPステータスの数字だけで、キーや要求・応答本文を含めない。
 - ChatGPT: 専用チャットと読み取り専用連携の新設は許可済み。固定アドレスの接続を作成し、診断成功・認証なしの外部アクセスが401で拒否されることを確認。`.c2cignore`でTerraform状態・実設定・実行時生成物・Git内部ファイルを追加除外し、既定の認証情報除外と他workspaceへのアクセス拒否も確認した。その後、所有者から既存morimizu-site接続の利用を指定された。既存接続のworkspace_infoは成功したが、読み取り範囲がmorimizu-siteのため、このリポジトリは参照できない。専用接続の追加、または先にpushしてGitHub経由でレビューする選択を確認中。独立レビューは未実施。
 
 参照: [OWASP Password Storage](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)、[OWASP LLM Prompt Injection Prevention](https://cheatsheetseries.owasp.org/cheatsheets/LLM_Prompt_Injection_Prevention_Cheat_Sheet.html)、[Gemini generateContent](https://ai.google.dev/api/generate-content)。
