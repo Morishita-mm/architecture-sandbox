@@ -1,14 +1,6 @@
-FROM node:20-slim
-
+FROM node:22-bookworm-slim
 WORKDIR /app
-
-# package.json を先にコピーして install (キャッシュ活用)
-COPY package.json package-lock.json* ./
-RUN npm install
-
-# ソースコードは volumes でマウントされる
+COPY package.json package-lock.json ./
+RUN npm ci
 COPY . .
-
-# Viteの開発サーバー起動
-# --host 0.0.0.0 をつけないとコンテナ外からアクセスできないので注意
-CMD ["npm", "run", "dev", "--", "--host"]
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

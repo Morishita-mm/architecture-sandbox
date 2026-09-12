@@ -1,0 +1,11 @@
+**/.git
+**/node_modules
+**/target
+**/dist
+**/.wrangler
+**/.terraform
+**/.env
+**/.env.*
+**/*.tfstate*
+**/*.tfvars
+**/*.tfplan

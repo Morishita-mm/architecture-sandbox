@@ -65,31 +65,22 @@ struct PartResponse {
 }
 
 // --- プロンプト生成関数 ---
-fn build_system_prompt() -> String {
+fn build_system_prompt() -> Result<String, Box<dyn std::error::Error>> {
     // 1. プロンプトテンプレートを読み込む (コンパイル時に埋め込み)
     let template = include_str!("system_prompt.txt");
 
-    match get_architecture_defs_json() {
-        Ok(json_str) => {
-            let defs: ArchitectureDefs =
-                serde_json::from_str(&json_str).expect("Failed to parse architecture_defs.json");
+    let defs: ArchitectureDefs = serde_json::from_str(&get_architecture_defs_json()?)?;
+    let components = defs
+        .categories
+        .into_iter()
+        .flat_map(|category| category.items)
+        .map(|item| format!("    - \"{}\"\n", item.type_name))
+        .collect::<String>();
+    Ok(template.replace("{{AVAILABLE_COMPONENTS}}", &components))
+}
 
-            let mut components = String::new();
-            for category in defs.categories {
-                for item in category.items {
-                    // YAMLのリスト形式 "- Name" に整形
-                    components.push_str(&format!("    - \"{}\"\n", item.type_name));
-                }
-            }
-
-            // テンプレート内のプレースホルダーを置換
-            template.replace("{{AVAILABLE_COMPONENTS}}", &components)
-        }
-        Err(e) => {
-            eprintln!("Error loading configuration: {}", e);
-            std::process::exit(1);
-        }
-    }
+pub fn validate_architecture_defs() -> Result<(), Box<dyn std::error::Error>> {
+    build_system_prompt().map(|_| ())
 }
 
 // アーキテクチャ定義ファイル読み込み
@@ -136,9 +127,10 @@ fn get_difficulty_specs(difficulty: &str) -> serde_json::Value {
     }
 }
 
-async fn send_with_retry(
+async fn send_with_retry_inner(
     client: &Client,
     url: &str,
+    api_key: &str,
     request_body: &GeminiRequest,
 ) -> Result<String, Box<dyn std::error::Error>> {
     let max_retries = 3; // 最大3回リトライ（計4回試行）
@@ -146,7 +138,12 @@ async fn send_with_retry(
 
     loop {
         attempt += 1;
-        let res_result = client.post(url).json(request_body).send().await;
+        let res_result = client
+            .post(url)
+            .header("x-goog-api-key", api_key)
+            .json(request_body)
+            .send()
+            .await;
 
         match res_result {
             Ok(res) => {
@@ -185,21 +182,17 @@ async fn send_with_retry(
                         continue;
                     } else {
                         // リトライ対象外、または回数切れ
-                        let error_body = res.text().await.unwrap_or_default();
-                        eprintln!("Gemini API Final Error: {} - {}", status, error_body);
+                        eprintln!("Gemini API Final Error: {}", status);
                         return Err("アクセスが集中しています。しばらく時間を置いてから再度お試しください。".into());
                     }
                 }
             }
-            Err(e) => {
+            Err(_) => {
+                // Provider URLs and request contents must not enter logs.
                 // ネットワークエラー等の場合
                 if attempt <= max_retries {
                     let wait_time = Duration::from_secs(2_u64.pow(attempt - 1));
-                    eprintln!(
-                        "Network Error ({}). Retrying in {}s...",
-                        e,
-                        wait_time.as_secs()
-                    );
+                    eprintln!("Network Error. Retrying in {}s...", wait_time.as_secs());
                     sleep(wait_time).await;
                     continue;
                 }
@@ -212,6 +205,24 @@ async fn send_with_retry(
     }
 }
 
+// Keep retries within Cloud Run's 120-second request deadline.
+async fn send_with_retry(
+    url: &str,
+    api_key: &str,
+    request_body: &GeminiRequest,
+) -> Result<String, Box<dyn std::error::Error>> {
+    let client = Client::builder()
+        .connect_timeout(Duration::from_secs(10))
+        .timeout(Duration::from_secs(45))
+        .build()?;
+    tokio::time::timeout(
+        Duration::from_secs(90),
+        send_with_retry_inner(&client, url, api_key, request_body),
+    )
+    .await
+    .map_err(|_| "AIの応答がタイムアウトしました。もう一度お試しください。")?
+}
+
 // --- 評価関数 ---
 pub async fn evaluate_with_gemini(json_data: &Value) -> Result<String, Box<dyn std::error::Error>> {
     let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY must be set");
@@ -221,8 +232,9 @@ pub async fn evaluate_with_gemini(json_data: &Value) -> Result<String, Box<dyn s
     let model_name = env::var("AI_MODEL_NAME").unwrap_or_else(|_| "gemini-2.5-flash".to_string());
 
     let url = format!(
-        "{}/v1beta/models/{}:generateContent?key={}",
-        base_url, model_name, api_key
+        "{}/v1beta/models/{}:generateContent",
+        base_url.trim_end_matches('/'),
+        model_name
     );
 
     let mut final_json = json_data.clone();
@@ -258,7 +270,7 @@ pub async fn evaluate_with_gemini(json_data: &Value) -> Result<String, Box<dyn s
     }
 
     // プロンプトの作成
-    let system_prompt = build_system_prompt();
+    let system_prompt = build_system_prompt()?;
 
     // プロンプト結合
     let prompt = format!("{}\nUser Design Data:\n{}", system_prompt, final_json);
@@ -269,8 +281,7 @@ pub async fn evaluate_with_gemini(json_data: &Value) -> Result<String, Box<dyn s
         }],
     };
 
-    let client = Client::new();
-    send_with_retry(&client, &url, &request_body).await
+    send_with_retry(&url, &api_key, &request_body).await
 }
 
 pub async fn chat_with_customer(req: &ChatRequest) -> Result<String, Box<dyn std::error::Error>> {
@@ -281,8 +292,9 @@ pub async fn chat_with_customer(req: &ChatRequest) -> Result<String, Box<dyn std
     let model_name = env::var("AI_MODEL_NAME").unwrap_or_else(|_| "gemini-2.5-flash".to_string());
 
     let url = format!(
-        "{}/v1beta/models/{}:generateContent?key={}",
-        base_url, model_name, api_key
+        "{}/v1beta/models/{}:generateContent",
+        base_url.trim_end_matches('/'),
+        model_name
     );
 
     // 1. ベースとなるシステム指示の取得
@@ -345,12 +357,6 @@ pub async fn chat_with_customer(req: &ChatRequest) -> Result<String, Box<dyn std
     // ★修正箇所: system_instruction ではなく final_system_instruction を使用する
     full_prompt.push_str(&final_system_instruction);
 
-    // デバッグ出力
-    println!(
-        "--- Full System Prompt ---\n{}\n--------------------------",
-        &full_prompt
-    );
-
     full_prompt.push_str("\n\n--- 会話履歴 ---\n");
 
     // 会話履歴の構築
@@ -377,8 +383,7 @@ pub async fn chat_with_customer(req: &ChatRequest) -> Result<String, Box<dyn std
         }],
     };
 
-    let client = Client::new();
-    send_with_retry(&client, &url, &request_body).await
+    send_with_retry(&url, &api_key, &request_body).await
 }
 
 fn get_partner_instruction(role: &str) -> &'static str {

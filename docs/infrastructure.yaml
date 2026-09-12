@@ -1,62 +1,24 @@
 project_summary:
   name: architecture-sandbox
-  description: AIを活用したシステムアーキテクチャ評価アプリケーション
-  status: Complete (Phase 7 Completed)
-  cost_model: Ultra Low Cost (Stateless / Serverless-like)
-
+  status: Cloudflare/GCP implementation; production cutover pending
+  persistence: Local JSON files only; no database
 urls:
-  frontend_app: "https://[Terraformのoutput_cloudfront_urlを参照].cloudfront.net" # ユーザーアクセス用
-  backend_api: "https://cvt2h953p2.ap-northeast-1.awsapprunner.com" # APIエンドポイント
-
+  planned_frontend: https://sandbox.morimizu.dev
+  backend: Terraform terraform/gcp output backend_url after deployment
 architecture:
-  frontend:
-    framework: React (Vite + TypeScript)
-    hosting: AWS S3 (Static Website Hosting)
-    cdn: AWS CloudFront
-    security: OAC (Origin Access Control) # S3への直接アクセスを遮断
-    features:
-      - React Flowによるドラッグ＆ドロップUI
-      - Gemini APIによるリアルタイム評価表示
-
-  backend:
-    language: Rust (Edition 2024)
-    framework: Axum (Web Framework)
-    hosting: AWS App Runner (Containerized)
-    container_image: ECR (Amazon Elastic Container Registry)
-    concurrency: Tokio (Async Runtime)
-    network: Public Access (VPC Connector Removed for Cost/Gemini Access)
-    integrations:
-      - Google Gemini API (Generative AI)
-
-  infrastructure:
-    iac_tool: Terraform
-    state_management: Local State (gitignored)
-    removed_resources:
-      - AWS RDS (Postgres) # コスト最適化のため削除
-      - VPC / Subnets / NAT Gateway # App Runnerのパブリック化に伴い依存排除
-
-key_configurations:
-  environment_variables:
-    frontend:
-      VITE_API_BASE_URL: "https://cvt2h953p2.ap-northeast-1.awsapprunner.com"
-    backend:
-      GEMINI_API_KEY: "Saved in Terraform variable (Sensitive)"
-      DATABASE_URL: "dummy (Stateless mode)"
-
-  docker_build_strategy:
-    platform: linux/amd64 (Cross-compilation from Mac ARM64)
-    optimization: Multi-stage build (Debian Bookworm slim)
-    security: No SQLx/OpenSSL dependency (Rustls used via reqwest)
-
-development_history:
-  challenges_overcome:
-    - OpenSSL dependency issues in cross-platform Docker builds
-    - App Runner 504 Timeout (caused by missing NAT Gateway for Gemini API)
-    - Terraform State Lock & Resource Dependency deadlocks
-    - CORS (Cross-Origin Resource Sharing) configuration
-    - Cost optimization by migrating to stateless architecture
-
-next_possibilities:
-  - automation: GitHub Actions for CI/CD (Auto deploy on push)
-  - authentication: Add Cognito/Auth0 for user login
-  - persistence: Re-enable RDS or use DynamoDB if data saving is needed
+  frontend: Cloudflare Workers Static Assets (React / Vite SPA)
+  backend: GCP Cloud Run (Rust / Axum, asia-northeast1)
+  images: Artifact Registry (linux/amd64, immutable digest)
+  secrets: Secret Manager (pinned numeric version, dedicated runtime identity)
+  ai: Gemini Developer API (gemini-2.5-flash, configurable)
+  scaling:
+    min_instances: 0
+    max_instances: 2
+    concurrency: 8
+    memory: 512Mi
+    cpu: 1
+  terraform_state: Dedicated GCS prefix architecture-sandbox/gcp
+migration:
+  runbook: docs/migration-cloudflare-gcp.md
+  legacy_aws: Preserved in terraform/*.tf; no AWS resources changed
+  production_acceptance: Pending project/billing/secret selection, deployment and live verification

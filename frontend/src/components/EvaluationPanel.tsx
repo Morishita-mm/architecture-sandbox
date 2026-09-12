@@ -14,10 +14,7 @@ import { SiX } from "react-icons/si";
 import type { EvaluationResult, Scenario } from "../types";
 
 // 環境変数の読み込み
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
-const SHARE_BASE_URL =
-  import.meta.env.VITE_APP_SHARE_URL || window.location.origin;
+import { API_BASE_URL, APP_SHARE_URL as SHARE_BASE_URL } from "../config";
 
 interface Props {
   result: EvaluationResult | null;

@@ -9,7 +9,7 @@ use axum::{
 };
 use reqwest::Client;
 use reqwest::header::HeaderValue;
-use std::env;
+use std::{env, time::Duration};
 use tower_http::cors::{Any, CorsLayer};
 
 use crate::domain::model::url_shorten::{ShortenRequest, ShortenResponse};
@@ -18,12 +18,34 @@ use infrastructure::gemini::client as gemini_client;
 
 #[tokio::main]
 async fn main() {
-    println!("Starting server without Database...");
+    // Fail before accepting traffic when a deployment is missing its configuration.
+    let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY must be set");
+    assert!(
+        !api_key.trim().is_empty(),
+        "GEMINI_API_KEY must not be empty"
+    );
+    gemini_client::validate_architecture_defs().expect("Invalid architecture definitions");
+    let port: u16 = env::var("PORT")
+        .unwrap_or_else(|_| "8080".into())
+        .parse()
+        .expect("PORT must be an integer between 1 and 65535");
+    assert!(port > 0, "PORT must not be zero");
 
     let frontend_origin =
         env::var("FRONTEND_ORIGIN").unwrap_or_else(|_| "http://localhost:5173".to_string());
 
-    // 2. CORS設定
+    let app = app(&frontend_origin);
+    let listener = tokio::net::TcpListener::bind(("0.0.0.0", port))
+        .await
+        .expect("Failed to bind HTTP listener");
+    println!("Backend listening on 0.0.0.0:{port}");
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
+        .await
+        .expect("HTTP server failed");
+}
+
+fn app(frontend_origin: &str) -> Router {
     let cors = CorsLayer::new()
         .allow_origin(
             frontend_origin
@@ -34,17 +56,35 @@ async fn main() {
         .allow_headers(Any);
 
     // 3. ルーティング設定
-    let app = Router::new()
+    Router::new()
         .route("/", get(|| async { "Hello, Architecture (Stateless)!" }))
+        .route(
+            "/healthz",
+            get(|| async { Json(serde_json::json!({ "status": "ok" })) }),
+        )
         .route("/api/evaluate", post(evaluate_architecture))
         .route("/api/chat", post(handle_chat))
         .route("/api/projects", post(mock_save_project))
         .route("/api/shorten", post(shorten_url_handler))
-        .layer(cors);
+        .layer(cors)
+}
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
-    println!("Backend listening on 0.0.0.0:8080");
-    axum::serve(listener, app).await.unwrap();
+async fn shutdown_signal() {
+    let interrupt = async {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("Failed to install Ctrl-C handler")
+    };
+    #[cfg(unix)]
+    let terminate = async {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("Failed to install SIGTERM handler")
+            .recv()
+            .await;
+    };
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+    tokio::select! { _ = interrupt => {}, _ = terminate => {} }
 }
 
 // --- ハンドラー関数 ---
@@ -84,9 +124,6 @@ async fn handle_chat(Json(payload): Json<ChatRequest>) -> impl IntoResponse {
 }
 
 async fn mock_save_project(Json(payload): Json<serde_json::Value>) -> impl IntoResponse {
-    println!("Mock Save Project: {:?}", payload.get("title"));
-    println!("(Database is disabled, so data is not persisted)");
-
     // 成功レスポンスを返す
     Json(
         serde_json::json!({ "status": "success", "id": payload["id"], "message": "Saved to session (mock)" }),
@@ -96,18 +133,17 @@ async fn mock_save_project(Json(payload): Json<serde_json::Value>) -> impl IntoR
 async fn shorten_url_handler(
     Json(payload): Json<ShortenRequest>,
 ) -> Result<Json<ShortenResponse>, String> {
-    let client = Client::new();
-
-    let api_url = format!(
-        "https://tinyurl.com/api-create.php?url={}",
-        payload.target_url
-    );
+    let client = Client::builder()
+        .timeout(Duration::from_secs(15))
+        .build()
+        .map_err(|_| "Failed to initialize URL shortener".to_string())?;
 
     let resp = client
-        .get(&api_url)
+        .get("https://tinyurl.com/api-create.php")
+        .query(&[("url", &payload.target_url)])
         .send()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|_| "Failed to reach URL shortener".to_string())?;
 
     if resp.status().is_success() {
         let short_url = resp.text().await.map_err(|e| e.to_string())?;

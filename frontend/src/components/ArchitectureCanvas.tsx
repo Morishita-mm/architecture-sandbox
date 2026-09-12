@@ -1,4 +1,3 @@
-/* eslint-disable no-constant-binary-expression */
 import { useCallback, useRef, useState, useEffect, useMemo } from "react";
 import ReactFlow, {
   Background,
@@ -45,8 +44,7 @@ interface ArchitectureCanvasProps {
   loadedProjectData: ProjectSaveData | null;
 }
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+import { API_BASE_URL } from "../config";
 
 let id = 0;
 const getId = () => `dndnode_${id++}`;
@@ -188,10 +186,11 @@ Please start the conversation by acknowledging the request for "${currentScenari
       }
       setChatMessages(initialMessages);
     }
+  // Initialize only when opening a scenario/project; sending a chat must not reload saved data.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     selectedScenario.id,
     loadedProjectData,
-    // chatMessages.length,  <-- ★削除: これがあるとチャット送信のたびに初期化処理が走り、評価画面に飛ばされます
     setNodes,
     setEdges,
     currentScenario.isCustom,
@@ -364,9 +363,8 @@ Please start the conversation by acknowledging the request for "${currentScenari
           if (type === "group") return false;
 
           const gPos = g.positionAbsolute || g.position;
-          // eslint-disable-next-line no-constant-binary-expression
-          const gW = g.width ?? Number(g.style?.width) ?? 300;
-          const gH = g.height ?? Number(g.style?.height) ?? 200;
+          const gW = g.width ?? (Number(g.style?.width) || 300);
+          const gH = g.height ?? (Number(g.style?.height) || 200);
 
           return (
             position.x >= gPos.x &&

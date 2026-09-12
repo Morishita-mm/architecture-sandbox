@@ -26,6 +26,28 @@ export const PropertiesPanel: React.FC<Props> = ({
   const parentOffset = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const panelRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return;
+      const newX =
+        e.clientX - parentOffset.current.x - dragStartOffset.current.x;
+      const newY =
+        e.clientY - parentOffset.current.y - dragStartOffset.current.y;
+      setPosition({ x: newX, y: newY });
+    };
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+    if (isDragging) {
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
+    }
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isDragging]);
+
   if (!selectedNode) return null;
 
   const { data, id } = selectedNode;
@@ -61,28 +83,6 @@ export const PropertiesPanel: React.FC<Props> = ({
       setIsDragging(true);
     }
   };
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isDragging) return;
-      const newX =
-        e.clientX - parentOffset.current.x - dragStartOffset.current.x;
-      const newY =
-        e.clientY - parentOffset.current.y - dragStartOffset.current.y;
-      setPosition({ x: newX, y: newY });
-    };
-    const handleMouseUp = () => {
-      setIsDragging(false);
-    };
-    if (isDragging) {
-      window.addEventListener("mousemove", handleMouseMove);
-      window.addEventListener("mouseup", handleMouseUp);
-    }
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-    };
-  }, [isDragging]);
 
   const currentPanelStyle: React.CSSProperties = {
     // ... (既存スタイル)

@@ -46,7 +46,7 @@ AIクライアントとの対話を通じて隠れた要件を引き出し、ド
 | **Frontend** | React (Vite) | TypeScript, React Flow, Recharts |
 | **Backend** | Rust | Axum, Tokio, Reqwest (Async) |
 | **AI Model** | Google Gemini | Gemini 2.5 Flash |
-| **Infrastructure** | AWS | App Runner, S3, CloudFront (Terraform管理) |
+| **Infrastructure** | Cloudflare + GCP | Workers Static Assets, Cloud Run, Artifact Registry, Secret Manager |
 | **Deployment** | Docker | Multi-stage build (Debian slim) |
 
 -----
@@ -60,18 +60,22 @@ architecture-sandbox/
 │   │   ├── main.rs         # Entry point & Routes
 │   │   ├── handlers.rs     # API Handlers (Chat, Evaluate, Shorten)
 │   │   └── ...
-│   └── Dockerfile          # For App Runner
+│   └── Dockerfile          # Local development
 ├── frontend/               # React Vite Frontend
 │   ├── src/
 │   │   ├── components/     # UI Components (Canvas, Panels, Modals)
 │   │   ├── scenarios.ts    # Preset Scenarios
 │   │   └── ...
 │   └── ...
-├── infrastructure/         # Terraform Configurations
+├── terraform/gcp/          # GCP Terraform (旧AWS構成はterraform直下に保全)
 └── ...
 ```
 
 -----
+
+## 配置・開発
+
+Cloudflare / GCP向けの実装を用意しています。公開予定URLは `https://sandbox.morimizu.dev`。本番配置とAWSからの切替は未実施です。セットアップ・検証・費用・初回配置・rollbackは[移植手順](docs/migration-cloudflare-gcp.md)を参照してください。
 
 ## 📖 使い方 (Usage)
 

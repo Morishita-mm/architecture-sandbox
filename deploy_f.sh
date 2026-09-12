@@ -1,11 +1,13 @@
-#!/bin/bash
-
-# 修正点: -e を変数ごとに書く必要があります
-# バックスラッシュ (\) で改行して見やすくしています
-
-docker compose exec \
-  -e VITE_API_BASE_URL=https://7zsrayjxek.ap-northeast-1.awsapprunner.com  \
-  -e VITE_APP_SHARE_URL=https://d13hd7ljwokuq9.cloudfront.net \
-  frontend npm run build
-
-cd frontend && npm run deploy
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")/frontend"
+: "${VITE_API_BASE_URL:?Set the deployed HTTPS Cloud Run origin}"
+: "${CLOUDFLARE_ACCOUNT_ID:?Set the intended Cloudflare account ID}"
+export VITE_API_BASE_URL
+export VITE_APP_SHARE_URL="${VITE_APP_SHARE_URL:-https://sandbox.morimizu.dev}"
+npm ci
+npm run lint
+npm test
+npm run build
+npm run deploy:check
+npm run deploy

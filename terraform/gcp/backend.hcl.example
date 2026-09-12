@@ -1,0 +1,2 @@
+bucket = "YOUR_PROTECTED_TERRAFORM_STATE_BUCKET"
+prefix = "architecture-sandbox/gcp"

@@ -3,11 +3,6 @@ import { NodeResizer, type NodeProps, useStore } from "reactflow";
 import { getNodeStyle } from "../utils/nodeStyles";
 import type { AppNodeData } from "../types";
 
-// React Flowのストア型定義
-type ReactFlowStore = {
-  nodeInternals: Map<string, any>;
-};
-
 export const GroupNode = memo(
   ({ id, data, selected }: NodeProps<AppNodeData>) => {
     const styleConfig = getNodeStyle(data.originalType, data.customColor);
@@ -15,7 +10,7 @@ export const GroupNode = memo(
     // --- 子ノードの配置に基づいて最小サイズを計算 ---
 
     // 最小幅の計算
-    const minWidth = useStore((store: ReactFlowStore) => {
+    const minWidth = useStore((store) => {
       const childNodes = Array.from(store.nodeInternals.values()).filter(
         (n) => n.parentNode === id
       );
@@ -32,7 +27,7 @@ export const GroupNode = memo(
     });
 
     // 最小高さの計算
-    const minHeight = useStore((store: ReactFlowStore) => {
+    const minHeight = useStore((store) => {
       const childNodes = Array.from(store.nodeInternals.values()).filter(
         (n) => n.parentNode === id
       );
