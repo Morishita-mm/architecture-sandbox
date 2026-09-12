@@ -7,6 +7,10 @@ current_status:
     frontend_target: Cloudflare Workers Static Assets
     frontend_domain: sandbox.morimizu.dev
     backend_target: GCP Cloud Run (Tokyo)
+    gcp_project_id: morimizu-architecture-sandbox
+    gcp_project_number: "431559926189"
+    gcp_foundation: Created with owner approval; billing active, protected GCS state, 8 Terraform resources, no drift
+    cloud_run_service: Not created; Gemini key source pending
     production_cutover: Not performed
   architecture:
     type: Stateless REST API
@@ -16,7 +20,7 @@ remaining:
   - Complete authorized ChatGPT connector setup and independent acceptance review
   - Complete final browser restore verification
   - Decide anonymous API exposure and provider quota / billing controls before publication
-  - Select GCP project and billing account; register Gemini Secret
+  - Register Gemini Secret and deploy the verified image to private Cloud Run
   - Approve and perform GCP / Cloudflare deployment and public access
   - Verify real Gemini, custom domain, share links and production UI
   - Retire AWS only after successful cutover and separate approval

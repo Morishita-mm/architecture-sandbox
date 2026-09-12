@@ -55,9 +55,62 @@ docker build --platform linux/amd64 -f Dockerfile.prod -t architecture-sandbox:t
 node scripts/container-smoke.mjs architecture-sandbox:test
 ```
 
-APIテストはローカル疑似Geminiだけを呼び出す。`cargo test`単体は既存のRust unit testが0件なので、必ずNodeのHTTP統合テストを実行する。CIも同じ検証を行う。
+APIテストはローカル疑似Geminiだけを呼び出す。`cargo test`のRust unit testに加え、NodeのHTTP統合テストも実行する。CIも同じ検証を行う。
 
 本番buildにはHTTPSの `VITE_API_BASE_URL` を必須とし、設定漏れで利用者のlocalhostへ通信しないようにする。Cloudflare配信のローカル確認には `VITE_API_BASE_URL=http://localhost:8080 npm run build:local` → `npm run preview:cloudflare` を使用し、APIの `FRONTEND_ORIGIN=http://localhost:8787` と一致させる。
+
+## GCP基盤の作成結果（2026-09-13）
+
+所有者の承認後、tech-interviewerと同じ既存請求先に専用projectを新設した。Project番号は `431559926189`、状態は `ACTIVE`、billingは有効。以下は作成済みの設定である。
+
+| 項目 | 作成済みの設定 |
+| --- | --- |
+| Project ID / 表示名 | `morimizu-architecture-sandbox` / `Architecture Sandbox` |
+| 請求先 | `tech-interviewer-mvp-2026`が利用している既存の「請求先アカウント」 |
+| リージョン | 東京 `asia-northeast1` |
+| Terraform state | `gs://morimizu-architecture-sandbox-tfstate`、prefix `architecture-sandbox/gcp` |
+| State保護 | Standard、uniform bucket-level access、public access prevention、versioning、soft delete 7日 |
+| Artifact Registry | `architecture-sandbox`、Docker形式 |
+| Runtime service account | `architecture-sandbox-api`、対象Secretだけの読み取り権限 |
+| Secret | `architecture-sandbox-gemini-api-key`の入れ物のみ |
+| 初期配置 | `enable_service=false`、`public_invocation_enabled=false` |
+
+ローカルの無視対象ファイル `terraform/gcp/terraform.tfvars` と `backend.hcl` に上記を設定済み。Geminiキーや認証情報は含めない。既存のgcloud認証とApplication Default Credentialsを利用し、再ログインと既定projectの変更は行っていない。
+
+この段階でproject新設、上記の既存請求先への紐付け、state bucket、bootstrap用APIとTerraformの基盤を構築した。Geminiキー登録、コンテナpush、Cloud Run作成、匿名公開、Cloudflare/DNS変更、AWSの停止は未実施。
+
+以下は実行済みのbootstrapの記録であり、再実行は不要。`BILLING_ACCOUNT_ID`には読み取り確認した既存請求先IDを使用した。
+
+```sh
+gcloud projects create morimizu-architecture-sandbox \
+  --name='Architecture Sandbox' --no-enable-cloud-apis
+gcloud billing projects link morimizu-architecture-sandbox \
+  --billing-account="$BILLING_ACCOUNT_ID"
+gcloud services enable serviceusage.googleapis.com \
+  cloudresourcemanager.googleapis.com storage.googleapis.com \
+  --project=morimizu-architecture-sandbox
+gcloud storage buckets create gs://morimizu-architecture-sandbox-tfstate \
+  --project=morimizu-architecture-sandbox --location=asia-northeast1 \
+  --default-storage-class=STANDARD --uniform-bucket-level-access \
+  --public-access-prevention --soft-delete-duration=7d
+gcloud storage buckets update gs://morimizu-architecture-sandbox-tfstate \
+  --project=morimizu-architecture-sandbox --versioning
+```
+
+bootstrap後、次節のGCS backend初期化と基盤plan/applyまで実施した。次回は既存リソースとstateを読み取り確認して、Geminiキー登録以降へ進む。
+
+Terraform 1.9.8 / Google provider 7.46.1を使用。事前のvalidateとmock plan test 4件が成功し、GCS backendで再生成した正式なplanをapplyした。結果は追加8件・変更0件・削除0件で、4 API、Artifact Registry、runtime SA、Secret、Secret単位のIAMを作成。実リソースを再取得した `terraform plan -detailed-exitcode` はexit 0（差分なし）となった。
+
+構築後に次を読み取り確認した。
+
+- State bucketの所属project番号、東京・Standard、公開禁止、uniform bucket-level access、versioning、soft delete 7日。
+- `architecture-sandbox/gcp/default.tfstate` がGCSに存在し、Terraformのlockが残っていないこと。
+- Projectとbucketに `allUsers` / `allAuthenticatedUsers` のIAM bindingがなく、runtime SAへのproject全体・bucket全体の権限付与もないこと。
+- 対象SecretのIAM bindingはruntime SAへの `roles/secretmanager.secretAccessor` のみ。Secret versionは0件。
+- 東京のDocker Artifact Registryが存在し、保存イメージは0。Container Scanning APIは無効。
+- 必要APIが有効で、東京のCloud Run serviceは0件。
+
+公開前のChatGPTによる独立レビュー、最終画面確認、Geminiキーとquota・予算通知の設定は引き続き必要。
 
 ## 初回配置
 
@@ -109,7 +162,7 @@ Cloudflare認証には既存のWrangler認証、または必要範囲のAPI toke
 ローカル成功だけでは本番完了にしない。配置したGit SHA、image digest、Cloud Run revision、Cloudflare versionを記録し、次を実測する。
 
 - `sandbox.morimizu.dev` のTLS、トップ、再読込、SPA fallback、challenge queryの読込。
-- 新Cloud RunへのCORS preflight、チャット、評価（実Gemini、所有者のテストデータ）、障害時表示。API deadlineは120秒、Gemini全体は90秒以内。
+- 新Cloud RunへのCORS preflight、チャット、評価（実Gemini、所有者のテストデータ）、障害時表示。Cloud Runのrequest timeoutは120秒、GeminiのHTTP request timeoutは45秒で、自動リトライは行わない。
 - ノードの追加・選択・プロパティ編集・グループ操作、JSON保存・復元。既存challenge URLのpayload互換性。TinyURLによる共有。
 - 公開前後のIAM、Secret version、最小0 / 最大2、不要なDB / NAT / 常駐サービスがないこと。
 - 新環境で受入後にリンクを新URLへ変更。旧cloudfront.net / awsapprunner.comのURLはDNSで引き継げないため、必要な旧リンクはAWS側のredirect等を別途検討する。
