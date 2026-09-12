@@ -64,6 +64,6 @@ APIは利用者認証を持ちません。CORSはブラウザの読み取り制�
 - 評価グラフ: 初回表示でサイズ未確定の警告が出る問題を修正。既存レイアウトの高さをグラフにも明示し、修正後の評価表示でconsole warning/errorが0件。frontendの32テスト・lint・型検査を含むlocal/production build・Wrangler dry-runも成功。
 - Cloud Run初回配置: Secret version 1の読み込みと内部probeは成功。外部から `/healthz` が予約パスに衝突する問題を検出し、`/health` に変更。Rust fmt/clippy/test/build、API統合21件、Terraform validateとmock plan test 4件が成功。mockテストはローカル本番tfvarsの影響を受けないよう入力を固定した。修正版のクラウド確認は移植手順へ記録した。
 - 最終非公開Cloud Run: 認証ありhealth 200・認証なし403、CORS・入力拒否を確認。Secret version 1を固定参照し、実Geminiの旧モデル404と旧思考設定400を修正した。Gemini 3.5 Flash-Liteでチャット・評価が成功。思考設定の互換性テストを追加し、API統合22件、Rust単体2件、fmt/clippy/build、Terraform 4件、Docker smoke、実URLのfrontend build / Wrangler dry-runが成功。上流エラーのログはHTTPステータスの数字だけで、キーや要求・応答本文を含めない。
-- ChatGPT: 専用チャットと読み取り専用連携の新設は許可済み。固定アドレスの接続を作成し、診断成功・認証なしの外部アクセスが401で拒否されることを確認。`.c2cignore`でTerraform状態・実設定・実行時生成物・Git内部ファイルを追加除外し、既定の認証情報除外と他workspaceへのアクセス拒否も確認した。その後、所有者から既存morimizu-site接続の利用を指定された。既存接続のworkspace_infoは成功したが、読み取り範囲がmorimizu-siteのため、このリポジトリは参照できない。専用接続の追加、または先にpushしてGitHub経由でレビューする選択を確認中。独立レビューは未実施。
+- ChatGPT: 所有者がGitHub経由のみのレビューを選択し、レビュー前のpushを許可した。既存PR #1へ検証済み変更を反映し、固定したhead commitの差分・コード・CIをChatGPTに独立して読ませる。ローカル接続の追加登録やmorimizu-site接続の参照範囲変更は不要。独立レビュー結果は取得後に記録する。
 
 参照: [OWASP Password Storage](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)、[OWASP LLM Prompt Injection Prevention](https://cheatsheetseries.owasp.org/cheatsheets/LLM_Prompt_Injection_Prevention_Cheat_Sheet.html)、[Gemini generateContent](https://ai.google.dev/api/generate-content)。

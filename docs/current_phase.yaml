@@ -22,9 +22,9 @@ current_status:
   local_acceptance:
     save_restore_and_group_operations: Verified in browser with new JSON and legacy Base64 files
     evaluation_chart: Verified with local fixture; no console warnings or errors after layout fix
-    independent_review: Existing morimizu-site connector verified but scoped to that repository; review route awaiting owner selection
+    independent_review: Owner selected GitHub-only review; update PR then request ChatGPT acceptance against the pinned commit
 remaining:
-  - Complete authorized ChatGPT connector setup and independent acceptance review
+  - Complete ChatGPT independent acceptance review through GitHub
   - Decide anonymous API exposure and provider quota / billing controls before publication
   - Approve anonymous Cloud Run invocation and Cloudflare deployment
   - Verify real Gemini, custom domain, share links and production UI
