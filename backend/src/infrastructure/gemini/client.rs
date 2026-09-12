@@ -167,6 +167,8 @@ impl GeminiClient {
             .await
             .map_err(|_| ())?;
         if !response.status().is_success() {
+            // Record only the numeric status, never the key, request or provider body.
+            eprintln!("Gemini request failed: HTTP {}", response.status().as_u16());
             return Err(());
         }
         let bytes = bounded_body(response, 65536).await?;

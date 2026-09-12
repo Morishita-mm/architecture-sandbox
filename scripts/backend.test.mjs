@@ -177,6 +177,7 @@ test('runtime and security boundaries', { timeout: 20000 }, async t => {
     assert.equal(response.status, 502);
     assert.doesNotMatch(await response.text(), /local-test-secret|do-not-echo/);
     assert.equal(calls.length, before + 1); assert.doesNotMatch(runtime.logs(), /local-test-secret|do-not-echo/);
+    assert.match(runtime.logs(), /Gemini request failed: HTTP 503/);
     providerStatus = 200;
   });
   await t.test('URL shortener rejects arbitrary destinations and mock save is removed', async () => {
