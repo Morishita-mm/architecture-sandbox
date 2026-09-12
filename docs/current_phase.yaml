@@ -16,9 +16,11 @@ current_status:
     type: Stateless REST API
     database: None
     persistence: Local JSON save/load
+  local_acceptance:
+    save_restore_and_group_operations: Verified in browser with new JSON and legacy Base64 files
+    evaluation_chart: Verified with local fixture; no console warnings or errors after layout fix
 remaining:
   - Complete authorized ChatGPT connector setup and independent acceptance review
-  - Complete final browser restore verification
   - Decide anonymous API exposure and provider quota / billing controls before publication
   - Register Gemini Secret and deploy the verified image to private Cloud Run
   - Approve and perform GCP / Cloudflare deployment and public access

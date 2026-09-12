@@ -18,6 +18,8 @@ import type { EvaluationResult, Scenario } from "../types";
 // 環境変数の読み込み
 import { API_BASE_URL, APP_SHARE_URL as SHARE_BASE_URL } from "../config";
 
+const CHART_HEIGHT = 280;
+
 interface Props {
   result: EvaluationResult | null;
   onEvaluate: () => void;
@@ -202,7 +204,7 @@ export const EvaluationPanel: React.FC<Props> = ({
 
         {/* 右側: レーダーチャート */}
         <div style={chartBoxStyle}>
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
             <RadarChart cx="50%" cy="50%" outerRadius="80%" data={chartData}>
               <PolarGrid />
               <PolarAngleAxis dataKey="subject" tick={{ fontSize: 12 }} />
@@ -280,7 +282,7 @@ const topSectionStyle: React.CSSProperties = {
   display: "flex",
   gap: "20px",
   marginBottom: "30px",
-  height: "300px",
+  height: CHART_HEIGHT + 20,
 };
 
 const scoreBoxStyle: React.CSSProperties = {

@@ -110,7 +110,7 @@ Terraform 1.9.8 / Google provider 7.46.1を使用。事前のvalidateとmock pla
 - 東京のDocker Artifact Registryが存在し、保存イメージは0。Container Scanning APIは無効。
 - 必要APIが有効で、東京のCloud Run serviceは0件。
 
-公開前のChatGPTによる独立レビュー、最終画面確認、Geminiキーとquota・予算通知の設定は引き続き必要。
+ローカルの最終画面確認は完了した。詳細は[セキュリティレビュー](security-review.md)を参照。公開前のChatGPTによる独立レビュー、Geminiキーとquota・予算通知の設定、配置後の実ドメインでの受入は引き続き必要。
 
 ## 初回配置
 

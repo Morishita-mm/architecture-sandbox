@@ -58,7 +58,10 @@ APIは利用者認証を持ちません。CORSはブラウザの読み取り制�
 
 - 自動検証: フロントエンド32件、Rust単体2件、API統合21件が成功。lint / 型検査 / build / clippy成功。production build / Wrangler dry-run / linux/amd64 Docker buildが成功。非root UID 10001、PORT変更、health、SIGTERM終了を確認。Composeの構文確認も成功。
 - 依存監査: npm audit、cargo auditとも既知脆弱性0件（2026-09-13）。
-- ブラウザ: 偽Geminiを使ったカスタムチャット・ノード配置・編集・82点の評価表示・外部画像/リンク抑止・実JSONファイル保存を確認。ブラウザの送信JSONと保存ファイルに内部定義がないことを確認。旧実保存ファイルの変換も成功。新旧ファイルの画面上の再読込は確認中。
+- ブラウザ: 偽Geminiを使ったカスタムチャット・ノード配置・編集・82点の評価表示・外部画像/リンク抑止・実JSONファイル保存を確認。ブラウザの送信JSONと保存ファイルに内部定義がないことを確認。
+- 最終ローカル画面確認（2026-09-13）: 新JSONと旧Base64の実保存ファイルを画面から読み込み、タイトル・会話・ノード・評価結果を復元できた。旧ファイルの再保存はschemaVersion 2の通常JSONとなり、projectIdを維持し、隠し要件・systemメッセージを含めない。保存完了は画面内通知で表示され、操作を継続できた。
+- グループ操作: 既存ノードの後にグループを追加し、所属・切り離し・再所属を確認。保存時に親が子より前に並び、画面から親を削除すると子も削除されることを確認。
+- 評価グラフ: 初回表示でサイズ未確定の警告が出る問題を修正。既存レイアウトの高さをグラフにも明示し、修正後の評価表示でconsole warning/errorが0件。frontendの32テスト・lint・型検査を含むlocal/production build・Wrangler dry-runも成功。
 - ChatGPT: 専用チャットと読み取り専用連携の新設は許可済み。接続先の選択待ちで、独立レビューは未実施。レビュー完了とは扱わない。
 
 参照: [OWASP Password Storage](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)、[OWASP LLM Prompt Injection Prevention](https://cheatsheetseries.owasp.org/cheatsheets/LLM_Prompt_Injection_Prevention_Cheat_Sheet.html)、[Gemini generateContent](https://ai.google.dev/api/generate-content)。
