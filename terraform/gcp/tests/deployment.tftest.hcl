@@ -6,7 +6,7 @@ variables {
   enable_service            = false
   public_invocation_enabled = false
   image_ref                 = ""
-  gemini_secret_version      = ""
+  gemini_secret_version     = ""
 }
 run "foundation_only" {
   command = plan
