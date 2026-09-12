@@ -164,8 +164,8 @@ function ArchitectureFlow({
         const requiredWidth = relativePos.x + childWidth + padding;
         const requiredHeight = relativePos.y + childHeight + padding;
 
-        setNodes((nds) =>
-          nds.map((n) => {
+        setNodes((nds) => {
+          const updated = nds.map<Node<AppNodeData>>((n) => {
             // 親ノードのサイズ更新
             if (n.id === targetGroup.id) {
               const currentWidth = n.width || Number(n.style?.width) || 300;
@@ -211,8 +211,11 @@ function ArchitectureFlow({
               };
             }
             return n;
-          })
-        );
+          });
+          // React Flow requires parents before their children (including deletion).
+          const child = updated.find(n => n.id === node.id);
+          return child ? [...updated.filter(n => n.id !== node.id), child] : updated;
+        });
       }
     },
     [getIntersectingNodes, setNodes]

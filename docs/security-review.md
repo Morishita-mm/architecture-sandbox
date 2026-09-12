@@ -17,7 +17,7 @@
 | AI Markdownの外部画像・リンクによる外部通信誘導 | 画像を出力せずリンクを通常文字として表示。CSPの接続先をAPI originに限定。no-referrer、frame-ancestors、nosniffを設定 |
 | 各要求でHTTPクライアント作成と定義ファイル読み込み | 起動時に検証・ロードし、接続プールと評価プロンプトを再利用 |
 | 初回に設計・評価ライブラリ全体を読む | 設計画面と評価画面を遅延ロード。ローカルbuildのJSは単一約830kB/gzip256kBから初期約245kB/gzip79kB（共有モジュールは別）へ分割 |
-| 読み込み後のノードID重複、projectId変更、古い選択状態 | ノードはUUID、読込projectIdを維持、選択はIDで現行ノードから取得。state更新中の別state変更と再初期化effectを除去 |
+| 読み込み後のノードID重複、projectId変更、古い選択状態 | ノードはUUID、読込projectIdを維持、選択はIDで現行ノードから取得。state更新中の別state変更と再初期化effectを除去。既存ノードをグループへ移す際も親を子より前に並べ、React Flowの削除処理で子を取り残さない |
 | 未使用実装・依存 | ScenarioSettings、EvaluationModal、react/viteテンプレート画像、SQLxキャッシュ、async-trait、@types/uuid、成功を装う/api/projectsを削除 |
 | 依存関係の既知脆弱性 | bytes / quinn-proto / rustls-webpkiを修正版へ更新。randの健全性警告も解消。RustSecで7件の脆弱性と1件の警告から0件へ。HTTP/3など未使用機能のlockfile依存も監査対象 |
 | 開発コンテナの不要な公開と秘密ファイル混入 | Composeのホストポートを127.0.0.1へ限定。開発用build contextにも.envと生成物の除外を追加 |
