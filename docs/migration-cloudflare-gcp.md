@@ -129,6 +129,11 @@ terraform -chdir=terraform/gcp apply foundation.tfplan
 この段階で作るのは必要API、専用Artifact Registry、runtime service account、Secretの容器とsecret単位のaccessorであり、Cloud Runはまだ作らない。image / Secret / serviceの初回依存を分けるための `enable_service` で、`-target` は使わない。
 
 4. Gemini APIキーをSecret Managerの `architecture-sandbox-gemini-api-key` に登録し、数値versionを控える。Cloud Consoleまたは保護されたローカルファイルを入力に使う。キーをコマンド引数、チャット、tfvars、ログへ貼らない。登録後 `gemini_secret_version` を設定する。
+
+   所有者が[AI StudioのAPI Keys](https://aistudio.google.com/api-keys)で `morimizu-architecture-sandbox` を選んで新しいキーを作成する。候補にない場合は[Projects](https://aistudio.google.com/projects)で既存projectをImportする。現在のAI Studioは新規キーをauth keyとして作成する。[公式のキー作成手順](https://ai.google.dev/gemini-api/docs/api-key)
+
+   キーは[作成済みSecretのVersions画面](https://console.cloud.google.com/security/secret-manager/secret/architecture-sandbox-gemini-api-key/versions?project=morimizu-architecture-sandbox)から新しいversionとして直接登録する。Codexへ知らせるのは登録完了と数値versionだけでよい。AI Studioで前払い残高購入などが求められた場合、追加費用と既存請求先への影響を確認してから進める。[Gemini課金方式](https://ai.google.dev/gemini-api/docs/billing)
+
 5. 検証済み変更をcommit後、明示したprojectへimageをpushする。スクリプトはdirty treeを拒否し、Terraformを自動applyしない。
 
 ```sh

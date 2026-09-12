@@ -1,0 +1,10 @@
+# Review source code and examples, not local deployment state or credentials.
+.git/
+.terraform/
+*.tfstate*
+*.tfplan
+*.tfvars
+*.tfvars.json
+backend.hcl
+.dev.vars*
+.wrangler/
