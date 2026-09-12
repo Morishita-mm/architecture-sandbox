@@ -33,7 +33,7 @@ function startBackend(env) {
 async function waitForHealth(base, child) {
   for (let i = 0; i < 100; i++) {
     if (child.exitCode !== null) throw new Error('Backend exited before health check');
-    try { if ((await fetch(`${base}/healthz`)).ok) return; } catch { /* startup */ }
+    try { if ((await fetch(`${base}/health`)).ok) return; } catch { /* startup */ }
     await delay(50);
   }
   throw new Error('Backend startup timed out');
@@ -78,7 +78,7 @@ test('runtime and security boundaries', { timeout: 20000 }, async t => {
 
   await t.test('PORT, health and cache control do not consume provider quota', async () => {
     assert.notEqual(port, 8080);
-    const response = await fetch(`${base}/healthz`);
+    const response = await fetch(`${base}/health`);
     assert.deepEqual(await response.json(), { status: 'ok' });
     assert.equal(response.headers.get('cache-control'), 'no-store');
     assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
@@ -191,7 +191,7 @@ test('runtime and security boundaries', { timeout: 20000 }, async t => {
     for (let i = 0; i < 100 && calls.length < before + 2; i++) await delay(5);
     assert.equal(calls.length, before + 2);
     assert.equal((await post('/api/chat', chat)).status, 429);
-    assert.equal((await fetch(`${base}/healthz`)).status, 200);
+    assert.equal((await fetch(`${base}/health`)).status, 200);
     assert.deepEqual((await Promise.all(pending)).map(r => r.status), [200, 200]);
     providerDelay = 0;
   });

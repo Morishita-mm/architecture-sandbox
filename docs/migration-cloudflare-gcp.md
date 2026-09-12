@@ -112,6 +112,14 @@ Terraform 1.9.8 / Google provider 7.46.1を使用。事前のvalidateとmock pla
 
 ローカルの最終画面確認は完了した。詳細は[セキュリティレビュー](security-review.md)を参照。公開前のChatGPTによる独立レビュー、Geminiキーとquota・予算通知の設定、配置後の実ドメインでの受入は引き続き必要。
 
+## 非公開Cloud Runの配置（2026-09-13）
+
+所有者がSecret Managerに登録したバージョン `1` が `ENABLED` であることをメタデータだけで確認した。キーの値は取得せず、Cloud Runの専用runtime SAから参照する。
+
+コミット `424309f22ae4d7ff1a4e49d923e7455eab75900b` のLinux amd64 imageを専用Artifact Registryへ配置し、固定digestで非公開Cloud Runを作成した。正式plan/applyは追加1件・変更0件・削除0件。初期revision `architecture-sandbox-api-00001-wfm` はReadyとなり、Secret version `1` の読み込みと内部startup/liveness probeは成功した。Service IAMに匿名bindingはない。
+
+外部確認で `/healthz` がGoogle Frontendの404になる不具合を検出した。Cloud Runは末尾が `z` の一部パスを予約しているため、API・probe・検証スクリプト・手順を `/health` に統一した。修正版の再配置と外部確認は別途記録する。[予約パスの公式仕様](https://docs.cloud.google.com/run/docs/known-issues#reserved-url-paths)
+
 ## 初回配置
 
 本番操作前に移植先GCP project、既存billing accountの利用、Cloudflare account、Secretの登録元を確定する。他アプリのGCP既定projectやTerraform stateを暗黙利用しない。GCP project新設・billing・IAM・公開設定・DNS切替は実行対象を確認してから行う。
@@ -140,7 +148,7 @@ terraform -chdir=terraform/gcp apply foundation.tfplan
 GCP_PROJECT_ID=SELECTED_PROJECT_ID ./deploy_b.sh
 ```
 
-6. 出力されたdigestを `image_ref` に設定し、`enable_service=true` / `public_invocation_enabled=false` としてplan/applyする。API起動時のキー・定義JSONの検証、コンテナの `/healthz` probeを確認する。
+6. 出力されたdigestを `image_ref` に設定し、`enable_service=true` / `public_invocation_enabled=false` としてplan/applyする。API起動時のキー・定義JSONの検証、コンテナの `/health` probeを確認する。
 
 ```sh
 terraform -chdir=terraform/gcp plan -out=service.tfplan
@@ -148,7 +156,7 @@ terraform -chdir=terraform/gcp apply service.tfplan
 terraform -chdir=terraform/gcp output -raw backend_url
 # 権限のあるownerがローカル認証proxy経由でhealthを確認する。
 gcloud run services proxy architecture-sandbox-api --region=asia-northeast1 --project=SELECTED_PROJECT_ID --port=8081
-# 別terminalで curl --fail http://localhost:8081/healthz
+# 別terminalで curl --fail http://localhost:8081/health
 ```
 
 7. 匿名公開を承認後、`public_invocation_enabled=true` のplanで、このserviceだけに `allUsers / roles/run.invoker` が追加されることを確認してapplyする。ブラウザはrun.appへ直接APIリクエストを送るため、この手順が必要。Gemini利用のquota・課金を確認する。

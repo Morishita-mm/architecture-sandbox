@@ -10,7 +10,7 @@ current_status:
     gcp_project_id: morimizu-architecture-sandbox
     gcp_project_number: "431559926189"
     gcp_foundation: Created with owner approval; billing active, protected GCS state, 8 Terraform resources, no drift
-    cloud_run_service: Not created; owner will create and register Gemini key in Secret Manager
+    cloud_run_service: Private service created; Secret version 1 loaded; correcting reserved health path before external acceptance
     production_cutover: Not performed
   architecture:
     type: Stateless REST API
@@ -19,11 +19,11 @@ current_status:
   local_acceptance:
     save_restore_and_group_operations: Verified in browser with new JSON and legacy Base64 files
     evaluation_chart: Verified with local fixture; no console warnings or errors after layout fix
-    independent_review: Read-only connection ready; manual ChatGPT registration and dedicated chat pending
+    independent_review: Existing morimizu-site connector verified but scoped to that repository; review route awaiting owner selection
 remaining:
   - Complete authorized ChatGPT connector setup and independent acceptance review
   - Decide anonymous API exposure and provider quota / billing controls before publication
-  - Register Gemini Secret and deploy the verified image to private Cloud Run
+  - Redeploy health endpoint correction and verify private Cloud Run with Secret version 1
   - Approve and perform GCP / Cloudflare deployment and public access
   - Verify real Gemini, custom domain, share links and production UI
   - Retire AWS only after successful cutover and separate approval

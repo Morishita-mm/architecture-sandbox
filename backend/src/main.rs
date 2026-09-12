@@ -141,8 +141,9 @@ async fn main() {
         .allow_headers([header::CONTENT_TYPE]);
     let app = Router::new()
         .route("/", get(|| async { "Hello, Architecture (Stateless)!" }))
+        // Cloud Run reserves some paths ending in z, including /healthz.
         .route(
-            "/healthz",
+            "/health",
             get(|| async { Json(serde_json::json!({"status":"ok"})) }),
         )
         .route("/api/evaluate", post(evaluate_architecture))

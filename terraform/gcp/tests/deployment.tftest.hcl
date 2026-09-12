@@ -1,6 +1,12 @@
 mock_provider "google" {}
 variables {
-  project_id = "sandbox-test-project"
+  # Keep local production tfvars from changing these isolated plan fixtures.
+  project_id                = "sandbox-test-project"
+  region                    = "asia-northeast1"
+  enable_service            = false
+  public_invocation_enabled = false
+  image_ref                 = ""
+  gemini_secret_version      = ""
 }
 run "foundation_only" {
   command = plan

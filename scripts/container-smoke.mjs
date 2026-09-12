@@ -16,7 +16,7 @@ try {
   let ready = false;
   for (let attempt = 0; attempt < 100; attempt++) {
     try {
-      const res = await fetch(`http://${binding}/healthz`);
+      const res = await fetch(`http://${binding}/health`);
       assert.deepEqual(await res.json(), { status: 'ok' });
       ready = true;
       break;
