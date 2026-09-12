@@ -10,7 +10,7 @@ architecture:
   backend: GCP Cloud Run (Rust / Axum, asia-northeast1)
   images: Artifact Registry (linux/amd64, immutable digest)
   secrets: Secret Manager (pinned numeric version, dedicated runtime identity)
-  ai: Gemini Developer API (gemini-2.5-flash, configurable)
+  ai: Gemini Developer API (gemini-3.5-flash-lite, configurable)
   scaling:
     min_instances: 0
     max_instances: 2

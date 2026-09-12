@@ -7,7 +7,7 @@ services:
       - "127.0.0.1:8080:8080"
     environment:
       GEMINI_API_KEY: ${GEMINI_API_KEY:?Set GEMINI_API_KEY in .env}
-      AI_MODEL_NAME: ${AI_MODEL_NAME:-gemini-2.5-flash}
+      AI_MODEL_NAME: ${AI_MODEL_NAME:-gemini-3.5-flash-lite}
       AI_API_BASE_URL: ${AI_API_BASE_URL:-https://generativelanguage.googleapis.com}
       FRONTEND_ORIGIN: http://localhost:5173
       PORT: "8080"

@@ -209,6 +209,36 @@ test('runtime and security boundaries', { timeout: 20000 }, async t => {
   });
 });
 
+test('Gemini 3 models use supported thinking levels without unbounded output', { timeout: 10000 }, async t => {
+  let captured;
+  const provider = createServer(async (req, res) => {
+    let body = '';
+    for await (const part of req) body += part;
+    captured = JSON.parse(body);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: '確認します。' }] } }] }));
+  });
+  provider.listen(0, '127.0.0.1');
+  await once(provider, 'listening');
+  t.after(async () => { provider.closeAllConnections(); await new Promise(resolve => provider.close(resolve)); });
+  for (const [model, level] of [['gemini-3.5-flash-lite', 'minimal'], ['gemini-3.8-flash', 'low']]) {
+    const port = await freePort();
+    const base = `http://127.0.0.1:${port}`;
+    const runtime = startBackend({ PORT: String(port), FRONTEND_ORIGIN: 'http://localhost:5173', AI_API_BASE_URL: `http://127.0.0.1:${provider.address().port}`, AI_MODEL_NAME: model });
+    try {
+      await waitForHealth(base, runtime.child);
+      const response = await fetch(`${base}/api/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scenario: { id: 'internal_tool', title: '勤怠管理', description: '' }, messages: [{ role: 'user', content: '要件は？' }] }) });
+      assert.equal(response.status, 200);
+      assert.deepEqual(await response.json(), { reply: '確認します。' });
+      assert.deepEqual(captured.generationConfig.thinkingConfig, { thinkingLevel: level });
+      assert.equal(captured.generationConfig.maxOutputTokens, 4096);
+    } finally {
+      if (runtime.child.exitCode === null) runtime.child.kill('SIGTERM');
+      await runtime.exited;
+    }
+  }
+});
+
 for (const [name, env, message] of [
   ['missing Gemini key', { GEMINI_API_KEY: '' }, /GEMINI_API_KEY must not be empty/],
   ['invalid frontend origin', { FRONTEND_ORIGIN: 'https://user:password@example.com/path' }, /FRONTEND_ORIGIN must/],

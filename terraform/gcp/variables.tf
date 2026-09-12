@@ -35,7 +35,7 @@ variable "gemini_secret_version" {
 }
 variable "ai_model_name" {
   type    = string
-  default = "gemini-2.5-flash"
+  default = "gemini-3.5-flash-lite"
 }
 variable "public_invocation_enabled" {
   description = "Enable only when the API is ready for anonymous browser access. CORS is not authentication."

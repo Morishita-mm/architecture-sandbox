@@ -29,6 +29,7 @@ pub struct GeminiClient {
     system_prompt: String,
     url: String,
     api_key: String,
+    thinking_config: Value,
 }
 
 impl GeminiClient {
@@ -56,7 +57,7 @@ impl GeminiClient {
             .replace("{{AVAILABLE_COMPONENTS}}", &names.join(", "));
         let base = env::var("AI_API_BASE_URL")
             .unwrap_or_else(|_| "https://generativelanguage.googleapis.com".into());
-        let model = env::var("AI_MODEL_NAME").unwrap_or_else(|_| "gemini-2.5-flash".into());
+        let model = env::var("AI_MODEL_NAME").unwrap_or_else(|_| "gemini-3.5-flash-lite".into());
         assert!(
             !model.is_empty()
                 && model
@@ -85,6 +86,12 @@ impl GeminiClient {
             .timeout(Duration::from_secs(45))
             .redirect(reqwest::redirect::Policy::none())
             .build()?;
+        // Use thinking levels for Gemini 3; full thinking-off is unsupported.
+        let thinking_config = if model.starts_with("gemini-3") {
+            json!({"thinkingLevel": if model.contains("flash-lite") { "minimal" } else { "low" }})
+        } else {
+            json!({"thinkingBudget": 0})
+        };
         Ok(Self {
             http,
             available_types,
@@ -94,6 +101,7 @@ impl GeminiClient {
                 base.trim_end_matches('/')
             ),
             api_key,
+            thinking_config,
         })
     }
 
@@ -152,7 +160,7 @@ impl GeminiClient {
         contents: Vec<Value>,
         evaluation: bool,
     ) -> Result<String, ()> {
-        let mut config = json!({"maxOutputTokens":4096,"thinkingConfig":{"thinkingBudget":0}});
+        let mut config = json!({"maxOutputTokens":4096,"thinkingConfig":self.thinking_config});
         if evaluation {
             config["responseMimeType"] = json!("application/json");
         }
