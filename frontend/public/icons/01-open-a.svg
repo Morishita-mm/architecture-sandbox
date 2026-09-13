@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-labelledby="01-open-a-primary-title 01-open-a-primary-desc">
+  <title id="01-open-a-primary-title">Architecture Sandbox — OPEN A</title>
+  <desc id="01-open-a-primary-desc">Architecture の A に、あえて接合前の切れ目を残したマーク。右下の部材が加わることで構造が成立する、設計途中の状態を表しています。</desc>
+  <!-- Original paths. No images, fonts, external symbols, or icon-library assets. -->
+  <path id="01-open-a-primary-body" fill="#2164E8" d="M 16 108
+  L 51 27
+  Q 54 20 62 20
+  H 74
+  L 96 68
+  H 73
+  L 62 44
+  L 44 84
+  H 74
+  L 85 108
+  Z"/>
+  <path id="01-open-a-primary-joint" fill="#009F97" d="M 80 78
+  H 101
+  L 115 108
+  H 94
+  Z"/>
+</svg>

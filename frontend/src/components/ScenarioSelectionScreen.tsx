@@ -303,8 +303,16 @@ export const ScenarioSelectionScreen: React.FC<
 
       {/* メインコンテンツ */}
       <div style={{ marginTop: "40px", textAlign: "center" }}>
+        <img
+          src="/icons/01-open-a.svg"
+          alt=""
+          width={88}
+          height={88}
+          style={{ display: "block", margin: "0 auto" }}
+        />
         <h1
           style={{
+            marginTop: "12px",
             marginBottom: "10px",
             fontSize: "3.5em",
             color: "#24292e",
