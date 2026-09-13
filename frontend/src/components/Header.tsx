@@ -19,17 +19,20 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header style={headerContainerStyle}>
       {/* 左側: 戻るボタン */}
-      <button
-        onClick={onBack}
-        style={backButtonStyle}
-        title="シナリオ選択画面に戻る"
-        onMouseEnter={(e) =>
-          (e.currentTarget.style.backgroundColor = "#f0f0f0")
-        }
-        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "white")}
-      >
-        <BiArrowBack size={20} />
-      </button>
+      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        <button
+          onClick={onBack}
+          style={backButtonStyle}
+          title="シナリオ選択画面に戻る"
+          onMouseEnter={(e) =>
+            (e.currentTarget.style.backgroundColor = "#f0f0f0")
+          }
+          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "white")}
+        >
+          <BiArrowBack size={20} />
+        </button>
+        <img src="/icons/01-open-a-small.svg" alt="Architecture Sandbox" width={32} height={32} />
+      </div>
 
       {/* 中央: タイトル */}
       <div style={titleWrapperStyle}>
