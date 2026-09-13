@@ -64,7 +64,7 @@ function ArchitectureFlow({
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState<AppNodeData>(loadedProjectData?.diagram.nodes ?? []);
   const [edges, setEdges, onEdgesChange] = useEdgesState((loadedProjectData?.diagram.edges ?? []).map((e, index) => ({ ...e, id: e.id ?? `loaded-edge-${index}` })));
-  const { screenToFlowPosition, getNodes, getEdges, getIntersectingNodes } = useReactFlow();
+  const { screenToFlowPosition, getNodes, getEdges, getIntersectingNodes, deleteElements } = useReactFlow();
   const [activeTab, setActiveTab] = useState<"chat" | "design" | "evaluate">(loadedProjectData?.evaluation ? "evaluate" : "chat");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => loadedProjectData?.chatHistory ?? [{ role: "model", content: `こんにちは。「${selectedScenario.title}」について、どのような点から詳細を詰めていきましょうか？` }]);
   const [memo, setMemo] = useState(loadedProjectData?.memo ?? "");
@@ -305,6 +305,7 @@ function ArchitectureFlow({
       const newNode: Node<AppNodeData> = {
         id: getId(),
         type,
+        selected: true,
         position: finalPosition,
         parentNode: parentNodeId,
         data: {
@@ -320,7 +321,7 @@ function ArchitectureFlow({
       };
 
       setNodes((nds) => {
-        let nextNodes = nds.concat(newNode);
+        let nextNodes = [...nds.map(n => ({ ...n, selected: false })), newNode];
         if (groupUpdate) {
           nextNodes = nextNodes.map((n) => {
             if (n.id === groupUpdate!.id) {
@@ -340,9 +341,10 @@ function ArchitectureFlow({
         }
         return nextNodes;
       });
+      setEdges(eds => eds.map(e => ({ ...e, selected: false })));
       setSelectedNode(newNode);
     },
-    [screenToFlowPosition, setNodes, getNodes, setSelectedNode]
+    [screenToFlowPosition, setNodes, setEdges, getNodes, setSelectedNode]
   );
 
   const onNodeClick: NodeMouseHandler = useCallback((_, node) => {
@@ -569,6 +571,7 @@ function ArchitectureFlow({
                   nodeTypes={nodeTypes}
                   onNodeClick={onNodeClick}
                   onPaneClick={onPaneClick}
+                  deleteKeyCode={activeTab === "design" && !isHelpOpen ? ["Backspace", "Delete"] : null}
                   fitView
                 >
                   <Background />
@@ -600,6 +603,10 @@ function ArchitectureFlow({
                     onChange={handleNodeUpdate}
                     onClose={() => setSelectedNode(null)}
                     onDetach={handleDetachNode} // 切り離し関数を渡す
+                    onDelete={(id) => {
+                      deleteElements({ nodes: [{ id }] });
+                      setSelectedNode(null);
+                    }}
                   />
                 )}
               </div>

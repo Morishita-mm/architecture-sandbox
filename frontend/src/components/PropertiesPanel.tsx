@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
 import type { Node } from "reactflow";
-import { BiX, BiUnlink } from "react-icons/bi"; // アイコン追加
+import { BiX, BiUnlink, BiTrash } from "react-icons/bi";
 import type { AppNodeData } from "../types";
 
 interface Props {
   selectedNode: Node<AppNodeData> | null;
   onChange: (id: string, newData: AppNodeData) => void;
   onClose: () => void;
+  onDelete: (id: string) => void;
   // ★追加: 親子関係解除関数
   onDetach?: (id: string) => void;
 }
@@ -15,6 +16,7 @@ export const PropertiesPanel: React.FC<Props> = ({
   selectedNode,
   onChange,
   onClose,
+  onDelete,
   onDetach,
 }) => {
   // ... (既存の state や useRef は変更なし) ...
@@ -166,6 +168,17 @@ export const PropertiesPanel: React.FC<Props> = ({
             </button>
           </div>
         )}
+        <div style={detachAreaStyle}>
+          {selectedNode.type === "group" && (
+            <p style={{ fontSize: "12px", color: "#666", marginBottom: "8px" }}>
+              グループ内のコンポーネントと接続線も削除されます。
+            </p>
+          )}
+          <button onClick={() => onDelete(id)} style={detachButtonStyle}>
+            <BiTrash size={16} />
+            {selectedNode.type === "group" ? "グループを削除" : "コンポーネントを削除"}
+          </button>
+        </div>
       </div>
     </div>
   );

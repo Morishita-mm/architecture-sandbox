@@ -151,8 +151,11 @@ export const HelpModal: React.FC<Props> = ({ isOpen, onClose }) => {
                       </td>
                       <td style={tdLabelStyle}>削除</td>
                       <td>
+                        コンポーネントはプロパティパネルの削除ボタンから削除できます。
+                        <br />
                         ノードまたはエッジを選択して <Kbd>Backspace</Kbd> または{" "}
-                        <Kbd>Delete</Kbd>
+                        <Kbd>Delete</Kbd> でも削除できます。
+                        グループを削除すると、内部のコンポーネントと接続線も削除されます。
                       </td>
                     </tr>
                   </tbody>
