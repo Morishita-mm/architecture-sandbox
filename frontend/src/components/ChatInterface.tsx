@@ -67,13 +67,13 @@ export const ChatInterface: React.FC<Props> = ({
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // 変換中 (isComposing === true) のEnterは無視する
     if (e.nativeEvent.isComposing) {
       return;
     }
 
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
@@ -115,8 +115,10 @@ export const ChatInterface: React.FC<Props> = ({
 
       {error && <p role="alert" style={{ color: "#b71c1c", padding: "0 20px" }}>{error}</p>}
       <div style={inputAreaStyle}>
-        <input
-          type="text"
+        <textarea
+          rows={2}
+          aria-label="メッセージ"
+          aria-describedby="chat-input-help"
           maxLength={4000}
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -132,6 +134,9 @@ export const ChatInterface: React.FC<Props> = ({
         >
           送信
         </button>
+      </div>
+      <div id="chat-input-help" style={inputHelpStyle}>
+        Enterで送信・Shift + Enterで改行
       </div>
     </div>
   );
@@ -179,7 +184,7 @@ const bubbleStyle: React.CSSProperties = {
 };
 
 const inputAreaStyle: React.CSSProperties = {
-  padding: "20px",
+  padding: "20px 20px 8px",
   borderTop: "1px solid #eee",
   display: "flex",
   gap: "10px",
@@ -188,14 +193,28 @@ const inputAreaStyle: React.CSSProperties = {
 
 const inputStyle: React.CSSProperties = {
   flex: 1,
+  minWidth: 0,
   padding: "12px",
   borderRadius: "24px",
   border: "1px solid #ddd",
   fontSize: "16px",
+  fontFamily: "inherit",
+  lineHeight: "1.5",
+  resize: "vertical",
+  maxHeight: "200px",
   outline: "none",
 };
 
+const inputHelpStyle: React.CSSProperties = {
+  padding: "0 20px 12px",
+  fontSize: "12px",
+  color: "#666",
+  backgroundColor: "#f9f9f9",
+};
+
 const sendButtonStyle: React.CSSProperties = {
+  alignSelf: "flex-end",
+  height: "48px",
   padding: "0 25px",
   borderRadius: "24px",
   border: "none",

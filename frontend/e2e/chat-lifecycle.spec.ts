@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 
-const question = 'タブを移動しても回答を保存してください';
+const question = 'タブを移動しても回答を保存してください\n予算についても教えてください';
 const reply = '遅延した回答を一度だけ保存しました';
 const project = {
   schemaVersion: 2, version: '1.0', timestamp: '2026-09-13T00:00:00.000Z',
@@ -38,7 +38,13 @@ test('delayed chat survives design/evaluation tab changes and is saved once', as
     await route.fulfill({ json: { reply }, headers: { 'access-control-allow-origin': '*' } });
   });
   const input = page.getByPlaceholder('要件について質問する（例：予算はどのくらいですか？）');
-  await input.fill(question); await page.getByRole('button', { name: '送信', exact: true }).click();
+  const [firstLine, secondLine] = question.split('\n');
+  await input.fill(firstLine);
+  await input.press('Shift+Enter');
+  await expect(input).toHaveValue(`${firstLine}\n`);
+  expect(requests).toBe(0);
+  await input.pressSequentially(secondLine);
+  await input.press('Enter');
   await seen.promise;
   await page.getByRole('button', { name: 'アーキテクチャ設計', exact: true }).click();
   await expect(input).toBeHidden();
@@ -52,6 +58,25 @@ test('delayed chat survives design/evaluation tab changes and is saved once', as
   expect(saved.memo).toBe(project.memo);
   expect(saved.chatHistory).toEqual([{ role: 'user', content: question }, { role: 'model', content: reply }]);
   expect(requests).toBe(1);
+});
+
+test('IME confirmation does not send; the send button preserves the multiline message', async ({ page }) => {
+  await load(page);
+  const received: unknown[] = [];
+  await page.route('**/api/chat', async route => {
+    if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'POST', 'access-control-allow-headers': 'content-type' } });
+    received.push(route.request().postDataJSON().messages);
+    await route.fulfill({ json: { reply }, headers: { 'access-control-allow-origin': '*' } });
+  });
+  const input = page.getByPlaceholder('要件について質問する（例：予算はどのくらいですか？）');
+  await input.fill(question);
+  await input.dispatchEvent('keydown', { key: 'Enter', code: 'Enter', isComposing: true });
+  await expect(input).toHaveValue(question);
+  expect(received).toHaveLength(0);
+  await page.getByRole('button', { name: '送信', exact: true }).click();
+  await expect(page.getByText(reply, { exact: true })).toBeVisible();
+  expect(received).toEqual([[{ role: 'user', content: question }]]);
+  expect((await save(page)).chatHistory).toEqual([{ role: 'user', content: question }, { role: 'model', content: reply }]);
 });
 
 test('leaving a project aborts its request and never inserts an old reply in a new project', async ({ page }) => {
