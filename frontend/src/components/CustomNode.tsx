@@ -46,7 +46,7 @@ export const CustomNode = memo(({ data, selected }: NodeProps<AppNodeData>) => {
 
   const badgeStyle: React.CSSProperties = {
     position: "absolute",
-    top: "-10px",
+    bottom: "calc(100% + 6px)",
     right: "10px",
     background: styleConfig.badge,
     color: "#333",
@@ -57,6 +57,7 @@ export const CustomNode = memo(({ data, selected }: NodeProps<AppNodeData>) => {
     fontWeight: "bold",
     textTransform: "uppercase",
     whiteSpace: "nowrap",
+    pointerEvents: "none",
   };
 
   const isRenamed = data.label !== data.originalType;

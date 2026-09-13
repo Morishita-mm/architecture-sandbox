@@ -1,10 +1,10 @@
 project_summary:
   name: architecture-sandbox
-  status: Cloudflare/GCP implementation; production cutover pending
+  status: Cloudflare/GCP production published; current main release status is in GitHub Actions
   persistence: Local JSON files only; no database
 urls:
-  planned_frontend: https://sandbox.morimizu.dev
-  backend: Terraform terraform/gcp output backend_url after deployment
+  frontend: https://sandbox.morimizu.dev
+  backend: https://architecture-sandbox-api-h5zlhkux4q-an.a.run.app
 architecture:
   frontend: Cloudflare Workers Static Assets (React / Vite SPA)
   backend: GCP Cloud Run (Rust / Axum, asia-northeast1)
@@ -21,4 +21,4 @@ architecture:
 migration:
   runbook: docs/migration-cloudflare-gcp.md
   legacy_aws: Preserved in terraform/*.tf; no AWS resources changed
-  production_acceptance: Pending project/billing/secret selection, deployment and live verification
+  production_acceptance: Real chat/evaluation, JSON round trip, TinyURL, TLS/CORS/SPA verified; see docs/current_phase.yaml for follow-up fixes

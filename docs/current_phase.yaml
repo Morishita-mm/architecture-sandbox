@@ -1,7 +1,7 @@
 project_info:
   name: Architecture Sandbox
   last_updated: 2026-09-13
-  status: CI/CD implementation and independent review fixes; production setup pending
+  status: Production published; current release outcome is recorded in GitHub Actions
 current_status:
   deployment:
     frontend_target: Cloudflare Workers Static Assets
@@ -9,12 +9,15 @@ current_status:
     backend_target: GCP Cloud Run (Tokyo)
     gcp_project_id: morimizu-architecture-sandbox
     gcp_project_number: "431559926189"
-    gcp_foundation: Created with owner approval; billing active, protected GCS state, 8 Terraform resources, no drift
-    cloud_run_service: Private service healthy; authenticated health, real Gemini chat and evaluation verified
-    cloud_run_revision: architecture-sandbox-api-00005-gnh
+    gcp_foundation: Owner-approved dedicated project, protected GCS state, scoped GitHub WIF and runtime identities
+    cloud_run_service: Public invocation explicitly approved; health, real Gemini chat and evaluation verified
+    cloud_run_revision: architecture-sandbox-api-169ca36-34738236394-1
     gemini_secret_version: "1"
     gemini_model: gemini-3.5-flash-lite
-    production_cutover: Not performed
+    production_cutover: Published at https://sandbox.morimizu.dev; AWS resources retained
+    first_release: https://github.com/Morishita-mm/architecture-sandbox/actions/runs/34738236394
+    first_release_result: Deployment succeeded; immediate smoke hit initial DNS propagation, identical smoke later passed
+    billing_controls: Dedicated project alerts and separate Gemini / Cloud Run spend caps configured; no strict total-cost guarantee
   architecture:
     type: Stateless REST API
     database: None
@@ -22,15 +25,15 @@ current_status:
   local_acceptance:
     save_restore_and_group_operations: Verified in browser with new JSON and legacy Base64 files
     evaluation_chart: Verified with local fixture; no console warnings or errors after layout fix
-    independent_review: First GitHub review received; AS-R1 to AS-R3 addressed, re-review required
+    independent_review: GitHub review accepted 5012fb6 after AS-R1 to AS-R3 fixes; follow-up changes require their own review
+  production_acceptance:
+    transport: TLS, public health, CORS, invalid input, SPA fallback and security headers passed
+    browser: Real Gemini chat and evaluation, 3-node diagram, JSON save/restore and TinyURL challenge start passed
+    findings: Initial DNS readiness race and renamed-node badge covering input handle; bounded readiness and connection regression added
   delivery:
     workflow: Main push or manual Production release, reusable CI then production approval
     credentials: GCP Workload Identity Federation and scoped Cloudflare Environment Secret
-    bootstrap: GitHub production Environment, variables, token and GCP identity not applied
+    bootstrap: Main protection and owner-approved production Environment configured; real WIF, artifact handoff and Cloudflare authentication passed
 remaining:
-  - Approve and configure the reviewed CI/CD identity and production Environment
-  - Complete ChatGPT independent acceptance review through GitHub
-  - Decide anonymous API exposure and provider quota / billing controls before publication
-  - Approve anonymous Cloud Run invocation and Cloudflare deployment
-  - Verify real Gemini, custom domain, share links and production UI
-  - Retire AWS only after successful cutover and separate approval
+  - Check the release run for the current main SHA; code review alone does not establish deployment success
+  - Retire AWS only with separate approval; this migration does not delete AWS resources

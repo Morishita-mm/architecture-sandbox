@@ -12,13 +12,13 @@ mainへのpushまたはmainを選んだ `Production release` の手動実行で�
 2. GitHub OIDC / Workload Identity Federationで、限定したデプロイ用サービスアカウントを短時間だけ使用する。GCPの長期キーやGeminiキーをGitHub Secretsに保存しない。
 3. Artifact Registryへpushし、取得したdigestを指定してCloud Run candidateを作る。既存トラフィックを維持したまま、候補のhealth・CORS・不正入力拒否を確認する。Geminiの実呼び出しはない。
 4. 実際のAPI URLでフロントエンドをbuildし、Wrangler dry-runを行う。成功後にAPIのトラフィックを候補へ移し、Workersへ配信する。
-5. 公開APIとトップ・SPA深いパス・CSPを確認する。run summaryにGit SHA、digest、候補revision、以前の稼働revisionを残す。成功判定は各stepの結果で確認する。
+5. 独自ドメインの初回DNS/TLS反映を、読み取り専用GETで最大約3分待つ（step上限4分）。その後、公開APIとトップ・SPA深いパス・CSPを従来どおり厳密に確認する。Gemini呼び出しはリトライしない。run summaryにGit SHA、digest、候補revision、以前の稼働revisionを残す。成功判定は各stepの結果で確認する。
 
 配置は共通のconcurrency groupで直列化し、実行中の配置を新しいpushで中断しない。候補確認までに失敗した場合は旧APIが稼働を続ける。API切替後にWorkersの配信・公開確認が失敗した場合は、下記の手順で状況を確認して復旧する。曖昧な配信結果を自動で再実行・巻き戻ししない。
 
 ## 初回に必要な設定
 
-現在の非公開APIを起点に、次の準備を行う。これらはworkflowが自動で有効化する設定ではない。
+新しい環境では非公開APIを起点に、次の準備を行う。移植先の本番環境では所有者承認のもと設定済み。これらはworkflowが自動で有効化する設定ではない。
 
 - Gemini quotaと請求監視、匿名APIの利用方針、独立レビューを確認する。公開の承認後、所有者がTerraformの `public_invocation_enabled=true` をplan/applyする。CDは公開設定・IAMを変更せず、APIがまだ非公開なら最初のhealth確認で止まる。
 - 所有者が `enable_github_deploy=true` のplanを確認し適用する。専用identity・必要API・対象リソースの権限を追加する。初期値はfalse。既存サービスの作り直しや匿名bindingの追加を含めない。
@@ -52,7 +52,11 @@ Google側の信頼条件は、このrepository/ownerの数値ID、main、product
 
 TerraformはIAM・CPU/メモリ・scale・Secret version・環境変数を管理する。イメージだけはCIへ所有権を移し、Terraformの `ignore_changes` で、通常のinfra applyが古い `image_ref` へ巻き戻さないようにする。`image_ref` は初回作成用の固定digestとして残す。イメージの変更・復旧はCDか明示したCloud Run revisionへの切替で行う。
 
+初回CD後の実planでは、gcloudが設定した `client` / `client_version` / `template.revision` の解除だけが検出された。IAM・Secret参照・実行設定の差分はなかった。このメタデータ差分をゼロと記録せず、通常のinfra変更と区別して確認する。revision名を変更検知の対象から除外すると、将来の実行設定変更時にも既存の固定revision名を使うため、安易に `ignore_changes` を広げない。メタデータ差分を消すだけの本番applyは不要。
+
 ## 復旧
+
+初回の[release run 34738236394](https://github.com/Morishita-mm/architecture-sandbox/actions/runs/34738236394)は、候補確認・API切替・Cloudflare配信に成功した直後、公開smokeだけがDNSの `ENOTFOUND` で失敗した。反映後は同じsmokeが成功し、本番の実Gemini・保存復元・共有リンクも確認した。配信成功とworkflow全体の成功は別々に確認する。上記の待機はこの初回反映を吸収するためのもので、後続smokeの検証を緩めない。
 
 候補の作成だけで失敗した場合、既存トラフィックに変更はない。失敗したcandidateの調査後、修正コミットをmainから配置する。
 
