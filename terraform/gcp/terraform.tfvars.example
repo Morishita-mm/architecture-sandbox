@@ -2,6 +2,7 @@ project_id                 = "YOUR_GCP_PROJECT_ID"
 frontend_origin            = "https://sandbox.morimizu.dev"
 enable_service             = false
 public_invocation_enabled  = false
+enable_github_deploy        = false
 # After foundation creation, image push and Secret registration:
 # enable_service        = true
 # image_ref             = "asia-northeast1-docker.pkg.dev/YOUR_GCP_PROJECT_ID/architecture-sandbox/backend@sha256:..."

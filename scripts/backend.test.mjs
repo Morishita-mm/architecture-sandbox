@@ -147,11 +147,24 @@ test('runtime and security boundaries', { timeout: 20000 }, async t => {
       { ...design, nodes: [{ ...design.nodes[0], type: 'InventedType' }] },
       { ...design, nodes: [{ ...design.nodes[0], parentNode: 'missing' }] },
       { ...design, nodes: [{ ...design.nodes[0], parentNode: 'node-1' }] },
+      { ...design, nodes: [design.nodes[0], { ...design.nodes[0], id: 'child', parentNode: 'node-1' }] },
       { ...design, edges: [{ source: 'node-1', target: 'missing' }] },
       { ...design, nodes: Array(201).fill(design.nodes[0]) },
     ]) assert.ok([400, 422].includes((await post('/api/evaluate', payload)).status));
     assert.equal((await post('/api/chat', { ...chat, scenario: { ...scenario, description: 'x'.repeat(140000) } })).status, 413);
     assert.equal(calls.length, before);
+  });
+  await t.test('valid nested groups reach the provider once', async () => {
+    reply = JSON.stringify(result);
+    const before = calls.length;
+    const response = await post('/api/evaluate', { ...design, nodes: [
+      { ...design.nodes[0], parentNode: 'subnet' },
+      { id: 'subnet', type: 'Subnet', label: 'subnet', description: '', parentNode: 'vpc' },
+      { id: 'vpc', type: 'VPC (Network)', label: 'VPC', description: '' },
+    ] });
+    assert.equal(response.status, 200);
+    assert.equal(calls.length, before + 1);
+    assert.deepEqual(await response.json(), result);
   });
   await t.test('malformed, partial and out-of-range reports return failure, never success', async () => {
     for (const invalid of ['not json', JSON.stringify({ score: 0, feedback: 'missing details' }), JSON.stringify({ ...result, totalScore: 101 }), JSON.stringify({ ...result, totalScore: 1.5 })]) {

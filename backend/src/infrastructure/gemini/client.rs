@@ -15,6 +15,7 @@ struct ArchitectureDefs {
 }
 #[derive(Deserialize)]
 struct Category {
+    id: String,
     items: Vec<Item>,
 }
 #[derive(Deserialize)]
@@ -26,6 +27,7 @@ struct Item {
 pub struct GeminiClient {
     pub http: Client,
     pub available_types: HashSet<String>,
+    pub group_types: HashSet<String>,
     system_prompt: String,
     url: String,
     api_key: String,
@@ -41,6 +43,13 @@ impl GeminiClient {
         );
         let path = env::var("ARCH_DEFS_PATH").or_else(|_| env::var("ARCH_DEFS_PATH_DEV"))?;
         let defs: ArchitectureDefs = serde_json::from_str(&fs::read_to_string(path)?)?;
+        let group_types: HashSet<_> = defs
+            .categories
+            .iter()
+            .filter(|c| c.id == "group")
+            .flat_map(|c| c.items.iter().map(|i| i.type_name.clone()))
+            .collect();
+        assert!(!group_types.is_empty(), "Missing group definitions");
         let available_types: HashSet<_> = defs
             .categories
             .into_iter()
@@ -95,6 +104,7 @@ impl GeminiClient {
         Ok(Self {
             http,
             available_types,
+            group_types,
             system_prompt,
             url: format!(
                 "{}/v1beta/models/{model}:generateContent",

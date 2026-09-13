@@ -16,7 +16,7 @@ Browser ── HTTPS ── sandbox.morimizu.dev (Cloudflare Workers Static Asse
 | App Runner | Cloud Run、min 0 / max 2 instances、1 vCPU / 512 MiB、concurrency 8 |
 | ECR | Artifact Registry、Linux amd64、Git SHAタグから固定digestで配置 |
 | Terraformの平文APIキー変数 | Secret Manager、数値version固定、専用runtime SAへのsecret単位のaccessor |
-| 手動AWS deploy scripts | `deploy_b.sh`（image push）、`deploy_f.sh`（Cloudflare）、GCP Terraform |
+| 手動AWS deploy scripts | GitHub Actionsの`Production release`、GCP Terraform（旧deploy scriptsは削除） |
 
 移植後の全体レビューで、内部要件をサーバーへ移し、公開Scenarioだけを受け取るAPIへ変更した。フロントエンドとバックエンドを同じ版で配置する。旧Base64ファイル・挑戦状は読み込みを維持し、新規保存・共有は公開データのJSONを使う。詳しい互換性、制限、匿名APIの残存リスクは[セキュリティレビュー](security-review.md)を参照。
 
@@ -163,11 +163,7 @@ terraform -chdir=terraform/gcp apply foundation.tfplan
 
    キーは[作成済みSecretのVersions画面](https://console.cloud.google.com/security/secret-manager/secret/architecture-sandbox-gemini-api-key/versions?project=morimizu-architecture-sandbox)から新しいversionとして直接登録する。Codexへ知らせるのは登録完了と数値versionだけでよい。AI Studioで前払い残高購入などが求められた場合、追加費用と既存請求先への影響を確認してから進める。[Gemini課金方式](https://ai.google.dev/gemini-api/docs/billing)
 
-5. 検証済み変更をcommit後、明示したprojectへimageをpushする。スクリプトはdirty treeを拒否し、Terraformを自動applyしない。
-
-```sh
-GCP_PROJECT_ID=SELECTED_PROJECT_ID ./deploy_b.sh
-```
+5. 新規環境の初回だけ、所有者が検証済みコミットから `Dockerfile.prod` をLinux amd64でbuildし、選定したprojectのArtifact Registryへimageをpushする。取得した不変digestを使用し、Terraformへタグを渡さない。現在の移植先ではこの初回作成は完了している。以降のimage更新は[CI/CD](ci-cd.md)に統一する。
 
 6. 出力されたdigestを `image_ref` に設定し、`enable_service=true` / `public_invocation_enabled=false` としてplan/applyする。API起動時のキー・定義JSONの検証、コンテナの `/health` probeを確認する。
 
@@ -181,15 +177,7 @@ gcloud run services proxy architecture-sandbox-api --region=asia-northeast1 --pr
 ```
 
 7. 匿名公開を承認後、`public_invocation_enabled=true` のplanで、このserviceだけに `allUsers / roles/run.invoker` が追加されることを確認してapplyする。ブラウザはrun.appへ直接APIリクエストを送るため、この手順が必要。Gemini利用のquota・課金を確認する。
-8. `backend_url` を `VITE_API_BASE_URL` に指定してCloudflareへデプロイする。`wrangler.jsonc` のCustom Domainが `sandbox.morimizu.dev` を設定する。workers.devとversion preview URLsは無効。既存DNS recordがある場合は上書き前に用途を確認する。
-
-```sh
-export CLOUDFLARE_ACCOUNT_ID=SELECTED_CLOUDFLARE_ACCOUNT_ID
-export VITE_API_BASE_URL="$(terraform -chdir=terraform/gcp output -raw backend_url)"
-./deploy_f.sh
-```
-
-Cloudflare認証には既存のWrangler認証、または必要範囲のAPI tokenを使用する。GitHub Actionsでは `production` Environmentへ `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_API_TOKEN` secretsと `VITE_API_BASE_URL` variableを設定し、mainの `Deploy frontend to Cloudflare` を手動実行する。PR CIは外部へ配置しない。
+8. [CI/CD手順](ci-cd.md)に従ってproduction Environment、限定したGitHub認証とCloudflare tokenを設定する。mainの `Production release` がAPI候補の検証、実URLによるfrontend build、API切替、Workers配信を実行する。旧手動スクリプトとfrontend単独workflowは廃止した。
 
 ## 本番の受入・切替・rollback
 

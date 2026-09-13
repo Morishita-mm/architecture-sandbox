@@ -3,3 +3,5 @@ target
 .env
 .env.*
 .git
+# Short-lived GitHub OIDC credential files must never enter artifacts.
+gha-creds-*.json

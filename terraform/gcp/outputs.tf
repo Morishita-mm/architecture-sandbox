@@ -10,3 +10,9 @@ output "backend_url" {
 output "frontend_origin" {
   value = var.frontend_origin
 }
+output "github_workload_identity_provider" {
+  value = try(google_iam_workload_identity_pool_provider.github[0].name, null)
+}
+output "github_deploy_service_account" {
+  value = try(google_service_account.deployer[0].email, null)
+}

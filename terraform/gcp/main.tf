@@ -95,6 +95,8 @@ resource "google_cloud_run_v2_service" "backend" {
   }
   lifecycle {
     prevent_destroy = true
+    # CI owns image releases; Terraform continues to own runtime configuration and IAM.
+    ignore_changes = [template[0].containers[0].image]
     precondition {
       condition     = can(regex("^${var.region}-docker\\.pkg\\.dev/${var.project_id}/${local.name}/backend@sha256:[a-f0-9]{64}$", var.image_ref))
       error_message = "Deploy a digest from this project's Architecture Sandbox Artifact Registry repository."

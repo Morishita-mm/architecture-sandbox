@@ -1,7 +1,6 @@
 name: CI Pipeline
 on:
-  push:
-    branches: [main]
+  workflow_call:
   pull_request:
     branches: [main]
 permissions:
@@ -10,12 +9,13 @@ jobs:
   backend-test:
     name: Backend Test & Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dtolnay/rust-toolchain@1.93.0
         with:
           components: clippy, rustfmt
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
       - uses: actions/cache@v4
@@ -32,15 +32,27 @@ jobs:
       - run: cargo test --locked && cargo build --locked
         working-directory: backend
       - run: node --test scripts/backend.test.mjs
-      - run: docker build --platform linux/amd64 -f Dockerfile.prod -t architecture-sandbox:test .
-      - run: node scripts/container-smoke.mjs architecture-sandbox:test
+      - run: docker build --platform linux/amd64 -f Dockerfile.prod --label "org.opencontainers.image.revision=$GITHUB_SHA" -t architecture-sandbox:tested .
+      - run: node scripts/container-smoke.mjs architecture-sandbox:tested
+
+      - name: Export the tested container for this release
+        if: github.event_name != 'pull_request'
+        run: docker save architecture-sandbox:tested --output "$RUNNER_TEMP/backend.tar"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: github.event_name != 'pull_request'
+        with:
+          name: tested-backend-${{ github.sha }}
+          path: ${{ runner.temp }}/backend.tar
+          if-no-files-found: error
+          retention-days: 1
 
   frontend-test:
     name: Frontend Lint & Cloudflare Build
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
           cache: npm
@@ -56,6 +68,10 @@ jobs:
         env:
           VITE_API_BASE_URL: https://cloud-run-fixture.example.com
           VITE_APP_SHARE_URL: https://sandbox.morimizu.dev
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - run: npm run test:e2e
+        working-directory: frontend
       - run: npm run deploy:check
         working-directory: frontend
         env:
@@ -64,8 +80,9 @@ jobs:
   infrastructure-test:
     name: Terraform Validate & Plan Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.9.8
@@ -73,4 +90,9 @@ jobs:
       - run: terraform -chdir=terraform/gcp init -backend=false -lockfile=readonly
       - run: terraform -chdir=terraform/gcp validate
       - run: terraform -chdir=terraform/gcp test
-      - run: bash -n deploy_b.sh deploy_f.sh
+      - run: bash -n scripts/deploy-backend.sh
+      - run: node --test scripts/deployment.test.mjs
+      - name: Lint release shell
+        run: shellcheck scripts/deploy-backend.sh
+      - name: Lint GitHub workflows
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12

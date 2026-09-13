@@ -42,3 +42,8 @@ variable "public_invocation_enabled" {
   type        = bool
   default     = false
 }
+variable "enable_github_deploy" {
+  description = "Create the narrowly scoped GitHub production deployment identity after reviewing its IAM plan."
+  type        = bool
+  default     = false
+}

@@ -194,7 +194,7 @@ async fn evaluate_architecture(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<EvaluationRequest>,
 ) -> Result<Json<EvaluationResult>, ApiError> {
-    if !payload.validate(&state.gemini.available_types) {
+    if !payload.validate(&state.gemini.available_types, &state.gemini.group_types) {
         return Err(ApiError::Invalid);
     }
     let _permit = state.admit()?;

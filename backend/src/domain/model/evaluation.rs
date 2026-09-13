@@ -30,7 +30,7 @@ pub struct EvaluationRequest {
 }
 
 impl EvaluationRequest {
-    pub fn validate(&self, types: &HashSet<String>) -> bool {
+    pub fn validate(&self, types: &HashSet<String>, groups: &HashSet<String>) -> bool {
         if !self.scenario.validate()
             || self.nodes.is_empty()
             || self.nodes.len() > 200
@@ -61,6 +61,9 @@ impl EvaluationRequest {
                 let Some(ancestor) = nodes.get(id) else {
                     return false;
                 };
+                if !groups.contains(&ancestor.kind) {
+                    return false;
+                }
                 parent = ancestor.parent.as_deref();
             }
         }

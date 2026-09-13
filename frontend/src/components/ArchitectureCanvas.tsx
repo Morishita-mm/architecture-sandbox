@@ -525,15 +525,13 @@ function ArchitectureFlow({
               position: "relative",
             }}
           >
-            {activeTab === "chat" && (
-              <div style={{ width: "100%", height: "100%" }}>
-                <ChatInterface
-                  scenario={currentScenario}
-                  messages={chatMessages}
-                  onSendMessage={setChatMessages}
-                />
-              </div>
-            )}
+            <div style={{ display: activeTab === "chat" ? "block" : "none", width: "100%", height: "100%" }}>
+              <ChatInterface
+                scenario={currentScenario}
+                messages={chatMessages}
+                onSendMessage={setChatMessages}
+              />
+            </div>
             {activeTab === "evaluate" && (
               <div style={{ width: "100%", height: "100%" }}>
                 <Suspense fallback={<div role="status">評価画面を読み込み中...</div>}>

@@ -90,3 +90,28 @@ test('frontend source no longer embeds hidden requirements or client system prom
   const source = await readFile(new URL('../src/scenarios.ts', import.meta.url), 'utf8') + await readFile(new URL('../src/components/ArchitectureCanvas.tsx', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /Hidden_Context|difficultySpecs|role: "system"|1000万|50万円|5,000円|1 Million DAU/);
 });
+
+
+test('all accepted history fits a save, including multibyte text past the old 2MiB limit', () => {
+  const p = project();
+  p.chatHistory = Array.from({ length: 1000 }, (_, i) => ({ role: i % 2 ? 'model' : 'user', content: 'あ'.repeat(4000) }));
+  const json = serializeProject(p);
+  assert.ok(Buffer.byteLength(json) > 2 * 1024 * 1024);
+  assert.ok(Buffer.byteLength(json) < MAX_FILE_BYTES);
+  assert.deepEqual(parseProject(json), normalizeProject(p));
+  p.chatHistory.push({ role: 'user', content: '上限超過' });
+  assert.throws(() => serializeProject(p));
+});
+
+test('the file bound covers worst-case JSON escaping at all large schema limits', () => {
+  const p = project();
+  const escaped = '\u0001';
+  p.chatHistory = Array.from({ length: 1000 }, (_, i) => ({ role: i % 2 ? 'model' : 'user', content: escaped.repeat(4000) }));
+  p.memo = escaped.repeat(100000);
+  p.diagram.nodes = Array.from({ length: 200 }, (_, i) => ({ ...structuredClone(node), id: String(i).padEnd(100, escaped), data: { ...node.data, label: escaped.repeat(120), description: escaped.repeat(2000) } }));
+  p.diagram.edges = Array.from({ length: 400 }, (_, i) => ({ id: String(i).padEnd(250, escaped), source: p.diagram.nodes[i % 200].id, target: p.diagram.nodes[(i + 1) % 200].id }));
+  p.evaluation.feedback = p.evaluation.improvement = escaped.repeat(12000);
+  const json = serializeProject(p);
+  assert.ok(Buffer.byteLength(json) < MAX_FILE_BYTES);
+  assert.deepEqual(parseProject(json), normalizeProject(p));
+});

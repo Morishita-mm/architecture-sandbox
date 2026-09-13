@@ -16,7 +16,7 @@ export function saveProjectToLocalFile(data: ProjectSaveData, filename: string):
 }
 
 export async function loadProjectFromLocalFile(file: File): Promise<ProjectSaveData> {
-  if (file.size > MAX_FILE_BYTES) throw new Error('ファイルは2MB以下にしてください。');
+  if (file.size > MAX_FILE_BYTES) throw new Error(`ファイルは${MAX_FILE_BYTES / 1024 / 1024}MiB以下にしてください。`);
   try { return parseProject(await file.text()); }
   catch { throw new Error('プロジェクトファイルの形式またはサイズが不正です。'); }
 }

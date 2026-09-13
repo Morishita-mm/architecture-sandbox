@@ -53,7 +53,7 @@ export const ChatInterface: React.FC<Props> = ({
       const data = await postJson(`${API_BASE_URL}/api/chat`, {
         scenario: publicScenario(scenario), messages: chatContext(newHistory),
       }, controller.signal);
-      if (!data || typeof data !== "object" || !("reply" in data) || typeof data.reply !== "string" || !data.reply.trim() || data.reply.length > 8000) throw new Error("応答の形式が不正です。");
+      if (!data || typeof data !== "object" || !("reply" in data) || typeof data.reply !== "string" || !data.reply.trim() || [...data.reply].length > 4000) throw new Error("応答の形式が不正です。");
       if (!controller.signal.aborted) onSendMessage([...newHistory, { role: "model", content: data.reply }]);
     } catch (error) {
       if (!controller.signal.aborted) {

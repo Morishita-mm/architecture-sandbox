@@ -2,7 +2,9 @@ import type { Scenario, ProjectSaveData, EvaluationResult, SimpleNodeData, ChatM
 import { SCENARIOS } from '../scenarios.ts';
 import definitions from '../constants/architecture_defs.json' with { type: 'json' };
 
-export const MAX_FILE_BYTES = 2 * 1024 * 1024;
+// Covers the worst-case escaped JSON for every field at its schema limit.
+// Keep the byte cap independent of provider request/context limits.
+export const MAX_FILE_BYTES = 32 * 1024 * 1024;
 const componentTypes = new Set(definitions.categories.flatMap(c => c.items.map(i => i.type)));
 const groupTypes = new Set(definitions.categories.find(c => c.id === 'group')!.items.map(i => i.type));
 function invalid(): never { throw new Error('データの形式またはサイズが不正です。対応するプロジェクトファイルを選んでください。'); }

@@ -75,7 +75,7 @@ architecture-sandbox/
 
 ## 配置・開発
 
-Cloudflare / GCP向けの実装を用意しています。公開予定URLは `https://sandbox.morimizu.dev`。本番配置とAWSからの切替は未実施です。セットアップ・検証・費用・初回配置・rollbackは[移植手順](docs/migration-cloudflare-gcp.md)を参照してください。
+Cloudflare / GCP向けの実装を用意しています。公開予定URLは `https://sandbox.morimizu.dev`。非公開Cloud Runの疎通確認は完了し、一般公開とAWSからの切替は未実施です。GitHub Actionsからの本番配置は[CI/CD手順](docs/ci-cd.md)を参照してください。セットアップ・検証・費用・初回配置・rollbackは[移植手順](docs/migration-cloudflare-gcp.md)を参照してください。
 
 [セキュリティレビュー](docs/security-review.md)に、隠し要件の管理、保存の互換性、APIの上限と公開前の残課題を記載しています。
 

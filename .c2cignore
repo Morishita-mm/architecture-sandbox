@@ -8,3 +8,5 @@
 backend.hcl
 .dev.vars*
 .wrangler/
+# Short-lived GitHub OIDC credential files must never enter artifacts.
+gha-creds-*.json
