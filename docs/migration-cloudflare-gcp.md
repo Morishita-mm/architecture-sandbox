@@ -2,7 +2,9 @@
 
 ## 構成と移植範囲
 
-公開予定は `https://sandbox.morimizu.dev`。morimizu-siteと同じCloudflare Workers Static AssetsでReact SPAを配信し、ブラウザからGCP Cloud RunのRust APIへHTTPSで接続する。Cloud Run / Artifact Registryはtech-interviewerと同じ東京（`asia-northeast1`）を採用する。tech-interviewer固有のFirebase Hosting・Firestore・認証機構は、このstatelessアプリには追加しない。
+公開URLは `https://sandbox.morimizu.dev`。morimizu-siteと同じCloudflare Workers Static AssetsでReact SPAを配信し、ブラウザからGCP Cloud RunのRust APIへHTTPSで接続する。Cloud Run / Artifact Registryはtech-interviewerと同じ東京（`asia-northeast1`）を採用する。tech-interviewer固有のFirebase Hosting・Firestore・認証機構は、このstatelessアプリには追加しない。
+
+2026-09-13に所有者の匿名公開承認を受け、[初回CD](https://github.com/Morishita-mm/architecture-sandbox/actions/runs/34738236394)で配信した。実Geminiのチャット・評価、日本語JSONの保存復元、TinyURL経由のチャレンジ開始、TLS・CORS・SPAを本番で確認済み。初回DNS反映の待機と部品名変更後の接続点の重なりへの修正を追加した。検証記録は[現在のフェーズ](current_phase.yaml)、その後の配置結果は各main commitのActions runを参照する。以下の非公開配置・初期実装の検証記録は、その時点の履歴として残す。AWSの停止・削除は行っていない。
 
 ```text
 Browser ── HTTPS ── sandbox.morimizu.dev (Cloudflare Workers Static Assets)
@@ -30,7 +32,7 @@ Artifact Registryは請求先全体の最初の0.5 GiBが無料で、超過し�
 
 Geminiは移植先のキーで `gemini-2.5-flash` が404となったため、実接続を確認できた安定版 `gemini-3.5-flash-lite` を既定値に変更した。テキスト標準料金は入力$0.30・出力$2.50 / 100万tokenで、従来2.5 Flashと同じ単価。利用枠と実際の入出力・思考token量で費用が変わり、総額が同じになる保証はない。モデル名は設定で変更可能。新しい課金契約や実API呼び出しはローカル検証に不要。[Gemini料金](https://ai.google.dev/gemini-api/docs/pricing)
 
-利用頻度・既存請求先の無料枠消費量が未確定なので月額合計は未算出。公開前にGemini側のquotaとGCP予算通知を確認する。予算通知は自動停止ではなく、max instances 2も月額上限ではない。AWSを停止・削除するまでは旧環境の費用が残る。
+専用projectの予算通知と、Gemini・Cloud RunそれぞれのSpend capを所有者指定の予算内で設定済み。停止には反映遅延があり、進行中の要求やストレージの費用も残るため、厳密な総額保証ではない。停止が発動した場合は手動解除が必要。予算通知だけでは自動停止せず、max instances 2も月額上限ではない。AWSを停止・削除するまでは旧環境の費用が残る。[Spend caps](https://docs.cloud.google.com/billing/docs/how-to/budgets-spend-caps)
 
 ## ローカル開発と検証
 

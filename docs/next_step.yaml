@@ -48,7 +48,7 @@ phase_2_content:
 future_considerations:
   - topic: "CI/CD Pipeline"
     status: "Implemented for Cloudflare/GCP migration"
-    reason: "PR CIと手動Cloudflare deployを実装。初回GCP配置と本番受入はdocs/migration-cloudflare-gcp.md参照。"
+    reason: "PR CIとmainの承認付きCloud Run/Cloudflare CDを実装し、本番公開済み。最新の受入状況はdocs/current_phase.yaml参照。"
   
   - topic: "User Authentication"
     status: "Pending"
