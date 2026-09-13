@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ArchitectureCanvas } from "./components/ArchitectureCanvas";
+import { useState, lazy, Suspense } from "react";
+const ArchitectureCanvas = lazy(() => import("./components/ArchitectureCanvas").then(module => ({ default: module.ArchitectureCanvas })));
 import { ScenarioSetup } from "./components/ScenarioSetup";
 import type { Scenario, ProjectSaveData } from "./types";
 import { ScenarioSelectionScreen } from "./components/ScenarioSelectionScreen";
@@ -75,11 +75,13 @@ function App() {
 
   if (phase === "CANVAS" && selectedScenario) {
     return (
+      <Suspense fallback={<div role="status">設計画面を読み込み中...</div>}>
       <ArchitectureCanvas
         selectedScenario={selectedScenario}
         onBackToSelection={handleGoToSelection}
         loadedProjectData={loadedProjectData}
       />
+      </Suspense>
     );
   }
 

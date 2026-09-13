@@ -14,6 +14,7 @@ export const MemoPad: React.FC<Props> = ({ value, onChange }) => {
         要件メモ</div>
       <textarea
         style={textAreaStyle}
+        maxLength={100000}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="ヒアリングした要件をここにメモしましょう&#13;&#10;・予算：〇〇&#13;&#10;・ピークタイム：〇〇"

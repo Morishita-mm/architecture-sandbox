@@ -15,9 +15,9 @@ export const ScenarioSetup: React.FC<Props> = ({
   onCancel,
 }) => {
   const [title, setTitle] = useState(initialScenario.title);
-  const [description, setDescription] = useState("");
-  const [difficulty, setDifficulty] = useState<ScenarioDifficulty>("medium");
-  const [partnerRole, setPartnerRole] = useState<PartnerRole>("ceo");
+  const [description, setDescription] = useState(initialScenario.description);
+  const [difficulty, setDifficulty] = useState<ScenarioDifficulty>(initialScenario.difficulty ?? "medium");
+  const [partnerRole, setPartnerRole] = useState<PartnerRole>(initialScenario.partnerRole ?? "ceo");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,12 +27,6 @@ export const ScenarioSetup: React.FC<Props> = ({
       description,
       difficulty,
       partnerRole,
-      requirements: {
-        users: "ヒアリングで特定",
-        traffic: "ヒアリングで特定",
-        availability: "ヒアリングで特定",
-        budget: "ヒアリングで特定",
-      },
     });
   };
 
@@ -55,6 +49,7 @@ export const ScenarioSetup: React.FC<Props> = ({
             <label style={labelStyle}>タイトル (Title)</label>
             <input
               style={inputStyle}
+              maxLength={120}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="例: フリマアプリ、MMORPGのサーバー"
@@ -66,6 +61,7 @@ export const ScenarioSetup: React.FC<Props> = ({
             <label style={labelStyle}>概要 (Description)</label>
             <textarea
               style={{ ...inputStyle, minHeight: "80px", resize: "vertical" }}
+              maxLength={2000}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="例: ユーザー同士がアイテムを売買する。画像のやり取りが多い。"

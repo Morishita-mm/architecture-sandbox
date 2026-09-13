@@ -1,0 +1,115 @@
+name: Production release
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: architecture-sandbox-production
+  cancel-in-progress: false
+jobs:
+  verify:
+    uses: ./.github/workflows/ci.yml
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: production
+      url: https://sandbox.morimizu.dev
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      GCP_REGION: asia-northeast1
+      WRANGLER_SEND_METRICS: 'false'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check required production settings
+        env:
+          GCP_WIF_PROVIDER: ${{ vars.GCP_WIF_PROVIDER }}
+          GCP_DEPLOY_SERVICE_ACCOUNT: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          : "${GCP_PROJECT_ID:?Register the production environment variables}"
+          : "${GCP_WIF_PROVIDER:?}"
+          : "${GCP_DEPLOY_SERVICE_ACCOUNT:?}"
+          : "${CLOUDFLARE_ACCOUNT_ID:?}"
+          : "${CLOUDFLARE_API_TOKEN:?Register a scoped Cloudflare deployment token}"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: tested-backend-${{ github.sha }}
+          path: ${{ runner.temp }}/tested-backend
+      - name: Load the tested image
+        run: docker load --input "$RUNNER_TEMP/tested-backend/backend.tar"
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+      - name: Upload and deploy a candidate without traffic
+        id: candidate
+        run: ./scripts/deploy-backend.sh candidate
+      - name: Authenticate candidate health check
+        id: health-auth
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+          token_format: id_token
+          id_token_include_email: true
+          id_token_audience: ${{ steps.candidate.outputs.backend_url }}
+      - name: Verify the candidate without calling Gemini
+        run: node scripts/release-smoke.mjs
+        env:
+          API_URL: ${{ steps.candidate.outputs.candidate_url }}
+          ID_TOKEN: ${{ steps.health-auth.outputs.id_token }}
+      - name: Build the production frontend
+        working-directory: frontend
+        run: npm run build && npm run deploy:check
+        env:
+          VITE_API_BASE_URL: ${{ steps.candidate.outputs.backend_url }}
+          VITE_APP_SHARE_URL: https://sandbox.morimizu.dev
+      - name: Promote the verified backend
+        run: ./scripts/deploy-backend.sh promote
+      - name: Deploy frontend to Cloudflare
+        working-directory: frontend
+        run: npm run deploy
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      - name: Verify public API and SPA delivery
+        run: node scripts/release-smoke.mjs
+        env:
+          API_URL: ${{ steps.candidate.outputs.backend_url }}
+          FRONTEND_URL: https://sandbox.morimizu.dev
+      - name: Record the release and rollback reference
+        if: always() && steps.candidate.outcome == 'success'
+        env:
+          NEW_REVISION: ${{ steps.candidate.outputs.revision }}
+          PREVIOUS_REVISION: ${{ steps.candidate.outputs.previous_revision }}
+          IMAGE_REF: ${{ steps.candidate.outputs.image_ref }}
+        run: |
+          {
+            printf 'Commit: %s\n\n' "$GITHUB_SHA"
+            printf 'Candidate revision: %s\n\n' "$NEW_REVISION"
+            printf 'Previous serving revision: %s\n\n' "$PREVIOUS_REVISION"
+            printf 'Image: %s\n\n' "$IMAGE_REF"
+            printf 'Check all step outcomes. A candidate record alone does not mean promotion or publication succeeded.\n'
+            printf 'Rollback instructions: docs/ci-cd.md\n'
+          } >> "$GITHUB_STEP_SUMMARY"

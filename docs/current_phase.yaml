@@ -1,37 +1,36 @@
 project_info:
-  name: Architecture Sandbox Backend
-  description: システムアーキテクチャ設計支援ツールのバックエンドサーバー
-  last_updated: 2025-12-11
-  status: Deployment Completed (Visual Modeling Enhanced)
-
+  name: Architecture Sandbox
+  last_updated: 2026-09-13
+  status: CI/CD implementation and independent review fixes; production setup pending
 current_status:
   deployment:
-    backend:
-      platform: AWS App Runner
-      source: AWS ECR (Container Registry)
-      image_tag: architecture-sandbox-backend:latest
-      scaling: Auto-scaling (Managed by App Runner)
-    frontend:
-      platform: AWS S3 + CloudFront (CDN)
-      type: Static Site / SPA Hosting
+    frontend_target: Cloudflare Workers Static Assets
+    frontend_domain: sandbox.morimizu.dev
+    backend_target: GCP Cloud Run (Tokyo)
+    gcp_project_id: morimizu-architecture-sandbox
+    gcp_project_number: "431559926189"
+    gcp_foundation: Created with owner approval; billing active, protected GCS state, 8 Terraform resources, no drift
+    cloud_run_service: Private service healthy; authenticated health, real Gemini chat and evaluation verified
+    cloud_run_revision: architecture-sandbox-api-00005-gnh
+    gemini_secret_version: "1"
+    gemini_model: gemini-3.5-flash-lite
+    production_cutover: Not performed
   architecture:
     type: Stateless REST API
-    database: None (Mock implementation)
-    concurrency: Supported (Async/Non-blocking via Tokio)
-
-# ... (infrastructure, backend_implementation は変更なし) ...
-
-recent_changes:
-  - id: feat_component_grouping
-    description: フロントエンドにてコンポーネントのグループ化（親子関係）と自動レイアウト制御を実装
-  - id: feat_url_shortener
-    description: 共有機能のためにTinyURL APIを利用したURL短縮エンドポイントを実装
-  - id: feat_rich_ui_help
-    description: フロントエンドUI刷新（リッチフォント、ヘッダー分離、ヘルプモーダル実装）
-
-known_issues_and_limitations:
-  persistence:
-    status: Local Only
-    detail: サーバーサイドでの永続化は廃止。クライアントサイドのJSON保存・読込で代替中。
-  security:
-    cors: Allow Any (Development/Initial Phase)
+    database: None
+    persistence: Local JSON save/load
+  local_acceptance:
+    save_restore_and_group_operations: Verified in browser with new JSON and legacy Base64 files
+    evaluation_chart: Verified with local fixture; no console warnings or errors after layout fix
+    independent_review: First GitHub review received; AS-R1 to AS-R3 addressed, re-review required
+  delivery:
+    workflow: Main push or manual Production release, reusable CI then production approval
+    credentials: GCP Workload Identity Federation and scoped Cloudflare Environment Secret
+    bootstrap: GitHub production Environment, variables, token and GCP identity not applied
+remaining:
+  - Approve and configure the reviewed CI/CD identity and production Environment
+  - Complete ChatGPT independent acceptance review through GitHub
+  - Decide anonymous API exposure and provider quota / billing controls before publication
+  - Approve anonymous Cloud Run invocation and Cloudflare deployment
+  - Verify real Gemini, custom domain, share links and production UI
+  - Retire AWS only after successful cutover and separate approval

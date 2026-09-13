@@ -47,13 +47,13 @@ phase_2_content:
 # ------------------------------------------------------------------------------
 future_considerations:
   - topic: "CI/CD Pipeline"
-    status: "On Hold"
-    reason: "GitHub Actionsの課金コスト回避のため手動デプロイを継続。"
+    status: "Implemented for Cloudflare/GCP migration"
+    reason: "PR CIと手動Cloudflare deployを実装。初回GCP配置と本番受入はdocs/migration-cloudflare-gcp.md参照。"
   
   - topic: "User Authentication"
     status: "Pending"
-    solution: "Auth0 or Amazon Cognito"
+    solution: "未選定。今回のstateless移植の範囲外。"
 
   - topic: "Server-side Persistence"
     status: "Pending"
-    solution: "Amazon DynamoDB (Serverless)"
+    solution: "未選定。現在はローカルJSON保存を維持。"

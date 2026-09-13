@@ -38,7 +38,7 @@ operational_details:
     - name: "チャレンジモード（シナリオ共有）"
       status: "Implemented"
       details:
-        method: "URL Query Parameter (Base64 Encoded JSON)"
+        method: "URL Query Parameter (public Scenario JSON; legacy Base64 import supported)"
         ux: "評価結果画面から発行 -> 受信者はトップ画面で「挑戦状モーダル」経由で開始"
 
     - name: "URL短縮機能 (Backend Proxy)"

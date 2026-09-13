@@ -1,0 +1,13 @@
+**/.git
+**/node_modules
+**/target
+**/dist
+**/.wrangler
+**/.terraform
+**/.env
+**/.env.*
+**/*.tfstate*
+**/*.tfvars
+**/*.tfplan
+# Short-lived GitHub OIDC credential files must never enter artifacts.
+gha-creds-*.json

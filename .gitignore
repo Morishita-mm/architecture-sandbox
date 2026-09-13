@@ -1,1 +1,10 @@
+# Local configuration and generated deployment artifacts
 .env
+.env.*
+!.env.example
+.dev.vars*
+.wrangler/
+.DS_Store
+*.tfplan
+# Short-lived GitHub OIDC credential files must never enter artifacts.
+gha-creds-*.json
