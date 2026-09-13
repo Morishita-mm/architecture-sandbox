@@ -13,7 +13,7 @@ export const Header: React.FC<HeaderProps> = ({ title, onBack, onSave, isSaving,
   <header className="app-header">
     <div className="app-header-brand">
       <button className="ui-button ui-icon-button" onClick={onBack} title="シナリオ選択画面に戻る" aria-label="シナリオ選択画面に戻る"><BiArrowBack size={20} /></button>
-      <img src="/icons/01-open-a-small.svg" alt="Architecture Sandbox" width={30} height={30} />
+      <button className="app-home-button" onClick={onBack} aria-label="Architecture Sandbox ホームへ戻る" title="ホームへ戻る"><img src="/icons/01-open-a-small.svg" alt="" width={30} height={30} /></button>
     </div>
     <h1 title={title}>{title}</h1>
     <div className="app-header-actions">

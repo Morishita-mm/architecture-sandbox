@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   BiHelpCircle,
+  BiArrowBack,
   BiX,
   BiMouse,
   BiEdit,
@@ -26,54 +27,79 @@ interface Props {
 type TabKey = "flow" | "canvas" | "ai" | "evaluation" | "share";
 
 export const HelpModal: React.FC<Props> = ({ isOpen, onClose }) => {
-  const [activeTab, setActiveTab] = useState<TabKey>("flow");
+  const [activeTab, setActiveTab] = useState<TabKey | null>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const topicButtons = useRef<Partial<Record<TabKey, HTMLButtonElement | null>>>({});
+  const returnTopic = useRef<TabKey | null>(null);
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!isOpen || !dialog) return;
+    const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    dialog.showModal();
+    return () => {
+      dialog.close();
+      trigger?.focus();
+    };
+  }, [isOpen]);
+  useEffect(() => {
+    if (!isOpen) return;
+    if (contentRef.current) contentRef.current.scrollTop = 0;
+    if (activeTab) contentRef.current?.querySelector<HTMLElement>("h3")?.focus();
+    else if (returnTopic.current) topicButtons.current[returnTopic.current]?.focus();
+  }, [activeTab, isOpen]);
+  const closeGuide = () => {
+    dialogRef.current?.close();
+    setActiveTab(null);
+    returnTopic.current = null;
+    onClose();
+  };
+  const showContents = () => { returnTopic.current = activeTab; setActiveTab(null); };
 
   if (!isOpen) return null;
 
   // タブの定義
-  const tabs: { key: TabKey; label: string; icon: React.ReactNode }[] = [
-    { key: "flow", label: "基本的な流れ", icon: <BiListUl /> },
-    { key: "canvas", label: "キャンバス操作", icon: <BiMouse /> },
-    { key: "ai", label: "AI活用のコツ", icon: <BiBot /> },
-    { key: "evaluation", label: "評価と改善", icon: <BiBarChart /> },
-    { key: "share", label: "共有と挑戦", icon: <BiShareAlt /> },
+  const tabs: { key: TabKey; label: string; description: string; icon: React.ReactNode }[] = [
+    { key: "flow", label: "基本的な流れ", description: "ヒアリングから設計・評価までの進め方", icon: <BiListUl /> },
+    { key: "canvas", label: "キャンバス操作", description: "部品の配置・接続・グループ化", icon: <BiMouse /> },
+    { key: "ai", label: "AI活用のコツ", description: "要件を聞き出し、設計意図を伝える", icon: <BiBot /> },
+    { key: "evaluation", label: "評価と改善", description: "スコアとフィードバックの読み方", icon: <BiBarChart /> },
+    { key: "share", label: "共有と挑戦", description: "保存・共有とチャレンジの始め方", icon: <BiShareAlt /> },
   ];
 
+  const topicIndex = tabs.findIndex(tab => tab.key === activeTab);
+
   return (
-    <div style={overlayStyle} onClick={onClose}>
-      <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
+    <dialog ref={dialogRef} className="help-dialog" style={modalStyle} aria-labelledby="guide-title" onCancel={event => { event.preventDefault(); closeGuide(); }} onClick={event => { if (event.target === event.currentTarget) closeGuide(); }}>
+      <div className="help-dialog-inner">
         {/* ヘッダー */}
         <div style={headerStyle}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <BiHelpCircle size={24} color="var(--app-primary)" />
-            <h2 style={{ margin: 0, fontSize: "20px" }}>ユーザーガイド</h2>
+            <h2 id="guide-title" style={{ margin: 0, fontSize: "20px" }}>ユーザーガイド</h2>
           </div>
-          <button onClick={onClose} style={closeButtonStyle} aria-label="操作ガイドを閉じる">
+          <button onClick={closeGuide} style={closeButtonStyle} aria-label="操作ガイドを閉じる">
             <BiX size={24} />
           </button>
         </div>
 
-        {/* メインエリア */}
-        <div className="help-body" style={bodyStyle}>
-          {/* 左サイドバー */}
-          <div className="help-sidebar" style={sidebarStyle}>
-            {tabs.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                style={activeTab === tab.key ? activeTabStyle : tabStyle}
-              >
-                <span style={tabIconStyle}>{tab.icon}</span>
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          {/* 右コンテンツエリア */}
-          <div className="help-content" style={contentAreaStyle}>
+        <div ref={contentRef} className="help-content" style={contentAreaStyle}>
+          {activeTab === null ? (
+            <div className="help-index">
+              <h3>どの操作を確認しますか？</h3>
+              <p>項目を選ぶと、詳しい使い方を確認できます。</p>
+              <nav aria-label="ガイドの目次">
+                {tabs.map(tab => <button key={tab.key} ref={element => { topicButtons.current[tab.key] = element; }} onClick={() => setActiveTab(tab.key)}>
+                  <span className="help-topic-icon">{tab.icon}</span>
+                  <span><strong>{tab.label}</strong><small>{tab.description}</small></span>
+                  <BiRightArrowAlt size={20} />
+                </button>)}
+              </nav>
+            </div>
+          ) : <div className="help-article-nav"><button className="ui-button" onClick={showContents}><BiArrowBack size={16} />目次に戻る</button><span>{topicIndex + 1} / {tabs.length}</span></div>}
             {activeTab === "flow" && (
               <div style={animateInStyle}>
-                <h3 style={contentTitleStyle}>設計の基本的なワークフロー</h3>
+                <h3 tabIndex={-1} style={contentTitleStyle}>設計の基本的なワークフロー</h3>
                 <p>このアプリケーションは、以下の4ステップで設計を進めます。</p>
 
                 <div style={stepContainerStyle}>
@@ -115,7 +141,7 @@ export const HelpModal: React.FC<Props> = ({ isOpen, onClose }) => {
 
             {activeTab === "canvas" && (
               <div style={animateInStyle}>
-                <h3 style={contentTitleStyle}>キャンバスの操作方法</h3>
+                <h3 tabIndex={-1} style={contentTitleStyle}>キャンバスの操作方法</h3>
                 <table style={tableStyle}>
                   <tbody>
                     <tr>
@@ -177,7 +203,7 @@ export const HelpModal: React.FC<Props> = ({ isOpen, onClose }) => {
 
             {activeTab === "ai" && (
               <div style={animateInStyle}>
-                <h3 style={contentTitleStyle}>AI評価の精度を上げるコツ</h3>
+                <h3 tabIndex={-1} style={contentTitleStyle}>AI評価の精度を上げるコツ</h3>
                 <p>
                   AIは配置されたコンポーネントの「種類」だけでなく、あなたが入力した
                   <strong>「名前」</strong>や<strong>「詳細メモ」</strong>
@@ -243,7 +269,7 @@ export const HelpModal: React.FC<Props> = ({ isOpen, onClose }) => {
 
             {activeTab === "evaluation" && (
               <div style={animateInStyle}>
-                <h3 style={contentTitleStyle}>評価レポートの見方</h3>
+                <h3 tabIndex={-1} style={contentTitleStyle}>評価レポートの見方</h3>
                 <p>
                   設計が完了したら、右上の
                   <strong style={{ color: "var(--app-success)" }}>
@@ -287,7 +313,7 @@ export const HelpModal: React.FC<Props> = ({ isOpen, onClose }) => {
             {/* ★追加: 共有と挑戦タブ */}
             {activeTab === "share" && (
               <div style={animateInStyle}>
-                <h3 style={contentTitleStyle}>設計を共有して競い合おう</h3>
+                <h3 tabIndex={-1} style={contentTitleStyle}>設計を共有して競い合おう</h3>
                 <p>
                   納得のいく設計ができたら、SNSでシェアして他のエンジニアに
                   <strong>「挑戦状」</strong>を送りましょう。
@@ -328,17 +354,18 @@ export const HelpModal: React.FC<Props> = ({ isOpen, onClose }) => {
                 </div>
               </div>
             )}
-          </div>
         </div>
 
         {/* フッター */}
-        <div style={footerStyle}>
-          <button onClick={onClose} style={primaryButtonStyle}>
-            閉じる
-          </button>
+        <div className="help-footer" style={footerStyle}>
+          {activeTab !== null && <div className="help-page-controls">
+            <button className="ui-button" disabled={topicIndex === 0} onClick={() => setActiveTab(tabs[topicIndex - 1].key)}>前の項目</button>
+            <button className="ui-button" disabled={topicIndex === tabs.length - 1} onClick={() => setActiveTab(tabs[topicIndex + 1].key)}>次の項目</button>
+          </div>}
+          <button onClick={closeGuide} style={primaryButtonStyle}>閉じる</button>
         </div>
       </div>
-    </div>
+    </dialog>
   );
 };
 
@@ -395,30 +422,17 @@ const Kbd: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 
 // --- Styles ---
 
-const overlayStyle: React.CSSProperties = {
-  position: "fixed",
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  backgroundColor: "rgba(0, 0, 0, 0.6)",
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-  zIndex: 2000,
-  backdropFilter: "blur(2px)",
-};
-
 const modalStyle: React.CSSProperties = {
   backgroundColor: "white",
   width: "900px",
-  height: "600px",
+  height: "660px",
   maxWidth: "95vw",
   maxHeight: "90vh",
   borderRadius: "12px",
   boxShadow: "0 20px 50px rgba(0,0,0,0.3)",
-  display: "flex",
-  flexDirection: "column",
+  padding: 0,
+  border: "1px solid var(--app-border)",
+  color: "var(--app-text)",
   overflow: "hidden",
 };
 
@@ -431,59 +445,18 @@ const headerStyle: React.CSSProperties = {
   backgroundColor: "#fff",
 };
 
-const bodyStyle: React.CSSProperties = {
-  display: "flex",
-  flex: 1,
-  overflow: "hidden",
-};
-
-const sidebarStyle: React.CSSProperties = {
-  backgroundColor: "var(--app-subtle)",
-  borderRight: "1px solid var(--app-border)",
-  padding: "var(--help-nav-padding, 20px 0)",
-  display: "flex",
-};
-
 const contentAreaStyle: React.CSSProperties = {
   flex: 1,
-  padding: "var(--help-content-padding, 30px 40px)",
+  padding: "var(--help-content-padding, 24px 32px)",
   overflowY: "auto",
   backgroundColor: "#fff",
 };
 
 const footerStyle: React.CSSProperties = {
-  padding: "15px 25px",
+  padding: "var(--help-footer-padding, 15px 25px)",
   borderTop: "1px solid var(--app-border)",
   textAlign: "right",
   backgroundColor: "var(--app-subtle)",
-};
-
-const tabStyle: React.CSSProperties = {
-  padding: "12px 20px",
-  border: "none",
-  background: "transparent",
-  textAlign: "left",
-  cursor: "pointer",
-  color: "var(--app-muted)",
-  fontSize: "14px",
-  display: "flex",
-  alignItems: "center",
-  transition: "all 0.2s",
-};
-
-const activeTabStyle: React.CSSProperties = {
-  ...tabStyle,
-  backgroundColor: "var(--app-primary-soft)",
-  color: "var(--app-primary)",
-  fontWeight: "bold",
-  borderRight: "3px solid var(--app-primary)",
-};
-
-const tabIconStyle: React.CSSProperties = {
-  marginRight: "10px",
-  fontSize: "18px",
-  display: "flex",
-  alignItems: "center",
 };
 
 const closeButtonStyle: React.CSSProperties = {
@@ -510,7 +483,7 @@ const primaryButtonStyle: React.CSSProperties = {
 const contentTitleStyle: React.CSSProperties = {
   marginTop: 0,
   marginBottom: "25px",
-  fontSize: "24px",
+  fontSize: "21px",
   color: "var(--app-text)",
   borderBottom: "1px solid var(--app-border)",
   paddingBottom: "10px",

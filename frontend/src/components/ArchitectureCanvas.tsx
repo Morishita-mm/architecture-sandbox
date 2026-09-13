@@ -17,7 +17,7 @@ import ReactFlow, {
 
 import "reactflow/dist/style.css";
 import { Sidebar } from "./Sidebar";
-import { BiChat, BiNetworkChart, BiBarChart } from "react-icons/bi";
+import { BiChat, BiNetworkChart, BiBarChart, BiListUl, BiNotepad } from "react-icons/bi";
 import type {
   EvaluationResult,
   ChatMessage,
@@ -55,6 +55,7 @@ const onDragOver = (event: React.DragEvent) => {
 // グループとして扱うタイプ定義（新規作成時のラベル判定用）
 const GROUP_TYPES = NODE_CATEGORIES.find(c => c.id === 'group')!.items.map(i => i.type);
 const COMPONENT_TYPES = new Set(NODE_CATEGORIES.flatMap(c => c.items.map(i => i.type)));
+type SidePanel = "memo" | "components";
 
 function ArchitectureFlow({
   selectedScenario,
@@ -79,6 +80,55 @@ function ArchitectureFlow({
   const setSelectedNode = useCallback((node: Node<AppNodeData> | null) => setSelectedNodeId(node?.id ?? null), []);
   const currentScenario = selectedScenario;
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [isMemoOpen, setIsMemoOpen] = useState(true);
+  const [isComponentsOpen, setIsComponentsOpen] = useState(true);
+  const [mobilePanel, setMobilePanel] = useState<SidePanel | null>("memo");
+  const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 760px)").matches);
+  const memoToggleRef = useRef<HTMLButtonElement>(null);
+  const componentsToggleRef = useRef<HTMLButtonElement>(null);
+  const focusPanelOnOpen = useRef<SidePanel | null>(null);
+  const memoVisible = isMemoOpen && (!isCompact || mobilePanel === "memo");
+  const componentsVisible = activeTab === "design" && isComponentsOpen && (!isCompact || mobilePanel === "components");
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 760px)");
+    const update = () => setIsCompact(media.matches);
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+
+  useEffect(() => {
+    const panel = focusPanelOnOpen.current;
+    if (panel && (panel === "memo" ? memoVisible : componentsVisible)) {
+      document.getElementById(`${panel}-panel`)?.querySelector<HTMLButtonElement>("button")?.focus();
+      focusPanelOnOpen.current = null;
+    }
+  }, [memoVisible, componentsVisible]);
+
+  const closePanel = (panel: SidePanel) => {
+    if (panel === "memo") setIsMemoOpen(false);
+    else setIsComponentsOpen(false);
+    setMobilePanel(isCompact ? null : panel === "components" && isMemoOpen ? "memo" : panel === "memo" && componentsVisible ? "components" : null);
+    (panel === "memo" ? memoToggleRef : componentsToggleRef).current?.focus();
+  };
+  const togglePanel = (panel: SidePanel) => {
+    if (panel === "memo" ? memoVisible : componentsVisible) return closePanel(panel);
+    if (panel === "memo") setIsMemoOpen(true);
+    else setIsComponentsOpen(true);
+    setMobilePanel(panel);
+    focusPanelOnOpen.current = panel;
+  };
+  const selectTab = (tab: typeof activeTab) => {
+    setActiveTab(tab);
+    setMobilePanel(tab === "design" && isComponentsOpen ? "components" : isMemoOpen ? "memo" : null);
+  };
+  const onPanelKeyDown = (event: React.KeyboardEvent, panel: SidePanel) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      closePanel(panel);
+    }
+  };
   const evaluationRequest = useRef<AbortController | null>(null);
   useEffect(() => () => evaluationRequest.current?.abort(), []);
 
@@ -490,17 +540,18 @@ function ArchitectureFlow({
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
 
       <>
+        <div className="workspace-navigation">
         <div className="workspace-tabs" style={tabBarStyle}>
           <button
             style={activeTab === "chat" ? activeTabStyle : tabStyle}
-            onClick={() => setActiveTab("chat")}
+            onClick={() => selectTab("chat")}
           >
             <BiChat style={{ marginRight: "6px", verticalAlign: "middle" }} />{" "}
             要件定義・交渉
           </button>
           <button
             style={activeTab === "design" ? activeTabStyle : tabStyle}
-            onClick={() => setActiveTab("design")}
+            onClick={() => selectTab("design")}
           >
             <BiNetworkChart
               style={{ marginRight: "6px", verticalAlign: "middle" }}
@@ -509,7 +560,7 @@ function ArchitectureFlow({
           </button>
           <button
             style={activeTab === "evaluate" ? activeTabStyle : tabStyle}
-            onClick={() => setActiveTab("evaluate")}
+            onClick={() => selectTab("evaluate")}
           >
             <BiBarChart
               style={{ marginRight: "6px", verticalAlign: "middle" }}
@@ -517,10 +568,20 @@ function ArchitectureFlow({
             評価結果
           </button>
         </div>
+        <div className="workspace-panel-actions">
+          {activeTab === "design" && <button ref={componentsToggleRef} className="panel-toggle" onClick={() => togglePanel("components")} aria-expanded={componentsVisible} aria-controls="components-panel" aria-label="コンポーネントの表示切り替え"><BiListUl size={18} />コンポーネント</button>}
+          <button ref={memoToggleRef} className="panel-toggle" onClick={() => togglePanel("memo")} aria-expanded={memoVisible} aria-controls="memo-panel" aria-label="要件メモの表示切り替え"><BiNotepad size={18} />要件メモ</button>
+        </div>
+        </div>
 
         <div className="workspace-content" style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+          {isCompact && (memoVisible || componentsVisible) && <button className="side-panel-backdrop" aria-label="サイドパネルを閉じる" onClick={() => closePanel(memoVisible ? "memo" : "components")} />}
+          <div id="components-panel" className="workspace-side-panel side-panel-left" hidden={!componentsVisible} onKeyDown={event => onPanelKeyDown(event, "components")}>
+            <Sidebar onClose={() => closePanel("components")} />
+          </div>
           <div
             className="workspace-main"
+            inert={isCompact && (memoVisible || componentsVisible)}
             style={{
               flex: 1,
               display: "flex",
@@ -554,7 +615,6 @@ function ArchitectureFlow({
                 height: "100%",
               }}
             >
-              <Sidebar />
               <div
                 className="reactflow-wrapper"
                 ref={reactFlowWrapper}
@@ -572,7 +632,7 @@ function ArchitectureFlow({
                   nodeTypes={nodeTypes}
                   onNodeClick={onNodeClick}
                   onPaneClick={onPaneClick}
-                  deleteKeyCode={activeTab === "design" && !isHelpOpen ? ["Backspace", "Delete"] : null}
+                  deleteKeyCode={activeTab === "design" && !isHelpOpen && !(isCompact && (memoVisible || componentsVisible)) ? ["Backspace", "Delete"] : null}
                   fitView
                   fitViewOptions={{ maxZoom: 1 }}
                 >
@@ -614,7 +674,9 @@ function ArchitectureFlow({
               </div>
             </div>
           </div>
-          <MemoPad value={memo} onChange={setMemo} />
+          <div id="memo-panel" className="workspace-side-panel side-panel-right" hidden={!memoVisible} onKeyDown={event => onPanelKeyDown(event, "memo")}>
+            <MemoPad value={memo} onChange={setMemo} onClose={() => closePanel("memo")} />
+          </div>
         </div>
       </>
     </div>
@@ -640,7 +702,6 @@ export function ArchitectureCanvas({
 const tabBarStyle: React.CSSProperties = {
   display: "flex",
   backgroundColor: "var(--app-subtle)",
-  borderBottom: "1px solid var(--app-border)",
   padding: "0 var(--tabs-inset, 16px)",
   flexShrink: 0,
   overflowX: "auto",

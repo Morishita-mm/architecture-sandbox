@@ -1,17 +1,19 @@
 import React from 'react';
-import { BiNotepad } from 'react-icons/bi';
+import { BiNotepad, BiChevronRight } from 'react-icons/bi';
 
 interface Props {
   value: string;
   onChange: (val: string) => void;
+  onClose: () => void;
 }
 
-export const MemoPad: React.FC<Props> = ({ value, onChange }) => {
+export const MemoPad: React.FC<Props> = ({ value, onChange, onClose }) => {
   return (
-    <div className="memo-pad" style={containerStyle}>
-      <div style={headerStyle}>
-        <BiNotepad style={{ marginRight: '8px', color: '#736344' }} />
-        要件メモ</div>
+    <aside className="memo-pad" style={containerStyle} aria-label="要件メモ">
+      <div className="side-panel-heading" style={headerStyle}>
+        <span><BiNotepad /> 要件メモ</span>
+        <button className="panel-close-button" onClick={onClose} aria-label="要件メモを閉じる" title="要件メモを閉じる"><BiChevronRight size={20} /></button>
+      </div>
       <textarea
         aria-label="要件メモ"
         style={textAreaStyle}
@@ -20,12 +22,13 @@ export const MemoPad: React.FC<Props> = ({ value, onChange }) => {
         onChange={(e) => onChange(e.target.value)}
         placeholder="ヒアリングした要件をここにメモしましょう&#13;&#10;・予算：〇〇&#13;&#10;・ピークタイム：〇〇"
       />
-    </div>
+    </aside>
   );
 };
 
 const containerStyle: React.CSSProperties = {
-  width: 'var(--app-memo-width)', // サイドバーと同じくらいの幅
+  width: '100%',
+  height: '100%',
   backgroundColor: 'var(--app-note)', // メモっぽい色（薄い黄色）
   borderLeft: '1px solid var(--app-border)',
   display: 'flex',
@@ -33,7 +36,7 @@ const containerStyle: React.CSSProperties = {
 };
 
 const headerStyle: React.CSSProperties = {
-  padding: '14px 16px',
+  padding: '8px 12px 8px 16px',
   fontWeight: 'bold',
   backgroundColor: 'var(--app-note-header)',
   color: '#736344',

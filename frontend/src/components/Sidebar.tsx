@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { NODE_CATEGORIES, type NodeCategory } from "../constants/nodeTypes";
+import { BiChevronLeft } from "react-icons/bi";
 
-export const Sidebar = () => {
+export const Sidebar = ({ onClose }: { onClose: () => void }) => {
   // アコーディオンの開閉状態管理 (初期値として主要なカテゴリを開いておく)
   const [openCategories, setOpenCategories] = useState<string[]>([
     "client",
@@ -35,8 +36,8 @@ export const Sidebar = () => {
   };
 
   return (
-    <aside className="component-sidebar" style={sidebarStyle}>
-      <div style={descriptionStyle}>コンポーネントを選択</div>
+    <aside className="component-sidebar" style={sidebarStyle} aria-label="コンポーネント">
+      <div className="side-panel-heading" style={descriptionStyle}><span>コンポーネント</span><button className="panel-close-button" onClick={onClose} aria-label="コンポーネントを閉じる" title="コンポーネントを閉じる"><BiChevronLeft size={20} /></button></div>
 
       <div style={{ flex: 1, overflowY: "auto" }}>
         {NODE_CATEGORIES.map((category) => (
@@ -133,9 +134,9 @@ const CategorySection = ({
 
 // --- Styles ---
 const sidebarStyle: React.CSSProperties = {
-  width: "var(--app-sidebar-width)",
+  width: "100%",
   borderRight: "1px solid var(--app-border)",
-  padding: "16px 12px",
+  padding: "8px 12px 16px",
   backgroundColor: "#fff",
   display: "flex",
   flexDirection: "column",

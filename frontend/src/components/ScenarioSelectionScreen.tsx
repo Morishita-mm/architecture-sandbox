@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { SCENARIOS } from "../scenarios";
 import type { Scenario, ProjectSaveData } from "../types";
 import { FaCog, FaLightbulb, FaGithub, FaFire } from "react-icons/fa";
-import { BiFolderOpen, BiHelpCircle, BiRocket } from "react-icons/bi";
+import { BiFolderOpen, BiHelpCircle, BiRocket, BiGlobe } from "react-icons/bi";
 import { loadProjectFromLocalFile } from "../utils/fileHandler";
 import { HelpModal } from "./HelpModal";
 
@@ -242,6 +242,7 @@ export const ScenarioSelectionScreen: React.FC<
       </main>
       <footer className="welcome-footer">
         <div>
+          <a href="https://morimizu.dev/" target="_blank" rel="noopener noreferrer"><BiGlobe size={18} /> morimizu.dev</a>
           <a href="https://github.com/Morishita-mm/architecture-sandbox.git" target="_blank" rel="noopener noreferrer"><FaGithub size={18} /> Repository</a>
           <a href="https://qiita.com/gorilla_tech/items/af5cb63424ddd54ee585" target="_blank" rel="noopener noreferrer"><img src={qiitaIcon} alt="Qiita" width={18} height={18} /> Qiita Article</a>
         </div>
