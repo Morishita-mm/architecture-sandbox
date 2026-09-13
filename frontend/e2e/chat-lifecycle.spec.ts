@@ -29,6 +29,38 @@ async function save(page: Page) {
   return JSON.parse(await readFile(path, 'utf8'));
 }
 
+test('chat input grows from one to three lines, then scrolls and shrinks when cleared', async ({ page }) => {
+  await load(page);
+  const input = page.getByRole('textbox', { name: 'メッセージ', exact: true });
+  const visibleRows = () => input.evaluate(el => {
+    const style = el.ownerDocument.defaultView!.getComputedStyle(el);
+    return (el.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom)) / parseFloat(style.lineHeight);
+  });
+  await expect.poll(visibleRows).toBe(1);
+  await input.fill('1行目');
+  for (const rows of [2, 3, 4, 5]) {
+    await input.press('Shift+Enter');
+    await input.pressSequentially(`${rows}行目`);
+    await expect.poll(visibleRows).toBe(Math.min(rows, 3));
+  }
+  await expect(input).toHaveValue('1行目\n2行目\n3行目\n4行目\n5行目');
+  await expect.poll(() => input.evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
+  await input.hover();
+  await page.mouse.wheel(0, 200);
+  await expect.poll(() => input.evaluate(el => el.scrollTop)).toBeGreaterThan(0);
+  await input.fill('1行に戻す');
+  await expect.poll(visibleRows).toBe(1);
+  // Wrapped text also grows and remains capped after the hidden chat is resized.
+  await input.fill('長い文章の折り返しも確認します。'.repeat(20));
+  await expect.poll(visibleRows).toBe(3);
+  await page.getByRole('button', { name: 'アーキテクチャ設計', exact: true }).click();
+  await page.setViewportSize({ width: 900, height: 720 });
+  await page.getByRole('button', { name: '要件定義・交渉', exact: true }).click();
+  await expect.poll(visibleRows).toBe(3);
+  await input.fill('');
+  await expect.poll(visibleRows).toBe(1);
+});
+
 test('delayed chat survives design/evaluation tab changes and is saved once', async ({ page }) => {
   await load(page);
   const seen = deferred(); const release = deferred(); let requests = 0;
@@ -46,6 +78,8 @@ test('delayed chat survives design/evaluation tab changes and is saved once', as
   await input.pressSequentially(secondLine);
   await input.press('Enter');
   await seen.promise;
+  await expect(input).toHaveValue('');
+  await expect(input).toHaveJSProperty('clientHeight', 48);
   await page.getByRole('button', { name: 'アーキテクチャ設計', exact: true }).click();
   await expect(input).toBeHidden();
   release.resolve();

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { BiUser, BiBot } from "react-icons/bi";
 
 import type { Scenario, ChatMessage } from "../types"; // 共通型を使用
@@ -21,9 +21,30 @@ export const ChatInterface: React.FC<Props> = ({
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const request = useRef<AbortController | null>(null);
   useEffect(() => () => request.current?.abort(), []);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const textarea = inputRef.current;
+    if (!textarea) return;
+    const resize = () => {
+      textarea.style.height = "auto";
+      // scrollHeight includes padding; add the top and bottom borders.
+      if (textarea.value) textarea.style.height = `${textarea.scrollHeight + 2}px`;
+    };
+    resize();
+    let width = textarea.clientWidth;
+    const observer = new ResizeObserver(() => {
+      if (textarea.clientWidth !== width) {
+        width = textarea.clientWidth;
+        resize();
+      }
+    });
+    observer.observe(textarea);
+    return () => observer.disconnect();
+  }, [input]);
 
   // 自動スクロール
   useEffect(() => {
@@ -116,7 +137,8 @@ export const ChatInterface: React.FC<Props> = ({
       {error && <p role="alert" style={{ color: "#b71c1c", padding: "0 20px" }}>{error}</p>}
       <div style={inputAreaStyle}>
         <textarea
-          rows={2}
+          ref={inputRef}
+          rows={1}
           aria-label="メッセージ"
           aria-describedby="chat-input-help"
           maxLength={4000}
@@ -199,9 +221,13 @@ const inputStyle: React.CSSProperties = {
   border: "1px solid #ddd",
   fontSize: "16px",
   fontFamily: "inherit",
-  lineHeight: "1.5",
-  resize: "vertical",
-  maxHeight: "200px",
+  lineHeight: "24px",
+  boxSizing: "border-box",
+  resize: "none",
+  // One to three 24px lines, plus 24px padding and 2px borders.
+  minHeight: "50px",
+  maxHeight: "98px",
+  overflowY: "auto",
   outline: "none",
 };
 
