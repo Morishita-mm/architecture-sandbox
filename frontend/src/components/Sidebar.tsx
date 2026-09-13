@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { NODE_CATEGORIES, type NodeCategory } from "../constants/nodeTypes";
-import { BiChevronLeft } from "react-icons/bi";
+import { FiSidebar } from "react-icons/fi";
 
-export const Sidebar = ({ onClose }: { onClose: () => void }) => {
+export const Sidebar = ({ onClose, onAdd }: { onClose: () => void; onAdd: (type: string) => void }) => {
   // アコーディオンの開閉状態管理 (初期値として主要なカテゴリを開いておく)
   const [openCategories, setOpenCategories] = useState<string[]>([
     "client",
@@ -37,7 +37,8 @@ export const Sidebar = ({ onClose }: { onClose: () => void }) => {
 
   return (
     <aside className="component-sidebar" style={sidebarStyle} aria-label="コンポーネント">
-      <div className="side-panel-heading" style={descriptionStyle}><span>コンポーネント</span><button className="panel-close-button" onClick={onClose} aria-label="コンポーネントを閉じる" title="コンポーネントを閉じる"><BiChevronLeft size={20} /></button></div>
+      <div className="side-panel-heading" style={descriptionStyle}><span>コンポーネント</span><button className="panel-close-button" onClick={onClose} aria-label="コンポーネントを閉じる" title="コンポーネントを閉じる"><FiSidebar size={20} /></button></div>
+      <p className="component-sidebar-hint">選択して追加<span className="component-drag-hint">・ドラッグで配置</span></p>
 
       <div style={{ flex: 1, overflowY: "auto" }}>
         {NODE_CATEGORIES.map((category) => (
@@ -47,6 +48,7 @@ export const Sidebar = ({ onClose }: { onClose: () => void }) => {
             isOpen={openCategories.includes(category.id)}
             onToggle={() => toggleCategory(category.id)}
             onDragStart={onDragStart}
+            onAdd={onAdd}
           />
         ))}
       </div>
@@ -60,10 +62,12 @@ const CategorySection = ({
   isOpen,
   onToggle,
   onDragStart,
+  onAdd,
 }: {
   category: NodeCategory;
   isOpen: boolean;
   onToggle: () => void;
+  onAdd: (type: string) => void;
   onDragStart: (
     e: React.DragEvent,
     type: string,
@@ -94,9 +98,11 @@ const CategorySection = ({
       {isOpen && (
         <div style={listStyle}>
           {category.items.map((item) => (
-            <div
+            <button
               key={item.type}
               className="dndnode"
+              type="button"
+              onClick={() => onAdd(item.type)}
               onDragStart={(event) =>
                 onDragStart(
                   event,
@@ -114,7 +120,7 @@ const CategorySection = ({
                 backgroundColor: "var(--component-background, white)",
               }}
             >
-              <div
+              <span
                 style={{
                   width: "8px",
                   height: "8px",
@@ -122,9 +128,9 @@ const CategorySection = ({
                   backgroundColor: category.color,
                   marginRight: "8px",
                 }}
-              ></div>
+              />
               {item.label}
-            </div>
+            </button>
           ))}
         </div>
       )}
@@ -144,7 +150,7 @@ const sidebarStyle: React.CSSProperties = {
 };
 
 const descriptionStyle: React.CSSProperties = {
-  marginBottom: "15px",
+  marginBottom: "2px",
   fontSize: "14px",
   fontWeight: "bold",
   color: "var(--app-muted)",
@@ -173,6 +179,8 @@ const listStyle: React.CSSProperties = {
 };
 
 const nodeStyle: React.CSSProperties = {
+  width: "100%",
+  textAlign: "left",
   minHeight: "36px",
   padding: "7px 10px",
   border: "1px solid var(--app-border)",

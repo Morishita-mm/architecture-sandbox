@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, useEffect, lazy, Suspense } from "react";
+import { useCallback, useRef, useState, useEffect, useLayoutEffect, lazy, Suspense } from "react";
 import ReactFlow, {
   Background,
   Controls,
@@ -17,7 +17,8 @@ import ReactFlow, {
 
 import "reactflow/dist/style.css";
 import { Sidebar } from "./Sidebar";
-import { BiChat, BiNetworkChart, BiBarChart, BiListUl, BiNotepad } from "react-icons/bi";
+import { BiChat, BiNetworkChart, BiBarChart } from "react-icons/bi";
+import { FiSidebar } from "react-icons/fi";
 import type {
   EvaluationResult,
   ChatMessage,
@@ -65,7 +66,7 @@ function ArchitectureFlow({
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState<AppNodeData>(loadedProjectData?.diagram.nodes ?? []);
   const [edges, setEdges, onEdgesChange] = useEdgesState((loadedProjectData?.diagram.edges ?? []).map((e, index) => ({ ...e, id: e.id ?? `loaded-edge-${index}` })));
-  const { screenToFlowPosition, getNodes, getEdges, getIntersectingNodes, deleteElements } = useReactFlow();
+  const { screenToFlowPosition, getViewport, setViewport, getNodes, getEdges, getIntersectingNodes, deleteElements } = useReactFlow();
   const [activeTab, setActiveTab] = useState<"chat" | "design" | "evaluate">(loadedProjectData?.evaluation ? "evaluate" : "chat");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => loadedProjectData?.chatHistory ?? [{ role: "model", content: `こんにちは。「${selectedScenario.title}」について、どのような点から詳細を詰めていきましょうか？` }]);
   const [memo, setMemo] = useState(loadedProjectData?.memo ?? "");
@@ -89,6 +90,25 @@ function ArchitectureFlow({
   const focusPanelOnOpen = useRef<SidePanel | null>(null);
   const memoVisible = isMemoOpen && (!isCompact || mobilePanel === "memo");
   const componentsVisible = activeTab === "design" && isComponentsOpen && (!isCompact || mobilePanel === "components");
+  const canvasOrigin = useRef<{ x: number; y: number } | null>(null);
+
+  const rememberCanvasOrigin = () => {
+    if (activeTab !== "design" || !reactFlowWrapper.current) return;
+    const { x, y } = reactFlowWrapper.current.getBoundingClientRect();
+    canvasOrigin.current = { x, y };
+  };
+
+  useLayoutEffect(() => {
+    const previous = canvasOrigin.current;
+    canvasOrigin.current = null;
+    if (activeTab !== "design" || !reactFlowWrapper.current) return;
+    const { x, y } = reactFlowWrapper.current.getBoundingClientRect();
+    if (previous && (previous.x !== x || previous.y !== y)) {
+      // Keep nodes at the same screen position when a docked panel moves the canvas origin.
+      const viewport = getViewport();
+      setViewport({ ...viewport, x: viewport.x + previous.x - x, y: viewport.y + previous.y - y });
+    }
+  }, [activeTab, componentsVisible, memoVisible, getViewport, setViewport]);
 
   useEffect(() => {
     const media = window.matchMedia("(max-width: 760px)");
@@ -106,6 +126,7 @@ function ArchitectureFlow({
   }, [memoVisible, componentsVisible]);
 
   const closePanel = (panel: SidePanel) => {
+    rememberCanvasOrigin();
     if (panel === "memo") setIsMemoOpen(false);
     else setIsComponentsOpen(false);
     setMobilePanel(isCompact ? null : panel === "components" && isMemoOpen ? "memo" : panel === "memo" && componentsVisible ? "components" : null);
@@ -113,6 +134,7 @@ function ArchitectureFlow({
   };
   const togglePanel = (panel: SidePanel) => {
     if (panel === "memo" ? memoVisible : componentsVisible) return closePanel(panel);
+    rememberCanvasOrigin();
     if (panel === "memo") setIsMemoOpen(true);
     else setIsComponentsOpen(true);
     setMobilePanel(panel);
@@ -272,23 +294,13 @@ function ArchitectureFlow({
   );
 
   // ----------------------------------------------------------------
-  // ドロップ時: 親子関係の設定 + 親の自動拡大
+  // コンポーネント追加: ドロップと一覧からの選択で共通の親子関係・上限を適用
   // ----------------------------------------------------------------
-  const onDrop = useCallback(
-    (event: React.DragEvent) => {
-      event.preventDefault();
-
-      const label = event.dataTransfer.getData("application/reactflow/label");
+  const addComponent = useCallback(
+    (label: string, position: { x: number; y: number }) => {
       if (!COMPONENT_TYPES.has(label)) return;
       if (getNodes().length >= 200) { setNotice("コンポーネントは200個まで配置できます。"); return; }
       const type = GROUP_TYPES.includes(label) ? "group" : "custom";
-
-      if (!reactFlowWrapper.current) return;
-
-      const position = screenToFlowPosition({
-        x: event.clientX,
-        y: event.clientY,
-      });
 
       const allNodes = getNodes();
       // 重なり判定のターゲットを type === 'group' に限定
@@ -393,9 +405,40 @@ function ArchitectureFlow({
       });
       setEdges(eds => eds.map(e => ({ ...e, selected: false })));
       setSelectedNode(newNode);
+      return newNode;
     },
-    [screenToFlowPosition, setNodes, setEdges, getNodes, setSelectedNode]
+    [setNodes, setEdges, getNodes, setSelectedNode]
   );
+
+  const onDrop = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    addComponent(event.dataTransfer.getData("application/reactflow/label"), screenToFlowPosition({ x: event.clientX, y: event.clientY }));
+  }, [addComponent, screenToFlowPosition]);
+
+  const onAddFromSidebar = (label: string) => {
+    const bounds = reactFlowWrapper.current?.getBoundingClientRect();
+    if (!bounds) return;
+    const isGroup = GROUP_TYPES.includes(label);
+    const width = isGroup ? 300 : 180;
+    const height = isGroup ? 200 : 64;
+    const center = screenToFlowPosition({ x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 });
+    const position = { x: center.x - width / 2, y: center.y - height / 2 };
+    const top = screenToFlowPosition({ x: bounds.x, y: bounds.y + 32 }).y;
+    const bottom = screenToFlowPosition({ x: bounds.right, y: bounds.bottom - 32 }).y;
+    // Stagger repeated selections so a new component doesn't completely cover the last one.
+    const existing = getNodes();
+    for (let attempt = 0; attempt < 10 && existing.some(node => {
+      const placed = node.positionAbsolute ?? node.position;
+      return Math.abs(placed.x - position.x) < 24 && Math.abs(placed.y - position.y) < 24;
+    }); attempt++) {
+      position.y = position.y + height + 24 <= bottom - height ? position.y + height + 24 : top;
+    }
+    if (addComponent(label, position) && isCompact) {
+      closePanel("components");
+      // Reveal the selected node first; tapping it opens its properties.
+      setSelectedNode(null);
+    }
+  };
 
   const onNodeClick: NodeMouseHandler = useCallback((_, node) => {
     if (node.type === "custom" || node.type === "group") {
@@ -569,15 +612,15 @@ function ArchitectureFlow({
           </button>
         </div>
         <div className="workspace-panel-actions">
-          {activeTab === "design" && <button ref={componentsToggleRef} className="panel-toggle" onClick={() => togglePanel("components")} aria-expanded={componentsVisible} aria-controls="components-panel" aria-label="コンポーネントの表示切り替え"><BiListUl size={18} />コンポーネント</button>}
-          <button ref={memoToggleRef} className="panel-toggle" onClick={() => togglePanel("memo")} aria-expanded={memoVisible} aria-controls="memo-panel" aria-label="要件メモの表示切り替え"><BiNotepad size={18} />要件メモ</button>
+          {activeTab === "design" && <button ref={componentsToggleRef} className="panel-toggle" onClick={() => togglePanel("components")} aria-expanded={componentsVisible} aria-controls="components-panel" aria-label="コンポーネントの表示切り替え" title={componentsVisible ? "コンポーネントを閉じる" : "コンポーネントを開く"}><FiSidebar size={21} /></button>}
+          <button ref={memoToggleRef} className="panel-toggle" onClick={() => togglePanel("memo")} aria-expanded={memoVisible} aria-controls="memo-panel" aria-label="要件メモの表示切り替え" title={memoVisible ? "要件メモを閉じる" : "要件メモを開く"}><FiSidebar size={21} style={{ transform: 'scaleX(-1)' }} /></button>
         </div>
         </div>
 
         <div className="workspace-content" style={{ display: "flex", flex: 1, overflow: "hidden" }}>
           {isCompact && (memoVisible || componentsVisible) && <button className="side-panel-backdrop" aria-label="サイドパネルを閉じる" onClick={() => closePanel(memoVisible ? "memo" : "components")} />}
           <div id="components-panel" className="workspace-side-panel side-panel-left" hidden={!componentsVisible} onKeyDown={event => onPanelKeyDown(event, "components")}>
-            <Sidebar onClose={() => closePanel("components")} />
+            <Sidebar onClose={() => closePanel("components")} onAdd={onAddFromSidebar} />
           </div>
           <div
             className="workspace-main"

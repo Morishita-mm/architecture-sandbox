@@ -20,6 +20,79 @@ async function visit(page: Page) {
   await page.goto('/');
 }
 
+test('desktop panel toggles preserve node screen positions, zoom and saved coordinates', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await visit(page);
+  await page.locator('input[type=file]').setInputFiles({ name: 'project.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(project)) });
+  await page.getByRole('button', { name: 'アーキテクチャ設計', exact: true }).click();
+  for (const zoom of [1.2, 1.44]) {
+    await page.getByRole('button', { name: 'zoom in', exact: true }).click();
+    await expect.poll(() => page.locator('.react-flow__viewport').evaluate(element => Number(element.style.transform.match(/scale\(([\d.]+)\)/)?.[1]))).toBeCloseTo(zoom, 4);
+  }
+  const node = page.locator('.react-flow__node[data-id="app"]');
+  for (const width of [1280, 1000]) {
+    await page.setViewportSize({ width, height: 800 });
+    // Include a status banner and a responsive sidebar width before taking the baseline.
+    await page.getByRole('button', { name: 'プロジェクト保存', exact: true }).click();
+    await expect(page.getByRole('status')).toBeVisible();
+    const before = await node.boundingBox();
+    for (const name of ['コンポーネントの表示切り替え', '要件メモの表示切り替え']) {
+      for (const expanded of ['false', 'true']) {
+        const toggle = page.getByRole('button', { name, exact: true });
+        await toggle.click();
+        await expect(toggle).toHaveAttribute('aria-expanded', expanded);
+        await expect.poll(async () => {
+          const after = await node.boundingBox();
+          return Math.max(...(['x', 'y', 'width', 'height'] as const).map(key => Math.abs(after![key] - before![key])));
+        }).toBeLessThan(1);
+      }
+    }
+  }
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'プロジェクト保存', exact: true }).click();
+  const file = await (await download).path();
+  const saved = JSON.parse(await readFile(file!, 'utf8'));
+  expect(saved.diagram.nodes.map((node: { position: unknown }) => node.position)).toEqual(project.diagram.nodes.map(node => node.position));
+  expect(saved.diagram.edges).toHaveLength(1);
+});
+
+test.describe('touch component selection', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+  test('tapping components adds once, reveals them, and preserves them through save and reload', async ({ page }) => {
+    await visit(page);
+    await page.locator('input[type=file]').setInputFiles({ name: 'empty.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ ...project, diagram: { nodes: [], edges: [] } })) });
+    await page.getByRole('button', { name: 'アーキテクチャ設計', exact: true }).tap();
+    const sidebar = page.getByRole('complementary', { name: 'コンポーネント', exact: true });
+    const toggle = page.getByRole('button', { name: 'コンポーネントの表示切り替え', exact: true });
+    for (const [index, name] of ['Web Browser', 'App Server'].entries()) {
+      if (index > 0) await toggle.tap();
+      await sidebar.getByRole('button', { name, exact: true }).tap();
+      await expect(sidebar).toBeHidden();
+      await expect(page.locator('.react-flow__node')).toHaveCount(index + 1);
+      const node = page.locator('.react-flow__node').filter({ hasText: name });
+      await expect(node).toHaveClass(/selected/);
+      const bounds = await node.boundingBox();
+      expect(bounds!.x).toBeGreaterThanOrEqual(0);
+      expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(390);
+      expect(bounds!.y + bounds!.height).toBeLessThan(844);
+      await expect(page.getByPlaceholder('名前を入力...')).toBeHidden();
+    }
+    await page.locator('.react-flow__node').filter({ hasText: 'App Server' }).tap();
+    await expect(page.getByPlaceholder('名前を入力...')).toHaveValue('App Server');
+    const download = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'プロジェクト保存', exact: true }).tap();
+    const saved = JSON.parse(await readFile((await (await download).path())!, 'utf8'));
+    expect(saved.diagram.nodes.map((node: { data: { originalType: string } }) => node.data.originalType)).toEqual(['Web Browser', 'App Server']);
+    expect(saved.diagram.nodes[0].position).not.toEqual(saved.diagram.nodes[1].position);
+    await page.getByRole('button', { name: 'Architecture Sandbox ホームへ戻る', exact: true }).tap();
+    await page.locator('input[type=file]').setInputFiles({ name: 'saved.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(saved)) });
+    await page.getByRole('button', { name: 'アーキテクチャ設計', exact: true }).tap();
+    await toggle.tap();
+    await expect(page.locator('.react-flow__node')).toHaveCount(2);
+  });
+});
+
 for (const viewport of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) {
   const mobile = viewport.width < 760;
   test(`side panels retain content, close and reopen from either side at ${viewport.width}px`, async ({ page }) => {

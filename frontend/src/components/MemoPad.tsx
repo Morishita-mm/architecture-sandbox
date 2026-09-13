@@ -1,5 +1,6 @@
 import React from 'react';
-import { BiNotepad, BiChevronRight } from 'react-icons/bi';
+import { BiNotepad } from 'react-icons/bi';
+import { FiSidebar } from 'react-icons/fi';
 
 interface Props {
   value: string;
@@ -12,7 +13,7 @@ export const MemoPad: React.FC<Props> = ({ value, onChange, onClose }) => {
     <aside className="memo-pad" style={containerStyle} aria-label="要件メモ">
       <div className="side-panel-heading" style={headerStyle}>
         <span><BiNotepad /> 要件メモ</span>
-        <button className="panel-close-button" onClick={onClose} aria-label="要件メモを閉じる" title="要件メモを閉じる"><BiChevronRight size={20} /></button>
+        <button className="panel-close-button" onClick={onClose} aria-label="要件メモを閉じる" title="要件メモを閉じる"><FiSidebar size={20} style={{ transform: 'scaleX(-1)' }} /></button>
       </div>
       <textarea
         aria-label="要件メモ"
