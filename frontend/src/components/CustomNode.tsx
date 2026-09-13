@@ -6,14 +6,14 @@ import { CiMemoPad } from "react-icons/ci";
 
 // ベースのスタイル
 const baseNodeStyle: React.CSSProperties = {
-  padding: "10px 20px",
+  padding: "12px 16px",
   borderRadius: "8px",
-  color: "#333",
+  color: "var(--app-text)",
   minWidth: "150px",
   textAlign: "center",
-  boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
+  boxShadow: "var(--app-shadow)",
   position: "relative",
-  transition: "all 0.2s",
+  transition: "box-shadow 0.15s, border-color 0.15s",
 };
 
 const labelStyle: React.CSSProperties = {
@@ -28,7 +28,7 @@ const descIconStyle: React.CSSProperties = {
   bottom: "5px",
   right: "5px",
   fontSize: "10px",
-  color: "#555",
+  color: "var(--app-muted)",
   opacity: 0.7,
 };
 
@@ -38,9 +38,9 @@ export const CustomNode = memo(({ data, selected }: NodeProps<AppNodeData>) => {
   const containerStyle: React.CSSProperties = {
     ...baseNodeStyle,
     background: styleConfig.bg,
-    border: `2px solid ${selected ? "#2196F3" : styleConfig.border}`,
+    border: `2px solid ${selected ? "var(--app-primary)" : styleConfig.border}`,
     boxShadow: selected
-      ? "0 0 0 4px rgba(33, 150, 243, 0.3)"
+      ? "0 0 0 3px rgba(33, 100, 232, 0.16)"
       : baseNodeStyle.boxShadow,
   };
 
@@ -49,7 +49,7 @@ export const CustomNode = memo(({ data, selected }: NodeProps<AppNodeData>) => {
     bottom: "calc(100% + 6px)",
     right: "10px",
     background: styleConfig.badge,
-    color: "#333",
+    color: "var(--app-text)",
     fontSize: "10px",
     padding: "2px 6px",
     borderRadius: "4px",
@@ -63,16 +63,16 @@ export const CustomNode = memo(({ data, selected }: NodeProps<AppNodeData>) => {
   const isRenamed = data.label !== data.originalType;
 
   return (
-    <div style={containerStyle}>
+    <div className="canvas-node" style={containerStyle}>
       <Handle
         type="target"
         position={Position.Top}
-        style={{ background: "#555" }}
+        style={{ background: "var(--app-muted)" }}
       />
       <Handle
         type="source"
         position={Position.Bottom}
-        style={{ background: "#555" }}
+        style={{ background: "var(--app-muted)" }}
       />
 
       {isRenamed && <div style={badgeStyle}>{data.originalType}</div>}

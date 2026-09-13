@@ -32,9 +32,9 @@ export const ScenarioSetup: React.FC<Props> = ({
 
   return (
     <div style={containerStyle}>
-      <div style={cardStyle}>
+      <div className="setup-card" style={cardStyle}>
         <h2 style={titleStyle}>
-          <BiSlider style={{ marginRight: '10px', color: '#555' }} />
+          <BiSlider style={{ marginRight: '10px', color: 'var(--app-muted)' }} />
           テーマ設定</h2>
         <p style={descStyle}>
           あなたが設計したいシステム（ゲーム、EC、SNSなど）を定義してください。
@@ -83,7 +83,7 @@ export const ScenarioSetup: React.FC<Props> = ({
                 />
                 <div>
                   <div style={{ fontWeight: "bold" }}>★☆☆ 小規模</div>
-                  <div style={{ fontSize: "12px", color: "#666" }}>
+                  <div style={{ fontSize: "12px", color: "var(--app-muted)" }}>
                     社内ツール・個人開発レベル
                   </div>
                 </div>
@@ -100,7 +100,7 @@ export const ScenarioSetup: React.FC<Props> = ({
                 />
                 <div>
                   <div style={{ fontWeight: "bold" }}>★★☆ 中規模</div>
-                  <div style={{ fontSize: "12px", color: "#666" }}>
+                  <div style={{ fontSize: "12px", color: "var(--app-muted)" }}>
                     急成長中のスタートアップ
                   </div>
                 </div>
@@ -117,7 +117,7 @@ export const ScenarioSetup: React.FC<Props> = ({
                 />
                 <div>
                   <div style={{ fontWeight: "bold" }}>★★★ 大規模</div>
-                  <div style={{ fontSize: "12px", color: "#666" }}>
+                  <div style={{ fontSize: "12px", color: "var(--app-muted)" }}>
                     Global・ミッションクリティカル
                   </div>
                 </div>
@@ -141,7 +141,7 @@ export const ScenarioSetup: React.FC<Props> = ({
                   <div style={{ fontWeight: "bold" }}>
                     <BiRocket style={{ marginRight: '8px', color: '#E91E63' }} />
                     非技術系CEO</div>
-                  <div style={{ fontSize: "12px", color: "#666" }}>
+                  <div style={{ fontSize: "12px", color: "var(--app-muted)" }}>
                     夢を語る・要件がふわっとしている
                   </div>
                 </div>
@@ -158,9 +158,9 @@ export const ScenarioSetup: React.FC<Props> = ({
                 />
                 <div>
                   <div style={{ fontWeight: "bold" }}>
-                    <BiServer style={{ marginRight: '8px', color: '#2196F3' }} />
+                    <BiServer style={{ marginRight: '8px', color: 'var(--app-primary)' }} />
                     技術責任者 (CTO)</div>
-                  <div style={{ fontSize: "12px", color: "#666" }}>
+                  <div style={{ fontSize: "12px", color: "var(--app-muted)" }}>
                     品質・堅牢性重視・SPOF許さない
                   </div>
                 </div>
@@ -177,9 +177,9 @@ export const ScenarioSetup: React.FC<Props> = ({
                 />
                 <div>
                   <div style={{ fontWeight: "bold" }}>
-                    <BiWallet style={{ marginRight: '8px', color: '#4CAF50' }} />
+                    <BiWallet style={{ marginRight: '8px', color: 'var(--app-success)' }} />
                     財務担当 (CFO)</div>
-                  <div style={{ fontSize: "12px", color: "#666" }}>
+                  <div style={{ fontSize: "12px", color: "var(--app-muted)" }}>
                     コスト重視・高額な構成に厳しい
                   </div>
                 </div>
@@ -208,28 +208,28 @@ const containerStyle: React.CSSProperties = {
   alignItems: "center",
   minHeight: "100vh",
   padding: "20px",
-  backgroundColor: "#f4f7f9",
+  backgroundColor: "var(--app-bg)",
 };
 
 const cardStyle: React.CSSProperties = {
   width: "100%",
   maxWidth: "600px",
   backgroundColor: "white",
-  padding: "40px",
-  borderRadius: "12px",
-  boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
+  borderRadius: "10px",
+  border: "1px solid var(--app-border)",
+  boxShadow: "var(--app-shadow)",
 };
 
 const titleStyle: React.CSSProperties = {
   marginTop: 0,
   marginBottom: "10px",
-  color: "#24292e",
+  color: "var(--app-text)",
   textAlign: "center",
 };
 
 const descStyle: React.CSSProperties = {
   marginBottom: "30px",
-  color: "#586069",
+  color: "var(--app-muted)",
   textAlign: "center",
   lineHeight: "1.5",
   fontSize: "14px",
@@ -243,17 +243,17 @@ const labelStyle: React.CSSProperties = {
   display: "block",
   marginBottom: "8px",
   fontWeight: "bold",
-  color: "#444",
+  color: "var(--app-text)",
   fontSize: "14px",
 };
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "12px",
-  fontSize: "16px",
+  fontSize: "14px",
   borderRadius: "6px",
-  border: "1px solid #e1e4e8",
-  backgroundColor: "#fafbfc",
+  border: "1px solid var(--app-border)",
+  backgroundColor: "var(--app-subtle)",
   fontFamily: "inherit",
 };
 
@@ -268,10 +268,10 @@ const radioLabelStyle = (isActive: boolean): React.CSSProperties => ({
   alignItems: "center",
   padding: "12px",
   borderRadius: "6px",
-  border: `1px solid ${isActive ? "#2196F3" : "#e1e4e8"}`,
-  backgroundColor: isActive ? "#e3f2fd" : "white",
+  border: `1px solid ${isActive ? "var(--app-primary)" : "var(--app-border)"}`,
+  backgroundColor: isActive ? "var(--app-primary-soft)" : "white",
   cursor: "pointer",
-  transition: "all 0.2s",
+  transition: "border-color 0.15s, background-color 0.15s",
 });
 
 const buttonGroupStyle: React.CSSProperties = {
@@ -284,12 +284,12 @@ const buttonGroupStyle: React.CSSProperties = {
 const confirmButtonStyle: React.CSSProperties = {
   flex: 2,
   padding: "12px",
-  backgroundColor: "#2ea44f",
+  backgroundColor: "var(--app-success)",
   color: "white",
   border: "none",
   borderRadius: "6px",
   fontWeight: "bold",
-  fontSize: "16px",
+  fontSize: "14px",
   cursor: "pointer",
 };
 
@@ -297,10 +297,10 @@ const cancelButtonStyle: React.CSSProperties = {
   flex: 1,
   padding: "12px",
   backgroundColor: "#f6f8fa",
-  color: "#24292e",
+  color: "var(--app-text)",
   border: "1px solid #d1d5da",
   borderRadius: "6px",
   fontWeight: "bold",
-  fontSize: "16px",
+  fontSize: "14px",
   cursor: "pointer",
 };

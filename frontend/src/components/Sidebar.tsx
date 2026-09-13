@@ -35,7 +35,7 @@ export const Sidebar = () => {
   };
 
   return (
-    <aside style={sidebarStyle}>
+    <aside className="component-sidebar" style={sidebarStyle}>
       <div style={descriptionStyle}>コンポーネントを選択</div>
 
       <div style={{ flex: 1, overflowY: "auto" }}>
@@ -73,21 +73,22 @@ const CategorySection = ({
 }) => {
   return (
     <div style={{ marginBottom: "10px" }}>
-      <div
+      <button
+        aria-expanded={isOpen}
         onClick={onToggle}
         style={{
           ...headerStyle,
-          borderLeft: `4px solid ${category.color}`,
-          backgroundColor: isOpen ? "#f8f9fa" : "transparent",
+          borderLeft: `3px solid ${category.color}`,
+          backgroundColor: isOpen ? "var(--app-subtle)" : "transparent",
         }}
       >
-        <span style={{ fontWeight: "bold", color: "#333" }}>
+        <span style={{ fontWeight: "bold", color: "var(--app-text)" }}>
           {category.label}
         </span>
         <span style={{ fontSize: "12px", color: "#888" }}>
           {isOpen ? "▼" : "▶"}
         </span>
-      </div>
+      </button>
 
       {isOpen && (
         <div style={listStyle}>
@@ -107,9 +108,9 @@ const CategorySection = ({
               draggable
               style={{
                 ...nodeStyle,
-                borderColor: category.color,
+                borderColor: "var(--app-border)",
                 // サイドバー上の見た目は白背景でスッキリさせる
-                backgroundColor: "white",
+                backgroundColor: "var(--component-background, white)",
               }}
             >
               <div
@@ -132,9 +133,9 @@ const CategorySection = ({
 
 // --- Styles ---
 const sidebarStyle: React.CSSProperties = {
-  width: "280px",
-  borderRight: "1px solid #ddd",
-  padding: "15px",
+  width: "var(--app-sidebar-width)",
+  borderRight: "1px solid var(--app-border)",
+  padding: "16px 12px",
   backgroundColor: "#fff",
   display: "flex",
   flexDirection: "column",
@@ -145,16 +146,18 @@ const descriptionStyle: React.CSSProperties = {
   marginBottom: "15px",
   fontSize: "14px",
   fontWeight: "bold",
-  color: "#555",
+  color: "var(--app-muted)",
 };
 
 const headerStyle: React.CSSProperties = {
-  padding: "10px",
+  width: "100%",
+  border: "none",
+  padding: "9px 10px",
   cursor: "pointer",
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
-  fontSize: "14px",
+  fontSize: "12px",
   borderRadius: "0 4px 4px 0",
   marginBottom: "5px",
   transition: "background-color 0.2s",
@@ -163,19 +166,19 @@ const headerStyle: React.CSSProperties = {
 const listStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
-  gap: "8px",
-  paddingLeft: "10px",
+  gap: "6px",
+  paddingLeft: "8px",
   paddingBottom: "10px",
 };
 
 const nodeStyle: React.CSSProperties = {
-  padding: "8px 12px",
-  border: "1px solid #ddd",
+  minHeight: "36px",
+  padding: "7px 10px",
+  border: "1px solid var(--app-border)",
   borderRadius: "6px",
   cursor: "grab",
   fontSize: "13px",
   display: "flex",
   alignItems: "center",
-  boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-  color: "#333",
+  color: "var(--app-text)",
 };

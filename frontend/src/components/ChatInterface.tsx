@@ -112,19 +112,19 @@ export const ChatInterface: React.FC<Props> = ({
             }}
           >
             {msg.role === "model" && <div style={iconStyle}>
-              <BiBot size={24} color="#666" />
+              <BiBot size={24} color="var(--app-muted)" />
               </div>}
             <div
               style={{
                 ...bubbleStyle,
-                backgroundColor: msg.role === "user" ? "#2196F3" : "#f1f1f1",
-                color: msg.role === "user" ? "white" : "black",
+                backgroundColor: msg.role === "user" ? "var(--app-primary)" : "#f1f4f7",
+                color: msg.role === "user" ? "white" : "var(--app-text)",
               }}
             >
               {msg.content}
             </div>
             {msg.role === "user" && <div style={iconStyle}>
-              <BiUser size={24} color="#2196F3" />
+              <BiUser size={24} color="var(--app-primary)" />
               </div>}
           </div>
         ))}
@@ -134,9 +134,10 @@ export const ChatInterface: React.FC<Props> = ({
         <div ref={messagesEndRef} />
       </div>
 
-      {error && <p role="alert" style={{ color: "#b71c1c", padding: "0 20px" }}>{error}</p>}
+      {error && <p role="alert" style={{ color: "var(--app-danger)", padding: "0 20px" }}>{error}</p>}
       <div style={inputAreaStyle}>
         <textarea
+          className="chat-composer"
           ref={inputRef}
           rows={1}
           aria-label="メッセージ"
@@ -172,17 +173,18 @@ const containerStyle: React.CSSProperties = {
   backgroundColor: "#fff",
   maxWidth: "800px",
   margin: "0 auto",
-  borderLeft: "1px solid #eee",
-  borderRight: "1px solid #eee",
+  borderLeft: "1px solid var(--app-border)",
+  borderRight: "1px solid var(--app-border)",
 };
 
 const messagesAreaStyle: React.CSSProperties = {
   flex: 1,
+  minHeight: 0,
   overflowY: "auto",
-  padding: "20px",
+  padding: "24px",
   display: "flex",
   flexDirection: "column",
-  gap: "15px",
+  gap: "20px",
 };
 
 const messageRowStyle: React.CSSProperties = {
@@ -192,34 +194,38 @@ const messageRowStyle: React.CSSProperties = {
 };
 
 const iconStyle: React.CSSProperties = {
-  fontSize: "24px",
+  flexShrink: 0,
+  display: "grid",
+  placeItems: "center",
+  width: "28px",
+  height: "32px",
   marginTop: "5px",
 };
 
 const bubbleStyle: React.CSSProperties = {
   padding: "12px 16px",
-  borderRadius: "18px",
-  maxWidth: "70%",
-  lineHeight: "1.5",
+  borderRadius: "12px",
+  maxWidth: "78%",
+  lineHeight: "1.75",
   fontSize: "15px",
   whiteSpace: "pre-wrap",
 };
 
 const inputAreaStyle: React.CSSProperties = {
   padding: "20px 20px 8px",
-  borderTop: "1px solid #eee",
+  borderTop: "1px solid var(--app-border)",
   display: "flex",
   gap: "10px",
-  backgroundColor: "#f9f9f9",
+  backgroundColor: "var(--app-subtle)",
 };
 
 const inputStyle: React.CSSProperties = {
   flex: 1,
   minWidth: 0,
   padding: "12px",
-  borderRadius: "24px",
-  border: "1px solid #ddd",
-  fontSize: "16px",
+  borderRadius: "8px",
+  border: "1px solid var(--app-border)",
+  fontSize: "15px",
   fontFamily: "inherit",
   lineHeight: "24px",
   boxSizing: "border-box",
@@ -228,23 +234,22 @@ const inputStyle: React.CSSProperties = {
   minHeight: "50px",
   maxHeight: "98px",
   overflowY: "auto",
-  outline: "none",
 };
 
 const inputHelpStyle: React.CSSProperties = {
   padding: "0 20px 12px",
   fontSize: "12px",
-  color: "#666",
-  backgroundColor: "#f9f9f9",
+  color: "var(--app-muted)",
+  backgroundColor: "var(--app-subtle)",
 };
 
 const sendButtonStyle: React.CSSProperties = {
   alignSelf: "flex-end",
-  height: "48px",
-  padding: "0 25px",
-  borderRadius: "24px",
+  height: "50px",
+  padding: "0 20px",
+  borderRadius: "8px",
   border: "none",
-  backgroundColor: "#2196F3",
+  backgroundColor: "var(--app-primary)",
   color: "white",
   cursor: "pointer",
   fontWeight: "bold",

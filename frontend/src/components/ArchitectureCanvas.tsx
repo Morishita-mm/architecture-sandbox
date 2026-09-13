@@ -474,7 +474,7 @@ function ArchitectureFlow({
         display: "flex",
         flexDirection: "column",
         width: "100%",
-        height: "100vh",
+        height: "100dvh",
       }}
     >
       <Header
@@ -490,7 +490,7 @@ function ArchitectureFlow({
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
 
       <>
-        <div style={tabBarStyle}>
+        <div className="workspace-tabs" style={tabBarStyle}>
           <button
             style={activeTab === "chat" ? activeTabStyle : tabStyle}
             onClick={() => setActiveTab("chat")}
@@ -518,8 +518,9 @@ function ArchitectureFlow({
           </button>
         </div>
 
-        <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+        <div className="workspace-content" style={{ display: "flex", flex: 1, overflow: "hidden" }}>
           <div
+            className="workspace-main"
             style={{
               flex: 1,
               display: "flex",
@@ -573,23 +574,24 @@ function ArchitectureFlow({
                   onPaneClick={onPaneClick}
                   deleteKeyCode={activeTab === "design" && !isHelpOpen ? ["Backspace", "Delete"] : null}
                   fitView
+                  fitViewOptions={{ maxZoom: 1 }}
                 >
-                  <Background />
+                  <Background color="#d4dce6" gap={20} size={1} />
                   <Controls />
                   <MiniMap />
                   <Panel position="top-right">
                     <button
                       onClick={onEvaluate}
                       disabled={isLoading}
+                      className="ui-button ui-button-success"
                       style={{
-                        padding: "10px 20px",
-                        fontSize: "16px",
-                        backgroundColor: isLoading ? "#ccc" : "#4CAF50",
+                        padding: "9px 14px",
+                        fontSize: "13px",
+                        backgroundColor: isLoading ? "var(--app-border)" : "var(--app-success)",
                         color: "white",
                         border: "none",
-                        borderRadius: "5px",
+                        borderRadius: "8px",
                         cursor: isLoading ? "wait" : "pointer",
-                        boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
                       }}
                     >
                       {isLoading ? "AIが評価中..." : "設計完了（評価する）"}
@@ -637,23 +639,26 @@ export function ArchitectureCanvas({
 
 const tabBarStyle: React.CSSProperties = {
   display: "flex",
-  backgroundColor: "#f5f5f5",
-  borderBottom: "1px solid #ddd",
-  padding: "0 20px",
+  backgroundColor: "var(--app-subtle)",
+  borderBottom: "1px solid var(--app-border)",
+  padding: "0 var(--tabs-inset, 16px)",
   flexShrink: 0,
+  overflowX: "auto",
 };
 const tabStyle: React.CSSProperties = {
-  padding: "15px 30px",
+  padding: "var(--tab-padding, 13px 22px)",
   border: "none",
-  background: "none",
+  background: "var(--tab-hover, transparent)",
   cursor: "pointer",
-  fontSize: "16px",
-  color: "#666",
-  borderBottom: "3px solid transparent",
+  whiteSpace: "nowrap",
+  flexShrink: 0,
+  fontSize: "var(--tab-font, 14px)",
+  color: "var(--app-muted)",
+  borderBottom: "2px solid transparent",
 };
 const activeTabStyle: React.CSSProperties = {
   ...tabStyle,
-  color: "#2196F3",
+  color: "var(--app-primary)",
   fontWeight: "bold",
-  borderBottom: "3px solid #2196F3",
+  borderBottom: "2px solid var(--app-primary)",
 };

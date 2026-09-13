@@ -45,18 +45,18 @@ export const HelpModal: React.FC<Props> = ({ isOpen, onClose }) => {
         {/* ヘッダー */}
         <div style={headerStyle}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <BiHelpCircle size={24} color="#2196F3" />
+            <BiHelpCircle size={24} color="var(--app-primary)" />
             <h2 style={{ margin: 0, fontSize: "20px" }}>ユーザーガイド</h2>
           </div>
-          <button onClick={onClose} style={closeButtonStyle}>
+          <button onClick={onClose} style={closeButtonStyle} aria-label="操作ガイドを閉じる">
             <BiX size={24} />
           </button>
         </div>
 
         {/* メインエリア */}
-        <div style={bodyStyle}>
+        <div className="help-body" style={bodyStyle}>
           {/* 左サイドバー */}
-          <div style={sidebarStyle}>
+          <div className="help-sidebar" style={sidebarStyle}>
             {tabs.map((tab) => (
               <button
                 key={tab.key}
@@ -70,7 +70,7 @@ export const HelpModal: React.FC<Props> = ({ isOpen, onClose }) => {
           </div>
 
           {/* 右コンテンツエリア */}
-          <div style={contentAreaStyle}>
+          <div className="help-content" style={contentAreaStyle}>
             {activeTab === "flow" && (
               <div style={animateInStyle}>
                 <h3 style={contentTitleStyle}>設計の基本的なワークフロー</h3>
@@ -103,7 +103,7 @@ export const HelpModal: React.FC<Props> = ({ isOpen, onClose }) => {
                     <BiSave size={18} /> 保存と中断について:
                   </strong>
                   作業内容は画面右上の
-                  <strong style={{ color: "#28a745" }}>
+                  <strong style={{ color: "var(--app-success)" }}>
                     「プロジェクト保存」
                   </strong>
                   ボタンから、いつでもローカルファイル（.json）として保存できます。
@@ -189,13 +189,13 @@ export const HelpModal: React.FC<Props> = ({ isOpen, onClose }) => {
                     style={{
                       marginBottom: "10px",
                       fontWeight: "bold",
-                      color: "#666",
+                      color: "var(--app-muted)",
                       display: "flex",
                       alignItems: "center",
                       gap: "5px",
                     }}
                   >
-                    悪い例 <BiXCircle color="#F44336" />
+                    悪い例 <BiXCircle color="var(--app-danger)" />
                   </div>
                   <div style={badNodeStyle}>Web Server</div>
                   <p
@@ -212,13 +212,13 @@ export const HelpModal: React.FC<Props> = ({ isOpen, onClose }) => {
                     style={{
                       marginBottom: "10px",
                       fontWeight: "bold",
-                      color: "#2196F3",
+                      color: "var(--app-primary)",
                       display: "flex",
                       alignItems: "center",
                       gap: "5px",
                     }}
                   >
-                    良い例 <BiCheckCircle color="#4CAF50" />
+                    良い例 <BiCheckCircle color="var(--app-success)" />
                   </div>
                   <div style={goodNodeStyle}>
                     <div style={{ fontWeight: "bold" }}>画像処理サーバー</div>
@@ -231,7 +231,7 @@ export const HelpModal: React.FC<Props> = ({ isOpen, onClose }) => {
                   <p
                     style={{
                       fontSize: "12px",
-                      color: "#666",
+                      color: "var(--app-muted)",
                       marginTop: "5px",
                     }}
                   >
@@ -246,7 +246,7 @@ export const HelpModal: React.FC<Props> = ({ isOpen, onClose }) => {
                 <h3 style={contentTitleStyle}>評価レポートの見方</h3>
                 <p>
                   設計が完了したら、右上の
-                  <strong style={{ color: "#4CAF50" }}>
+                  <strong style={{ color: "var(--app-success)" }}>
                     「設計完了（評価する）」
                   </strong>
                   ボタンを押してください。
@@ -355,8 +355,8 @@ const StepItem: React.FC<{
         width: "32px",
         height: "32px",
         borderRadius: "50%",
-        backgroundColor: "#E3F2FD",
-        color: "#2196F3",
+        backgroundColor: "var(--app-primary-soft)",
+        color: "var(--app-primary)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -367,10 +367,10 @@ const StepItem: React.FC<{
       {number}
     </div>
     <div>
-      <div style={{ fontWeight: "bold", marginBottom: "5px", color: "#333" }}>
+      <div style={{ fontWeight: "bold", marginBottom: "5px", color: "var(--app-text)" }}>
         {title}
       </div>
-      <div style={{ fontSize: "14px", color: "#666", lineHeight: "1.6" }}>
+      <div style={{ fontSize: "14px", color: "var(--app-muted)", lineHeight: "1.6" }}>
         {children}
       </div>
     </div>
@@ -380,8 +380,8 @@ const StepItem: React.FC<{
 const Kbd: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <kbd
     style={{
-      backgroundColor: "#eee",
-      border: "1px solid #ccc",
+      backgroundColor: "var(--app-border)",
+      border: "1px solid var(--app-border)",
       borderRadius: "3px",
       padding: "2px 6px",
       fontSize: "12px",
@@ -424,7 +424,7 @@ const modalStyle: React.CSSProperties = {
 
 const headerStyle: React.CSSProperties = {
   padding: "15px 25px",
-  borderBottom: "1px solid #eee",
+  borderBottom: "1px solid var(--app-border)",
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
@@ -438,26 +438,24 @@ const bodyStyle: React.CSSProperties = {
 };
 
 const sidebarStyle: React.CSSProperties = {
-  width: "220px",
-  backgroundColor: "#f8f9fa",
-  borderRight: "1px solid #eee",
-  padding: "20px 0",
+  backgroundColor: "var(--app-subtle)",
+  borderRight: "1px solid var(--app-border)",
+  padding: "var(--help-nav-padding, 20px 0)",
   display: "flex",
-  flexDirection: "column",
 };
 
 const contentAreaStyle: React.CSSProperties = {
   flex: 1,
-  padding: "30px 40px",
+  padding: "var(--help-content-padding, 30px 40px)",
   overflowY: "auto",
   backgroundColor: "#fff",
 };
 
 const footerStyle: React.CSSProperties = {
   padding: "15px 25px",
-  borderTop: "1px solid #eee",
+  borderTop: "1px solid var(--app-border)",
   textAlign: "right",
-  backgroundColor: "#f8f9fa",
+  backgroundColor: "var(--app-subtle)",
 };
 
 const tabStyle: React.CSSProperties = {
@@ -466,7 +464,7 @@ const tabStyle: React.CSSProperties = {
   background: "transparent",
   textAlign: "left",
   cursor: "pointer",
-  color: "#666",
+  color: "var(--app-muted)",
   fontSize: "14px",
   display: "flex",
   alignItems: "center",
@@ -475,10 +473,10 @@ const tabStyle: React.CSSProperties = {
 
 const activeTabStyle: React.CSSProperties = {
   ...tabStyle,
-  backgroundColor: "#e3f2fd",
-  color: "#1976D2",
+  backgroundColor: "var(--app-primary-soft)",
+  color: "var(--app-primary)",
   fontWeight: "bold",
-  borderRight: "3px solid #1976D2",
+  borderRight: "3px solid var(--app-primary)",
 };
 
 const tabIconStyle: React.CSSProperties = {
@@ -500,7 +498,7 @@ const closeButtonStyle: React.CSSProperties = {
 
 const primaryButtonStyle: React.CSSProperties = {
   padding: "10px 30px",
-  backgroundColor: "#2196F3",
+  backgroundColor: "var(--app-primary)",
   color: "white",
   border: "none",
   borderRadius: "6px",
@@ -513,8 +511,8 @@ const contentTitleStyle: React.CSSProperties = {
   marginTop: 0,
   marginBottom: "25px",
   fontSize: "24px",
-  color: "#333",
-  borderBottom: "1px solid #eee",
+  color: "var(--app-text)",
+  borderBottom: "1px solid var(--app-border)",
   paddingBottom: "10px",
 };
 
@@ -541,23 +539,23 @@ const tableStyle: React.CSSProperties = {
 
 const tdIconStyle: React.CSSProperties = {
   padding: "12px",
-  borderBottom: "1px solid #eee",
+  borderBottom: "1px solid var(--app-border)",
   width: "40px",
-  color: "#555",
+  color: "var(--app-muted)",
 };
 
 const tdLabelStyle: React.CSSProperties = {
   padding: "12px",
-  borderBottom: "1px solid #eee",
+  borderBottom: "1px solid var(--app-border)",
   fontWeight: "bold",
   width: "100px",
-  color: "#333",
+  color: "var(--app-text)",
 };
 
 const listStyle: React.CSSProperties = {
   paddingLeft: "20px",
   lineHeight: "1.8",
-  color: "#555",
+  color: "var(--app-muted)",
 };
 
 const animateInStyle: React.CSSProperties = {
@@ -565,18 +563,18 @@ const animateInStyle: React.CSSProperties = {
 };
 
 const exampleBoxStyle: React.CSSProperties = {
-  backgroundColor: "#f5f5f5",
+  backgroundColor: "var(--app-subtle)",
   padding: "20px",
   borderRadius: "8px",
-  border: "1px solid #ddd",
+  border: "1px solid var(--app-border)",
 };
 
 const badNodeStyle: React.CSSProperties = {
   padding: "10px",
-  border: "2px solid #ccc",
+  border: "2px solid var(--app-border)",
   borderRadius: "8px",
   backgroundColor: "white",
-  color: "#333",
+  color: "var(--app-text)",
   textAlign: "center",
   width: "120px",
   margin: "0 auto",
@@ -584,9 +582,9 @@ const badNodeStyle: React.CSSProperties = {
 
 const goodNodeStyle: React.CSSProperties = {
   padding: "10px",
-  border: "2px solid #2196F3",
+  border: "2px solid var(--app-primary)",
   borderRadius: "8px",
-  backgroundColor: "#E3F2FD",
+  backgroundColor: "var(--app-primary-soft)",
   color: "#0D47A1",
   textAlign: "center",
   width: "180px",
