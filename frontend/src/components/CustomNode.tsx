@@ -57,6 +57,7 @@ export const CustomNode = memo(({ data, selected }: NodeProps<AppNodeData>) => {
     fontWeight: "bold",
     textTransform: "uppercase",
     whiteSpace: "nowrap",
+    pointerEvents: "none",
   };
 
   const isRenamed = data.label !== data.originalType;

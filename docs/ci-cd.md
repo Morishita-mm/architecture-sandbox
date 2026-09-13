@@ -52,6 +52,8 @@ Google側の信頼条件は、このrepository/ownerの数値ID、main、product
 
 TerraformはIAM・CPU/メモリ・scale・Secret version・環境変数を管理する。イメージだけはCIへ所有権を移し、Terraformの `ignore_changes` で、通常のinfra applyが古い `image_ref` へ巻き戻さないようにする。`image_ref` は初回作成用の固定digestとして残す。イメージの変更・復旧はCDか明示したCloud Run revisionへの切替で行う。
 
+初回CD後の実planでは、gcloudが設定した `client` / `client_version` / `template.revision` の解除だけが検出された。IAM・Secret参照・実行設定の差分はなかった。このメタデータ差分をゼロと記録せず、通常のinfra変更と区別して確認する。revision名を変更検知の対象から除外すると、将来の実行設定変更時にも既存の固定revision名を使うため、安易に `ignore_changes` を広げない。メタデータ差分を消すだけの本番applyは不要。
+
 ## 復旧
 
 初回の[release run 34738236394](https://github.com/Morishita-mm/architecture-sandbox/actions/runs/34738236394)は、候補確認・API切替・Cloudflare配信に成功した直後、公開smokeだけがDNSの `ENOTFOUND` で失敗した。反映後は同じsmokeが成功し、本番の実Gemini・保存復元・共有リンクも確認した。配信成功とworkflow全体の成功は別々に確認する。上記の待機はこの初回反映を吸収するためのもので、後続smokeの検証を緩めない。

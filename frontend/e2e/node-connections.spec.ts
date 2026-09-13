@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 
-test('renamed nodes keep their incoming connection handle visible and usable', async ({ page }) => {
+for (const gap of [200, 60]) {
+test(`renamed nodes keep both connection handles usable with ${gap}px vertical spacing`, async ({ page }) => {
   await page.route('**/*', route => new URL(route.request().url()).hostname === '127.0.0.1' ? route.continue() : route.abort());
   const project = {
     schemaVersion: 2, version: '1.0', timestamp: '2026-09-13T00:00:00.000Z',
@@ -10,7 +11,7 @@ test('renamed nodes keep their incoming connection handle visible and usable', a
     memo: '', chatHistory: [], evaluation: null,
     diagram: { nodes: [
       { id: 'app', type: 'custom', position: { x: 0, y: 0 }, data: { originalType: 'App Server', label: 'API' } },
-      { id: 'db', type: 'custom', position: { x: 0, y: 200 }, data: { originalType: 'RDBMS (SQL)', label: 'DB' } },
+      { id: 'db', type: 'custom', position: { x: 0, y: gap }, data: { originalType: 'RDBMS (SQL)', label: 'DB' } },
     ], edges: [] },
   };
   await page.goto('/');
@@ -18,12 +19,14 @@ test('renamed nodes keep their incoming connection handle visible and usable', a
   await page.getByRole('button', { name: 'アーキテクチャ設計', exact: true }).click();
   const source = page.locator('[data-nodeid="app"].source');
   const target = page.locator('[data-nodeid="db"].target');
-  // A renamed type badge previously covered the target: visible in the DOM,
-  // but impossible to hit with the pointer. Check actual hit testing.
-  await expect.poll(() => target.evaluate(el => {
-    const r = el.getBoundingClientRect();
-    return el.ownerDocument.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) === el;
-  })).toBe(true);
+  // Check both actual hit targets: the badge must neither cover its own input
+  // nor intercept the preceding node's output in a compact layout.
+  for (const handle of [source, target]) {
+    await expect.poll(() => handle.evaluate(el => {
+      const r = el.getBoundingClientRect();
+      return el.ownerDocument.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) === el;
+    })).toBe(true);
+  }
   await source.hover();
   await page.mouse.down();
   await target.hover();
@@ -36,3 +39,4 @@ test('renamed nodes keep their incoming connection handle visible and usable', a
   const saved = JSON.parse(await readFile(path, 'utf8'));
   expect(saved.diagram.edges).toEqual([expect.objectContaining({ source: 'app', target: 'db' })]);
 });
+}
