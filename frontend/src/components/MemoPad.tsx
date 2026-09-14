@@ -1,20 +1,14 @@
 import React from 'react';
-import { BiNotepad } from 'react-icons/bi';
-import { FiSidebar } from 'react-icons/fi';
 
 interface Props {
   value: string;
   onChange: (val: string) => void;
-  onClose: () => void;
 }
 
-export const MemoPad: React.FC<Props> = ({ value, onChange, onClose }) => {
+export const MemoPad: React.FC<Props> = ({ value, onChange }) => {
   return (
-    <aside className="memo-pad" style={containerStyle} aria-label="要件メモ">
-      <div className="side-panel-heading" style={headerStyle}>
-        <span><BiNotepad /> 要件メモ</span>
-        <button className="panel-close-button" onClick={onClose} aria-label="要件メモを閉じる" title="要件メモを閉じる"><FiSidebar size={20} style={{ transform: 'scaleX(-1)' }} /></button>
-      </div>
+    <aside className="memo-pad" style={containerStyle} aria-label="要件メモ" tabIndex={-1}>
+      <h2 className="side-panel-heading" style={headerStyle}>要件メモ</h2>
       <textarea
         aria-label="要件メモ"
         style={textAreaStyle}

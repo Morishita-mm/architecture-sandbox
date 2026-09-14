@@ -114,12 +114,13 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 390, height: 844 
     expect(Math.abs(panel!.y - work!.y)).toBeLessThan(2);
     expect(Math.abs(panel!.x + panel!.width - viewport.width)).toBeLessThan(2);
     await memo.fill('予算を確認する\nバックアップ方針も確認する');
-    await page.getByRole('button', { name: '要件メモを閉じる', exact: true }).click();
+    await memoToggle.click();
     await expect(memo).toBeHidden();
     await expect(memoToggle).toBeFocused();
     const draft = page.getByRole('textbox', { name: 'メッセージ', exact: true });
     await draft.fill('未送信の質問');
-    await memoToggle.click();
+    await memoToggle.press('Enter');
+    await expect(memoPanel).toBeFocused();
     await expect(memo).toHaveValue('予算を確認する\nバックアップ方針も確認する');
     await memo.press('Escape');
     await expect(memo).toBeHidden();
@@ -135,9 +136,10 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 390, height: 844 
     const category = components.getByRole('button', { name: /Client \/ User/ });
     await category.click();
     await expect(category).toHaveAttribute('aria-expanded', 'false');
-    await page.getByRole('button', { name: 'コンポーネントを閉じる', exact: true }).click();
+    await componentsToggle.click();
     await expect(components).toBeHidden();
     await componentsToggle.click();
+    await expect(components).toBeFocused();
     await expect(category).toHaveAttribute('aria-expanded', 'false');
     if (mobile) {
       await memoToggle.click();

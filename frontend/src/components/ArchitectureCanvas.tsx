@@ -17,8 +17,7 @@ import ReactFlow, {
 
 import "reactflow/dist/style.css";
 import { Sidebar } from "./Sidebar";
-import { BiChat, BiNetworkChart, BiBarChart } from "react-icons/bi";
-import { FiSidebar } from "react-icons/fi";
+import { BiChat, BiNetworkChart, BiBarChart, BiCube, BiNotepad } from "react-icons/bi";
 import type {
   EvaluationResult,
   ChatMessage,
@@ -120,7 +119,7 @@ function ArchitectureFlow({
   useEffect(() => {
     const panel = focusPanelOnOpen.current;
     if (panel && (panel === "memo" ? memoVisible : componentsVisible)) {
-      document.getElementById(`${panel}-panel`)?.querySelector<HTMLButtonElement>("button")?.focus();
+      document.getElementById(`${panel}-panel`)?.querySelector<HTMLElement>("aside")?.focus();
       focusPanelOnOpen.current = null;
     }
   }, [memoVisible, componentsVisible]);
@@ -611,16 +610,22 @@ function ArchitectureFlow({
             評価結果
           </button>
         </div>
-        <div className="workspace-panel-actions">
-          {activeTab === "design" && <button ref={componentsToggleRef} className="panel-toggle" onClick={() => togglePanel("components")} aria-expanded={componentsVisible} aria-controls="components-panel" aria-label="コンポーネントの表示切り替え" title={componentsVisible ? "コンポーネントを閉じる" : "コンポーネントを開く"}><FiSidebar size={21} /></button>}
-          <button ref={memoToggleRef} className="panel-toggle" onClick={() => togglePanel("memo")} aria-expanded={memoVisible} aria-controls="memo-panel" aria-label="要件メモの表示切り替え" title={memoVisible ? "要件メモを閉じる" : "要件メモを開く"}><FiSidebar size={21} style={{ transform: 'scaleX(-1)' }} /></button>
+        <div className="workspace-panel-actions" role="group" aria-label="サイドパネルの表示">
+          {activeTab === "design" && (
+            <button ref={componentsToggleRef} className="panel-toggle" onClick={() => togglePanel("components")} aria-expanded={componentsVisible} aria-controls="components-panel" aria-label="コンポーネントの表示切り替え" title={componentsVisible ? "コンポーネントを閉じる" : "コンポーネントを開く"}>
+              <BiCube size={18} aria-hidden="true" />コンポーネント
+            </button>
+          )}
+          <button ref={memoToggleRef} className="panel-toggle" onClick={() => togglePanel("memo")} aria-expanded={memoVisible} aria-controls="memo-panel" aria-label="要件メモの表示切り替え" title={memoVisible ? "要件メモを閉じる" : "要件メモを開く"}>
+            <BiNotepad size={18} aria-hidden="true" />要件メモ
+          </button>
         </div>
         </div>
 
         <div className="workspace-content" style={{ display: "flex", flex: 1, overflow: "hidden" }}>
           {isCompact && (memoVisible || componentsVisible) && <button className="side-panel-backdrop" aria-label="サイドパネルを閉じる" onClick={() => closePanel(memoVisible ? "memo" : "components")} />}
           <div id="components-panel" className="workspace-side-panel side-panel-left" hidden={!componentsVisible} onKeyDown={event => onPanelKeyDown(event, "components")}>
-            <Sidebar onClose={() => closePanel("components")} onAdd={onAddFromSidebar} />
+            <Sidebar onAdd={onAddFromSidebar} />
           </div>
           <div
             className="workspace-main"
@@ -718,7 +723,7 @@ function ArchitectureFlow({
             </div>
           </div>
           <div id="memo-panel" className="workspace-side-panel side-panel-right" hidden={!memoVisible} onKeyDown={event => onPanelKeyDown(event, "memo")}>
-            <MemoPad value={memo} onChange={setMemo} onClose={() => closePanel("memo")} />
+            <MemoPad value={memo} onChange={setMemo} />
           </div>
         </div>
       </>
@@ -746,7 +751,7 @@ const tabBarStyle: React.CSSProperties = {
   display: "flex",
   backgroundColor: "var(--app-subtle)",
   padding: "0 var(--tabs-inset, 16px)",
-  flexShrink: 0,
+  flex: 1,
   overflowX: "auto",
 };
 const tabStyle: React.CSSProperties = {

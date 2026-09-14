@@ -1,8 +1,7 @@
 import React, { useState } from "react";
 import { NODE_CATEGORIES, type NodeCategory } from "../constants/nodeTypes";
-import { FiSidebar } from "react-icons/fi";
 
-export const Sidebar = ({ onClose, onAdd }: { onClose: () => void; onAdd: (type: string) => void }) => {
+export const Sidebar = ({ onAdd }: { onAdd: (type: string) => void }) => {
   // アコーディオンの開閉状態管理 (初期値として主要なカテゴリを開いておく)
   const [openCategories, setOpenCategories] = useState<string[]>([
     "client",
@@ -36,8 +35,8 @@ export const Sidebar = ({ onClose, onAdd }: { onClose: () => void; onAdd: (type:
   };
 
   return (
-    <aside className="component-sidebar" style={sidebarStyle} aria-label="コンポーネント">
-      <div className="side-panel-heading" style={descriptionStyle}><span>コンポーネント</span><button className="panel-close-button" onClick={onClose} aria-label="コンポーネントを閉じる" title="コンポーネントを閉じる"><FiSidebar size={20} /></button></div>
+    <aside className="component-sidebar" style={sidebarStyle} aria-label="コンポーネント" tabIndex={-1}>
+      <h2 className="side-panel-heading" style={descriptionStyle}>コンポーネント</h2>
       <p className="component-sidebar-hint">選択して追加<span className="component-drag-hint">・ドラッグで配置</span></p>
 
       <div style={{ flex: 1, overflowY: "auto" }}>
