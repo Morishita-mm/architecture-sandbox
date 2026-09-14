@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
 import type { Node } from "reactflow";
-import { BiX, BiUnlink } from "react-icons/bi"; // アイコン追加
+import { BiX, BiUnlink, BiTrash } from "react-icons/bi";
 import type { AppNodeData } from "../types";
 
 interface Props {
   selectedNode: Node<AppNodeData> | null;
   onChange: (id: string, newData: AppNodeData) => void;
   onClose: () => void;
+  onDelete: (id: string) => void;
   // ★追加: 親子関係解除関数
   onDetach?: (id: string) => void;
 }
@@ -15,6 +16,7 @@ export const PropertiesPanel: React.FC<Props> = ({
   selectedNode,
   onChange,
   onClose,
+  onDelete,
   onDetach,
 }) => {
   // ... (既存の state や useRef は変更なし) ...
@@ -87,13 +89,14 @@ export const PropertiesPanel: React.FC<Props> = ({
   const currentPanelStyle: React.CSSProperties = {
     // ... (既存スタイル)
     position: "absolute",
-    top: 80,
-    right: 20,
-    width: 300,
+    top: 68,
+    right: 16,
+    width: "min(280px, calc(100% - 24px))",
+    maxHeight: "calc(100% - 84px)",
     backgroundColor: "white",
     borderRadius: 8,
-    boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-    border: "1px solid #ddd",
+    boxShadow: "0 6px 24px rgba(36,54,75,0.12)",
+    border: "1px solid var(--app-border)",
     zIndex: 100,
     display: "flex",
     flexDirection: "column",
@@ -155,7 +158,7 @@ export const PropertiesPanel: React.FC<Props> = ({
         {/* ★追加: 切り離しボタンエリア */}
         {hasParent && onDetach && (
           <div style={detachAreaStyle}>
-            <p style={{ fontSize: "12px", color: "#666", marginBottom: "8px" }}>
+            <p style={{ fontSize: "12px", color: "var(--app-muted)", marginBottom: "8px" }}>
               このコンポーネントはグループに属しています
             </p>
             <button
@@ -166,6 +169,17 @@ export const PropertiesPanel: React.FC<Props> = ({
             </button>
           </div>
         )}
+        <div style={detachAreaStyle}>
+          {selectedNode.type === "group" && (
+            <p style={{ fontSize: "12px", color: "var(--app-muted)", marginBottom: "8px" }}>
+              グループ内のコンポーネントと接続線も削除されます。
+            </p>
+          )}
+          <button onClick={() => onDelete(id)} style={detachButtonStyle}>
+            <BiTrash size={16} />
+            {selectedNode.type === "group" ? "グループを削除" : "コンポーネントを削除"}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -175,8 +189,8 @@ export const PropertiesPanel: React.FC<Props> = ({
 // 既存のスタイル定数はそのまま維持してください
 const headerStyle: React.CSSProperties = {
   padding: "10px 15px",
-  backgroundColor: "#f5f5f5",
-  borderBottom: "1px solid #eee",
+  backgroundColor: "var(--app-subtle)",
+  borderBottom: "1px solid var(--app-border)",
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
@@ -187,33 +201,33 @@ const closeButtonStyle: React.CSSProperties = {
   background: "none",
   border: "none",
   cursor: "pointer",
-  color: "#666",
+  color: "var(--app-muted)",
   padding: 0,
   display: "flex",
 };
-const contentStyle: React.CSSProperties = { padding: 15 };
+const contentStyle: React.CSSProperties = { padding: 16, overflowY: "auto" };
 const fieldStyle: React.CSSProperties = { marginBottom: 15 };
 const labelStyle: React.CSSProperties = {
   display: "block",
   fontSize: "12px",
   fontWeight: "bold",
-  color: "#666",
+  color: "var(--app-muted)",
   marginBottom: 5,
 };
 const readOnlyValueStyle: React.CSSProperties = {
   fontSize: "14px",
-  color: "#333",
+  color: "var(--app-text)",
   padding: "8px",
-  backgroundColor: "#f9f9f9",
-  borderRadius: 4,
-  border: "1px solid #eee",
+  backgroundColor: "var(--app-subtle)",
+  borderRadius: 6,
+  border: "1px solid var(--app-border)",
 };
 const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "8px",
   fontSize: "14px",
-  borderRadius: 4,
-  border: "1px solid #ddd",
+  borderRadius: 6,
+  border: "1px solid var(--app-border)",
   boxSizing: "border-box",
 };
 const textareaStyle: React.CSSProperties = {
@@ -225,7 +239,7 @@ const textareaStyle: React.CSSProperties = {
 const detachAreaStyle: React.CSSProperties = {
   marginTop: "20px",
   paddingTop: "15px",
-  borderTop: "1px solid #eee",
+  borderTop: "1px solid var(--app-border)",
   textAlign: "center",
 };
 
@@ -237,9 +251,9 @@ const detachButtonStyle: React.CSSProperties = {
   width: "100%",
   padding: "8px",
   backgroundColor: "#fff",
-  border: "1px solid #ff4d4f",
-  color: "#ff4d4f",
-  borderRadius: "4px",
+  border: "1px solid var(--app-danger)",
+  color: "var(--app-danger)",
+  borderRadius: "6px",
   cursor: "pointer",
   fontWeight: "bold",
   fontSize: "13px",

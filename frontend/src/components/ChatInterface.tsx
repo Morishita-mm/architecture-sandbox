@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { BiUser, BiBot } from "react-icons/bi";
 
 import type { Scenario, ChatMessage } from "../types"; // 共通型を使用
@@ -21,9 +21,30 @@ export const ChatInterface: React.FC<Props> = ({
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const request = useRef<AbortController | null>(null);
   useEffect(() => () => request.current?.abort(), []);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const textarea = inputRef.current;
+    if (!textarea) return;
+    const resize = () => {
+      textarea.style.height = "auto";
+      // scrollHeight includes padding; add the top and bottom borders.
+      if (textarea.value) textarea.style.height = `${textarea.scrollHeight + 2}px`;
+    };
+    resize();
+    let width = textarea.clientWidth;
+    const observer = new ResizeObserver(() => {
+      if (textarea.clientWidth !== width) {
+        width = textarea.clientWidth;
+        resize();
+      }
+    });
+    observer.observe(textarea);
+    return () => observer.disconnect();
+  }, [input]);
 
   // 自動スクロール
   useEffect(() => {
@@ -67,13 +88,13 @@ export const ChatInterface: React.FC<Props> = ({
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // 変換中 (isComposing === true) のEnterは無視する
     if (e.nativeEvent.isComposing) {
       return;
     }
 
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
@@ -91,19 +112,19 @@ export const ChatInterface: React.FC<Props> = ({
             }}
           >
             {msg.role === "model" && <div style={iconStyle}>
-              <BiBot size={24} color="#666" />
+              <BiBot size={24} color="var(--app-muted)" />
               </div>}
             <div
               style={{
                 ...bubbleStyle,
-                backgroundColor: msg.role === "user" ? "#2196F3" : "#f1f1f1",
-                color: msg.role === "user" ? "white" : "black",
+                backgroundColor: msg.role === "user" ? "var(--app-primary)" : "#f1f4f7",
+                color: msg.role === "user" ? "white" : "var(--app-text)",
               }}
             >
               {msg.content}
             </div>
             {msg.role === "user" && <div style={iconStyle}>
-              <BiUser size={24} color="#2196F3" />
+              <BiUser size={24} color="var(--app-primary)" />
               </div>}
           </div>
         ))}
@@ -113,10 +134,14 @@ export const ChatInterface: React.FC<Props> = ({
         <div ref={messagesEndRef} />
       </div>
 
-      {error && <p role="alert" style={{ color: "#b71c1c", padding: "0 20px" }}>{error}</p>}
+      {error && <p role="alert" style={{ color: "var(--app-danger)", padding: "0 20px" }}>{error}</p>}
       <div style={inputAreaStyle}>
-        <input
-          type="text"
+        <textarea
+          className="chat-composer"
+          ref={inputRef}
+          rows={1}
+          aria-label="メッセージ"
+          aria-describedby="chat-input-help"
           maxLength={4000}
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -133,6 +158,9 @@ export const ChatInterface: React.FC<Props> = ({
           送信
         </button>
       </div>
+      <div id="chat-input-help" style={inputHelpStyle}>
+        Enterで送信・Shift + Enterで改行
+      </div>
     </div>
   );
 };
@@ -145,17 +173,18 @@ const containerStyle: React.CSSProperties = {
   backgroundColor: "#fff",
   maxWidth: "800px",
   margin: "0 auto",
-  borderLeft: "1px solid #eee",
-  borderRight: "1px solid #eee",
+  borderLeft: "1px solid var(--app-border)",
+  borderRight: "1px solid var(--app-border)",
 };
 
 const messagesAreaStyle: React.CSSProperties = {
   flex: 1,
+  minHeight: 0,
   overflowY: "auto",
-  padding: "20px",
+  padding: "24px",
   display: "flex",
   flexDirection: "column",
-  gap: "15px",
+  gap: "20px",
 };
 
 const messageRowStyle: React.CSSProperties = {
@@ -165,41 +194,62 @@ const messageRowStyle: React.CSSProperties = {
 };
 
 const iconStyle: React.CSSProperties = {
-  fontSize: "24px",
+  flexShrink: 0,
+  display: "grid",
+  placeItems: "center",
+  width: "28px",
+  height: "32px",
   marginTop: "5px",
 };
 
 const bubbleStyle: React.CSSProperties = {
   padding: "12px 16px",
-  borderRadius: "18px",
-  maxWidth: "70%",
-  lineHeight: "1.5",
+  borderRadius: "12px",
+  maxWidth: "78%",
+  lineHeight: "1.75",
   fontSize: "15px",
   whiteSpace: "pre-wrap",
 };
 
 const inputAreaStyle: React.CSSProperties = {
-  padding: "20px",
-  borderTop: "1px solid #eee",
+  padding: "20px 20px 8px",
+  borderTop: "1px solid var(--app-border)",
   display: "flex",
   gap: "10px",
-  backgroundColor: "#f9f9f9",
+  backgroundColor: "var(--app-subtle)",
 };
 
 const inputStyle: React.CSSProperties = {
   flex: 1,
+  minWidth: 0,
   padding: "12px",
-  borderRadius: "24px",
-  border: "1px solid #ddd",
-  fontSize: "16px",
-  outline: "none",
+  borderRadius: "8px",
+  border: "1px solid var(--app-border)",
+  fontSize: "15px",
+  fontFamily: "inherit",
+  lineHeight: "24px",
+  boxSizing: "border-box",
+  resize: "none",
+  // One to three 24px lines, plus 24px padding and 2px borders.
+  minHeight: "50px",
+  maxHeight: "98px",
+  overflowY: "auto",
+};
+
+const inputHelpStyle: React.CSSProperties = {
+  padding: "0 20px 12px",
+  fontSize: "12px",
+  color: "var(--app-muted)",
+  backgroundColor: "var(--app-subtle)",
 };
 
 const sendButtonStyle: React.CSSProperties = {
-  padding: "0 25px",
-  borderRadius: "24px",
+  alignSelf: "flex-end",
+  height: "50px",
+  padding: "0 20px",
+  borderRadius: "8px",
   border: "none",
-  backgroundColor: "#2196F3",
+  backgroundColor: "var(--app-primary)",
   color: "white",
   cursor: "pointer",
   fontWeight: "bold",

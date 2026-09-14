@@ -1,5 +1,4 @@
 import React from 'react';
-import { BiNotepad } from 'react-icons/bi';
 
 interface Props {
   value: string;
@@ -8,46 +7,45 @@ interface Props {
 
 export const MemoPad: React.FC<Props> = ({ value, onChange }) => {
   return (
-    <div style={containerStyle}>
-      <div style={headerStyle}>
-        <BiNotepad style={{ marginRight: '8px', color: '#5d4037' }} />
-        要件メモ</div>
+    <aside className="memo-pad" style={containerStyle} aria-label="要件メモ" tabIndex={-1}>
+      <h2 className="side-panel-heading" style={headerStyle}>要件メモ</h2>
       <textarea
+        aria-label="要件メモ"
         style={textAreaStyle}
         maxLength={100000}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="ヒアリングした要件をここにメモしましょう&#13;&#10;・予算：〇〇&#13;&#10;・ピークタイム：〇〇"
       />
-    </div>
+    </aside>
   );
 };
 
 const containerStyle: React.CSSProperties = {
-  width: '250px', // サイドバーと同じくらいの幅
-  backgroundColor: '#fff8e1', // メモっぽい色（薄い黄色）
-  borderLeft: '1px solid #ddd',
+  width: '100%',
+  height: '100%',
+  backgroundColor: 'var(--app-note)', // メモっぽい色（薄い黄色）
+  borderLeft: '1px solid var(--app-border)',
   display: 'flex',
   flexDirection: 'column',
-  height: '100%',
 };
 
 const headerStyle: React.CSSProperties = {
-  padding: '10px',
+  padding: '8px 12px 8px 16px',
   fontWeight: 'bold',
-  backgroundColor: '#ffecb3',
-  color: '#5d4037',
-  borderBottom: '1px solid #ffe082',
+  backgroundColor: 'var(--app-note-header)',
+  color: '#736344',
+  borderBottom: '1px solid #e9e0c4',
 };
 
 const textAreaStyle: React.CSSProperties = {
   flex: 1,
-  padding: '10px',
+  minHeight: 0,
+  padding: '14px 16px',
   border: 'none',
   resize: 'none',
   backgroundColor: 'transparent',
-  outline: 'none',
   fontSize: '14px',
-  lineHeight: '1.5',
+  lineHeight: '1.8',
   fontFamily: 'inherit',
 };

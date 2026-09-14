@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   BiHelpCircle,
+  BiArrowBack,
   BiX,
   BiMouse,
   BiEdit,
@@ -26,54 +27,79 @@ interface Props {
 type TabKey = "flow" | "canvas" | "ai" | "evaluation" | "share";
 
 export const HelpModal: React.FC<Props> = ({ isOpen, onClose }) => {
-  const [activeTab, setActiveTab] = useState<TabKey>("flow");
+  const [activeTab, setActiveTab] = useState<TabKey | null>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const topicButtons = useRef<Partial<Record<TabKey, HTMLButtonElement | null>>>({});
+  const returnTopic = useRef<TabKey | null>(null);
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!isOpen || !dialog) return;
+    const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    dialog.showModal();
+    return () => {
+      dialog.close();
+      trigger?.focus();
+    };
+  }, [isOpen]);
+  useEffect(() => {
+    if (!isOpen) return;
+    if (contentRef.current) contentRef.current.scrollTop = 0;
+    if (activeTab) contentRef.current?.querySelector<HTMLElement>("h3")?.focus();
+    else if (returnTopic.current) topicButtons.current[returnTopic.current]?.focus();
+  }, [activeTab, isOpen]);
+  const closeGuide = () => {
+    dialogRef.current?.close();
+    setActiveTab(null);
+    returnTopic.current = null;
+    onClose();
+  };
+  const showContents = () => { returnTopic.current = activeTab; setActiveTab(null); };
 
   if (!isOpen) return null;
 
   // タブの定義
-  const tabs: { key: TabKey; label: string; icon: React.ReactNode }[] = [
-    { key: "flow", label: "基本的な流れ", icon: <BiListUl /> },
-    { key: "canvas", label: "キャンバス操作", icon: <BiMouse /> },
-    { key: "ai", label: "AI活用のコツ", icon: <BiBot /> },
-    { key: "evaluation", label: "評価と改善", icon: <BiBarChart /> },
-    { key: "share", label: "共有と挑戦", icon: <BiShareAlt /> },
+  const tabs: { key: TabKey; label: string; description: string; icon: React.ReactNode }[] = [
+    { key: "flow", label: "基本的な流れ", description: "ヒアリングから設計・評価までの進め方", icon: <BiListUl /> },
+    { key: "canvas", label: "キャンバス操作", description: "部品の配置・接続・グループ化", icon: <BiMouse /> },
+    { key: "ai", label: "AI活用のコツ", description: "要件を聞き出し、設計意図を伝える", icon: <BiBot /> },
+    { key: "evaluation", label: "評価と改善", description: "スコアとフィードバックの読み方", icon: <BiBarChart /> },
+    { key: "share", label: "共有と挑戦", description: "保存・共有とチャレンジの始め方", icon: <BiShareAlt /> },
   ];
 
+  const topicIndex = tabs.findIndex(tab => tab.key === activeTab);
+
   return (
-    <div style={overlayStyle} onClick={onClose}>
-      <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
+    <dialog ref={dialogRef} className="help-dialog" style={modalStyle} aria-labelledby="guide-title" onCancel={event => { event.preventDefault(); closeGuide(); }} onClick={event => { if (event.target === event.currentTarget) closeGuide(); }}>
+      <div className="help-dialog-inner">
         {/* ヘッダー */}
         <div style={headerStyle}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <BiHelpCircle size={24} color="#2196F3" />
-            <h2 style={{ margin: 0, fontSize: "20px" }}>ユーザーガイド</h2>
+            <BiHelpCircle size={24} color="var(--app-primary)" />
+            <h2 id="guide-title" style={{ margin: 0, fontSize: "20px" }}>ユーザーガイド</h2>
           </div>
-          <button onClick={onClose} style={closeButtonStyle}>
+          <button onClick={closeGuide} style={closeButtonStyle} aria-label="操作ガイドを閉じる">
             <BiX size={24} />
           </button>
         </div>
 
-        {/* メインエリア */}
-        <div style={bodyStyle}>
-          {/* 左サイドバー */}
-          <div style={sidebarStyle}>
-            {tabs.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                style={activeTab === tab.key ? activeTabStyle : tabStyle}
-              >
-                <span style={tabIconStyle}>{tab.icon}</span>
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          {/* 右コンテンツエリア */}
-          <div style={contentAreaStyle}>
+        <div ref={contentRef} className="help-content" style={contentAreaStyle}>
+          {activeTab === null ? (
+            <div className="help-index">
+              <h3>どの操作を確認しますか？</h3>
+              <p>項目を選ぶと、詳しい使い方を確認できます。</p>
+              <nav aria-label="ガイドの目次">
+                {tabs.map(tab => <button key={tab.key} ref={element => { topicButtons.current[tab.key] = element; }} onClick={() => setActiveTab(tab.key)}>
+                  <span className="help-topic-icon">{tab.icon}</span>
+                  <span><strong>{tab.label}</strong><small>{tab.description}</small></span>
+                  <BiRightArrowAlt size={20} />
+                </button>)}
+              </nav>
+            </div>
+          ) : <div className="help-article-nav"><button className="ui-button" onClick={showContents}><BiArrowBack size={16} />目次に戻る</button><span>{topicIndex + 1} / {tabs.length}</span></div>}
             {activeTab === "flow" && (
               <div style={animateInStyle}>
-                <h3 style={contentTitleStyle}>設計の基本的なワークフロー</h3>
+                <h3 tabIndex={-1} style={contentTitleStyle}>設計の基本的なワークフロー</h3>
                 <p>このアプリケーションは、以下の4ステップで設計を進めます。</p>
 
                 <div style={stepContainerStyle}>
@@ -103,7 +129,7 @@ export const HelpModal: React.FC<Props> = ({ isOpen, onClose }) => {
                     <BiSave size={18} /> 保存と中断について:
                   </strong>
                   作業内容は画面右上の
-                  <strong style={{ color: "#28a745" }}>
+                  <strong style={{ color: "var(--app-success)" }}>
                     「プロジェクト保存」
                   </strong>
                   ボタンから、いつでもローカルファイル（.json）として保存できます。
@@ -115,7 +141,7 @@ export const HelpModal: React.FC<Props> = ({ isOpen, onClose }) => {
 
             {activeTab === "canvas" && (
               <div style={animateInStyle}>
-                <h3 style={contentTitleStyle}>キャンバスの操作方法</h3>
+                <h3 tabIndex={-1} style={contentTitleStyle}>キャンバスの操作方法</h3>
                 <table style={tableStyle}>
                   <tbody>
                     <tr>
@@ -151,8 +177,11 @@ export const HelpModal: React.FC<Props> = ({ isOpen, onClose }) => {
                       </td>
                       <td style={tdLabelStyle}>削除</td>
                       <td>
+                        コンポーネントはプロパティパネルの削除ボタンから削除できます。
+                        <br />
                         ノードまたはエッジを選択して <Kbd>Backspace</Kbd> または{" "}
-                        <Kbd>Delete</Kbd>
+                        <Kbd>Delete</Kbd> でも削除できます。
+                        グループを削除すると、内部のコンポーネントと接続線も削除されます。
                       </td>
                     </tr>
                   </tbody>
@@ -174,7 +203,7 @@ export const HelpModal: React.FC<Props> = ({ isOpen, onClose }) => {
 
             {activeTab === "ai" && (
               <div style={animateInStyle}>
-                <h3 style={contentTitleStyle}>AI評価の精度を上げるコツ</h3>
+                <h3 tabIndex={-1} style={contentTitleStyle}>AI評価の精度を上げるコツ</h3>
                 <p>
                   AIは配置されたコンポーネントの「種類」だけでなく、あなたが入力した
                   <strong>「名前」</strong>や<strong>「詳細メモ」</strong>
@@ -186,13 +215,13 @@ export const HelpModal: React.FC<Props> = ({ isOpen, onClose }) => {
                     style={{
                       marginBottom: "10px",
                       fontWeight: "bold",
-                      color: "#666",
+                      color: "var(--app-muted)",
                       display: "flex",
                       alignItems: "center",
                       gap: "5px",
                     }}
                   >
-                    悪い例 <BiXCircle color="#F44336" />
+                    悪い例 <BiXCircle color="var(--app-danger)" />
                   </div>
                   <div style={badNodeStyle}>Web Server</div>
                   <p
@@ -209,13 +238,13 @@ export const HelpModal: React.FC<Props> = ({ isOpen, onClose }) => {
                     style={{
                       marginBottom: "10px",
                       fontWeight: "bold",
-                      color: "#2196F3",
+                      color: "var(--app-primary)",
                       display: "flex",
                       alignItems: "center",
                       gap: "5px",
                     }}
                   >
-                    良い例 <BiCheckCircle color="#4CAF50" />
+                    良い例 <BiCheckCircle color="var(--app-success)" />
                   </div>
                   <div style={goodNodeStyle}>
                     <div style={{ fontWeight: "bold" }}>画像処理サーバー</div>
@@ -228,7 +257,7 @@ export const HelpModal: React.FC<Props> = ({ isOpen, onClose }) => {
                   <p
                     style={{
                       fontSize: "12px",
-                      color: "#666",
+                      color: "var(--app-muted)",
                       marginTop: "5px",
                     }}
                   >
@@ -240,10 +269,10 @@ export const HelpModal: React.FC<Props> = ({ isOpen, onClose }) => {
 
             {activeTab === "evaluation" && (
               <div style={animateInStyle}>
-                <h3 style={contentTitleStyle}>評価レポートの見方</h3>
+                <h3 tabIndex={-1} style={contentTitleStyle}>評価レポートの見方</h3>
                 <p>
                   設計が完了したら、右上の
-                  <strong style={{ color: "#4CAF50" }}>
+                  <strong style={{ color: "var(--app-success)" }}>
                     「設計完了（評価する）」
                   </strong>
                   ボタンを押してください。
@@ -284,7 +313,7 @@ export const HelpModal: React.FC<Props> = ({ isOpen, onClose }) => {
             {/* ★追加: 共有と挑戦タブ */}
             {activeTab === "share" && (
               <div style={animateInStyle}>
-                <h3 style={contentTitleStyle}>設計を共有して競い合おう</h3>
+                <h3 tabIndex={-1} style={contentTitleStyle}>設計を共有して競い合おう</h3>
                 <p>
                   納得のいく設計ができたら、SNSでシェアして他のエンジニアに
                   <strong>「挑戦状」</strong>を送りましょう。
@@ -325,17 +354,18 @@ export const HelpModal: React.FC<Props> = ({ isOpen, onClose }) => {
                 </div>
               </div>
             )}
-          </div>
         </div>
 
         {/* フッター */}
-        <div style={footerStyle}>
-          <button onClick={onClose} style={primaryButtonStyle}>
-            閉じる
-          </button>
+        <div className="help-footer" style={footerStyle}>
+          {activeTab !== null && <div className="help-page-controls">
+            <button className="ui-button" disabled={topicIndex === 0} onClick={() => setActiveTab(tabs[topicIndex - 1].key)}>前の項目</button>
+            <button className="ui-button" disabled={topicIndex === tabs.length - 1} onClick={() => setActiveTab(tabs[topicIndex + 1].key)}>次の項目</button>
+          </div>}
+          <button onClick={closeGuide} style={primaryButtonStyle}>閉じる</button>
         </div>
       </div>
-    </div>
+    </dialog>
   );
 };
 
@@ -352,8 +382,8 @@ const StepItem: React.FC<{
         width: "32px",
         height: "32px",
         borderRadius: "50%",
-        backgroundColor: "#E3F2FD",
-        color: "#2196F3",
+        backgroundColor: "var(--app-primary-soft)",
+        color: "var(--app-primary)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -364,10 +394,10 @@ const StepItem: React.FC<{
       {number}
     </div>
     <div>
-      <div style={{ fontWeight: "bold", marginBottom: "5px", color: "#333" }}>
+      <div style={{ fontWeight: "bold", marginBottom: "5px", color: "var(--app-text)" }}>
         {title}
       </div>
-      <div style={{ fontSize: "14px", color: "#666", lineHeight: "1.6" }}>
+      <div style={{ fontSize: "14px", color: "var(--app-muted)", lineHeight: "1.6" }}>
         {children}
       </div>
     </div>
@@ -377,8 +407,8 @@ const StepItem: React.FC<{
 const Kbd: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <kbd
     style={{
-      backgroundColor: "#eee",
-      border: "1px solid #ccc",
+      backgroundColor: "var(--app-border)",
+      border: "1px solid var(--app-border)",
       borderRadius: "3px",
       padding: "2px 6px",
       fontSize: "12px",
@@ -392,97 +422,41 @@ const Kbd: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 
 // --- Styles ---
 
-const overlayStyle: React.CSSProperties = {
-  position: "fixed",
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  backgroundColor: "rgba(0, 0, 0, 0.6)",
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-  zIndex: 2000,
-  backdropFilter: "blur(2px)",
-};
-
 const modalStyle: React.CSSProperties = {
   backgroundColor: "white",
   width: "900px",
-  height: "600px",
+  height: "660px",
   maxWidth: "95vw",
   maxHeight: "90vh",
   borderRadius: "12px",
   boxShadow: "0 20px 50px rgba(0,0,0,0.3)",
-  display: "flex",
-  flexDirection: "column",
+  padding: 0,
+  border: "1px solid var(--app-border)",
+  color: "var(--app-text)",
   overflow: "hidden",
 };
 
 const headerStyle: React.CSSProperties = {
   padding: "15px 25px",
-  borderBottom: "1px solid #eee",
+  borderBottom: "1px solid var(--app-border)",
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
   backgroundColor: "#fff",
 };
 
-const bodyStyle: React.CSSProperties = {
-  display: "flex",
-  flex: 1,
-  overflow: "hidden",
-};
-
-const sidebarStyle: React.CSSProperties = {
-  width: "220px",
-  backgroundColor: "#f8f9fa",
-  borderRight: "1px solid #eee",
-  padding: "20px 0",
-  display: "flex",
-  flexDirection: "column",
-};
-
 const contentAreaStyle: React.CSSProperties = {
   flex: 1,
-  padding: "30px 40px",
+  padding: "var(--help-content-padding, 24px 32px)",
   overflowY: "auto",
   backgroundColor: "#fff",
 };
 
 const footerStyle: React.CSSProperties = {
-  padding: "15px 25px",
-  borderTop: "1px solid #eee",
+  padding: "var(--help-footer-padding, 15px 25px)",
+  borderTop: "1px solid var(--app-border)",
   textAlign: "right",
-  backgroundColor: "#f8f9fa",
-};
-
-const tabStyle: React.CSSProperties = {
-  padding: "12px 20px",
-  border: "none",
-  background: "transparent",
-  textAlign: "left",
-  cursor: "pointer",
-  color: "#666",
-  fontSize: "14px",
-  display: "flex",
-  alignItems: "center",
-  transition: "all 0.2s",
-};
-
-const activeTabStyle: React.CSSProperties = {
-  ...tabStyle,
-  backgroundColor: "#e3f2fd",
-  color: "#1976D2",
-  fontWeight: "bold",
-  borderRight: "3px solid #1976D2",
-};
-
-const tabIconStyle: React.CSSProperties = {
-  marginRight: "10px",
-  fontSize: "18px",
-  display: "flex",
-  alignItems: "center",
+  backgroundColor: "var(--app-subtle)",
 };
 
 const closeButtonStyle: React.CSSProperties = {
@@ -497,7 +471,7 @@ const closeButtonStyle: React.CSSProperties = {
 
 const primaryButtonStyle: React.CSSProperties = {
   padding: "10px 30px",
-  backgroundColor: "#2196F3",
+  backgroundColor: "var(--app-primary)",
   color: "white",
   border: "none",
   borderRadius: "6px",
@@ -509,9 +483,9 @@ const primaryButtonStyle: React.CSSProperties = {
 const contentTitleStyle: React.CSSProperties = {
   marginTop: 0,
   marginBottom: "25px",
-  fontSize: "24px",
-  color: "#333",
-  borderBottom: "1px solid #eee",
+  fontSize: "21px",
+  color: "var(--app-text)",
+  borderBottom: "1px solid var(--app-border)",
   paddingBottom: "10px",
 };
 
@@ -538,23 +512,23 @@ const tableStyle: React.CSSProperties = {
 
 const tdIconStyle: React.CSSProperties = {
   padding: "12px",
-  borderBottom: "1px solid #eee",
+  borderBottom: "1px solid var(--app-border)",
   width: "40px",
-  color: "#555",
+  color: "var(--app-muted)",
 };
 
 const tdLabelStyle: React.CSSProperties = {
   padding: "12px",
-  borderBottom: "1px solid #eee",
+  borderBottom: "1px solid var(--app-border)",
   fontWeight: "bold",
   width: "100px",
-  color: "#333",
+  color: "var(--app-text)",
 };
 
 const listStyle: React.CSSProperties = {
   paddingLeft: "20px",
   lineHeight: "1.8",
-  color: "#555",
+  color: "var(--app-muted)",
 };
 
 const animateInStyle: React.CSSProperties = {
@@ -562,18 +536,18 @@ const animateInStyle: React.CSSProperties = {
 };
 
 const exampleBoxStyle: React.CSSProperties = {
-  backgroundColor: "#f5f5f5",
+  backgroundColor: "var(--app-subtle)",
   padding: "20px",
   borderRadius: "8px",
-  border: "1px solid #ddd",
+  border: "1px solid var(--app-border)",
 };
 
 const badNodeStyle: React.CSSProperties = {
   padding: "10px",
-  border: "2px solid #ccc",
+  border: "2px solid var(--app-border)",
   borderRadius: "8px",
   backgroundColor: "white",
-  color: "#333",
+  color: "var(--app-text)",
   textAlign: "center",
   width: "120px",
   margin: "0 auto",
@@ -581,9 +555,9 @@ const badNodeStyle: React.CSSProperties = {
 
 const goodNodeStyle: React.CSSProperties = {
   padding: "10px",
-  border: "2px solid #2196F3",
+  border: "2px solid var(--app-primary)",
   borderRadius: "8px",
-  backgroundColor: "#E3F2FD",
+  backgroundColor: "var(--app-primary-soft)",
   color: "#0D47A1",
   textAlign: "center",
   width: "180px",

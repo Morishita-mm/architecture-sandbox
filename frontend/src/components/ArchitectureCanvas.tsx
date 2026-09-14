@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, useEffect, lazy, Suspense } from "react";
+import { useCallback, useRef, useState, useEffect, useLayoutEffect, lazy, Suspense } from "react";
 import ReactFlow, {
   Background,
   Controls,
@@ -17,7 +17,7 @@ import ReactFlow, {
 
 import "reactflow/dist/style.css";
 import { Sidebar } from "./Sidebar";
-import { BiChat, BiNetworkChart, BiBarChart } from "react-icons/bi";
+import { BiChat, BiNetworkChart, BiBarChart, BiCube, BiNotepad } from "react-icons/bi";
 import type {
   EvaluationResult,
   ChatMessage,
@@ -55,6 +55,7 @@ const onDragOver = (event: React.DragEvent) => {
 // グループとして扱うタイプ定義（新規作成時のラベル判定用）
 const GROUP_TYPES = NODE_CATEGORIES.find(c => c.id === 'group')!.items.map(i => i.type);
 const COMPONENT_TYPES = new Set(NODE_CATEGORIES.flatMap(c => c.items.map(i => i.type)));
+type SidePanel = "memo" | "components";
 
 function ArchitectureFlow({
   selectedScenario,
@@ -64,7 +65,7 @@ function ArchitectureFlow({
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState<AppNodeData>(loadedProjectData?.diagram.nodes ?? []);
   const [edges, setEdges, onEdgesChange] = useEdgesState((loadedProjectData?.diagram.edges ?? []).map((e, index) => ({ ...e, id: e.id ?? `loaded-edge-${index}` })));
-  const { screenToFlowPosition, getNodes, getEdges, getIntersectingNodes } = useReactFlow();
+  const { screenToFlowPosition, getViewport, setViewport, getNodes, getEdges, getIntersectingNodes, deleteElements } = useReactFlow();
   const [activeTab, setActiveTab] = useState<"chat" | "design" | "evaluate">(loadedProjectData?.evaluation ? "evaluate" : "chat");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => loadedProjectData?.chatHistory ?? [{ role: "model", content: `こんにちは。「${selectedScenario.title}」について、どのような点から詳細を詰めていきましょうか？` }]);
   const [memo, setMemo] = useState(loadedProjectData?.memo ?? "");
@@ -79,6 +80,76 @@ function ArchitectureFlow({
   const setSelectedNode = useCallback((node: Node<AppNodeData> | null) => setSelectedNodeId(node?.id ?? null), []);
   const currentScenario = selectedScenario;
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [isMemoOpen, setIsMemoOpen] = useState(true);
+  const [isComponentsOpen, setIsComponentsOpen] = useState(true);
+  const [mobilePanel, setMobilePanel] = useState<SidePanel | null>("memo");
+  const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 760px)").matches);
+  const memoToggleRef = useRef<HTMLButtonElement>(null);
+  const componentsToggleRef = useRef<HTMLButtonElement>(null);
+  const focusPanelOnOpen = useRef<SidePanel | null>(null);
+  const memoVisible = isMemoOpen && (!isCompact || mobilePanel === "memo");
+  const componentsVisible = activeTab === "design" && isComponentsOpen && (!isCompact || mobilePanel === "components");
+  const canvasOrigin = useRef<{ x: number; y: number } | null>(null);
+
+  const rememberCanvasOrigin = () => {
+    if (activeTab !== "design" || !reactFlowWrapper.current) return;
+    const { x, y } = reactFlowWrapper.current.getBoundingClientRect();
+    canvasOrigin.current = { x, y };
+  };
+
+  useLayoutEffect(() => {
+    const previous = canvasOrigin.current;
+    canvasOrigin.current = null;
+    if (activeTab !== "design" || !reactFlowWrapper.current) return;
+    const { x, y } = reactFlowWrapper.current.getBoundingClientRect();
+    if (previous && (previous.x !== x || previous.y !== y)) {
+      // Keep nodes at the same screen position when a docked panel moves the canvas origin.
+      const viewport = getViewport();
+      setViewport({ ...viewport, x: viewport.x + previous.x - x, y: viewport.y + previous.y - y });
+    }
+  }, [activeTab, componentsVisible, memoVisible, getViewport, setViewport]);
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 760px)");
+    const update = () => setIsCompact(media.matches);
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+
+  useEffect(() => {
+    const panel = focusPanelOnOpen.current;
+    if (panel && (panel === "memo" ? memoVisible : componentsVisible)) {
+      document.getElementById(`${panel}-panel`)?.querySelector<HTMLElement>("aside")?.focus();
+      focusPanelOnOpen.current = null;
+    }
+  }, [memoVisible, componentsVisible]);
+
+  const closePanel = (panel: SidePanel) => {
+    rememberCanvasOrigin();
+    if (panel === "memo") setIsMemoOpen(false);
+    else setIsComponentsOpen(false);
+    setMobilePanel(isCompact ? null : panel === "components" && isMemoOpen ? "memo" : panel === "memo" && componentsVisible ? "components" : null);
+    (panel === "memo" ? memoToggleRef : componentsToggleRef).current?.focus();
+  };
+  const togglePanel = (panel: SidePanel) => {
+    if (panel === "memo" ? memoVisible : componentsVisible) return closePanel(panel);
+    rememberCanvasOrigin();
+    if (panel === "memo") setIsMemoOpen(true);
+    else setIsComponentsOpen(true);
+    setMobilePanel(panel);
+    focusPanelOnOpen.current = panel;
+  };
+  const selectTab = (tab: typeof activeTab) => {
+    setActiveTab(tab);
+    setMobilePanel(tab === "design" && isComponentsOpen ? "components" : isMemoOpen ? "memo" : null);
+  };
+  const onPanelKeyDown = (event: React.KeyboardEvent, panel: SidePanel) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      closePanel(panel);
+    }
+  };
   const evaluationRequest = useRef<AbortController | null>(null);
   useEffect(() => () => evaluationRequest.current?.abort(), []);
 
@@ -222,23 +293,13 @@ function ArchitectureFlow({
   );
 
   // ----------------------------------------------------------------
-  // ドロップ時: 親子関係の設定 + 親の自動拡大
+  // コンポーネント追加: ドロップと一覧からの選択で共通の親子関係・上限を適用
   // ----------------------------------------------------------------
-  const onDrop = useCallback(
-    (event: React.DragEvent) => {
-      event.preventDefault();
-
-      const label = event.dataTransfer.getData("application/reactflow/label");
+  const addComponent = useCallback(
+    (label: string, position: { x: number; y: number }) => {
       if (!COMPONENT_TYPES.has(label)) return;
       if (getNodes().length >= 200) { setNotice("コンポーネントは200個まで配置できます。"); return; }
       const type = GROUP_TYPES.includes(label) ? "group" : "custom";
-
-      if (!reactFlowWrapper.current) return;
-
-      const position = screenToFlowPosition({
-        x: event.clientX,
-        y: event.clientY,
-      });
 
       const allNodes = getNodes();
       // 重なり判定のターゲットを type === 'group' に限定
@@ -305,6 +366,7 @@ function ArchitectureFlow({
       const newNode: Node<AppNodeData> = {
         id: getId(),
         type,
+        selected: true,
         position: finalPosition,
         parentNode: parentNodeId,
         data: {
@@ -320,7 +382,7 @@ function ArchitectureFlow({
       };
 
       setNodes((nds) => {
-        let nextNodes = nds.concat(newNode);
+        let nextNodes = [...nds.map(n => ({ ...n, selected: false })), newNode];
         if (groupUpdate) {
           nextNodes = nextNodes.map((n) => {
             if (n.id === groupUpdate!.id) {
@@ -340,10 +402,42 @@ function ArchitectureFlow({
         }
         return nextNodes;
       });
+      setEdges(eds => eds.map(e => ({ ...e, selected: false })));
       setSelectedNode(newNode);
+      return newNode;
     },
-    [screenToFlowPosition, setNodes, getNodes, setSelectedNode]
+    [setNodes, setEdges, getNodes, setSelectedNode]
   );
+
+  const onDrop = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    addComponent(event.dataTransfer.getData("application/reactflow/label"), screenToFlowPosition({ x: event.clientX, y: event.clientY }));
+  }, [addComponent, screenToFlowPosition]);
+
+  const onAddFromSidebar = (label: string) => {
+    const bounds = reactFlowWrapper.current?.getBoundingClientRect();
+    if (!bounds) return;
+    const isGroup = GROUP_TYPES.includes(label);
+    const width = isGroup ? 300 : 180;
+    const height = isGroup ? 200 : 64;
+    const center = screenToFlowPosition({ x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 });
+    const position = { x: center.x - width / 2, y: center.y - height / 2 };
+    const top = screenToFlowPosition({ x: bounds.x, y: bounds.y + 32 }).y;
+    const bottom = screenToFlowPosition({ x: bounds.right, y: bounds.bottom - 32 }).y;
+    // Stagger repeated selections so a new component doesn't completely cover the last one.
+    const existing = getNodes();
+    for (let attempt = 0; attempt < 10 && existing.some(node => {
+      const placed = node.positionAbsolute ?? node.position;
+      return Math.abs(placed.x - position.x) < 24 && Math.abs(placed.y - position.y) < 24;
+    }); attempt++) {
+      position.y = position.y + height + 24 <= bottom - height ? position.y + height + 24 : top;
+    }
+    if (addComponent(label, position) && isCompact) {
+      closePanel("components");
+      // Reveal the selected node first; tapping it opens its properties.
+      setSelectedNode(null);
+    }
+  };
 
   const onNodeClick: NodeMouseHandler = useCallback((_, node) => {
     if (node.type === "custom" || node.type === "group") {
@@ -472,7 +566,7 @@ function ArchitectureFlow({
         display: "flex",
         flexDirection: "column",
         width: "100%",
-        height: "100vh",
+        height: "100dvh",
       }}
     >
       <Header
@@ -488,17 +582,18 @@ function ArchitectureFlow({
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
 
       <>
-        <div style={tabBarStyle}>
+        <div className="workspace-navigation">
+        <div className="workspace-tabs" style={tabBarStyle}>
           <button
             style={activeTab === "chat" ? activeTabStyle : tabStyle}
-            onClick={() => setActiveTab("chat")}
+            onClick={() => selectTab("chat")}
           >
             <BiChat style={{ marginRight: "6px", verticalAlign: "middle" }} />{" "}
             要件定義・交渉
           </button>
           <button
             style={activeTab === "design" ? activeTabStyle : tabStyle}
-            onClick={() => setActiveTab("design")}
+            onClick={() => selectTab("design")}
           >
             <BiNetworkChart
               style={{ marginRight: "6px", verticalAlign: "middle" }}
@@ -507,7 +602,7 @@ function ArchitectureFlow({
           </button>
           <button
             style={activeTab === "evaluate" ? activeTabStyle : tabStyle}
-            onClick={() => setActiveTab("evaluate")}
+            onClick={() => selectTab("evaluate")}
           >
             <BiBarChart
               style={{ marginRight: "6px", verticalAlign: "middle" }}
@@ -515,9 +610,26 @@ function ArchitectureFlow({
             評価結果
           </button>
         </div>
+        <div className="workspace-panel-actions" role="group" aria-label="サイドパネルの表示">
+          {activeTab === "design" && (
+            <button ref={componentsToggleRef} className="panel-toggle" onClick={() => togglePanel("components")} aria-expanded={componentsVisible} aria-controls="components-panel" aria-label="コンポーネントの表示切り替え" title={componentsVisible ? "コンポーネントを閉じる" : "コンポーネントを開く"}>
+              <BiCube size={18} aria-hidden="true" />コンポーネント
+            </button>
+          )}
+          <button ref={memoToggleRef} className="panel-toggle" onClick={() => togglePanel("memo")} aria-expanded={memoVisible} aria-controls="memo-panel" aria-label="要件メモの表示切り替え" title={memoVisible ? "要件メモを閉じる" : "要件メモを開く"}>
+            <BiNotepad size={18} aria-hidden="true" />要件メモ
+          </button>
+        </div>
+        </div>
 
-        <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+        <div className="workspace-content" style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+          {isCompact && (memoVisible || componentsVisible) && <button className="side-panel-backdrop" aria-label="サイドパネルを閉じる" onClick={() => closePanel(memoVisible ? "memo" : "components")} />}
+          <div id="components-panel" className="workspace-side-panel side-panel-left" hidden={!componentsVisible} onKeyDown={event => onPanelKeyDown(event, "components")}>
+            <Sidebar onAdd={onAddFromSidebar} />
+          </div>
           <div
+            className="workspace-main"
+            inert={isCompact && (memoVisible || componentsVisible)}
             style={{
               flex: 1,
               display: "flex",
@@ -551,7 +663,6 @@ function ArchitectureFlow({
                 height: "100%",
               }}
             >
-              <Sidebar />
               <div
                 className="reactflow-wrapper"
                 ref={reactFlowWrapper}
@@ -569,24 +680,26 @@ function ArchitectureFlow({
                   nodeTypes={nodeTypes}
                   onNodeClick={onNodeClick}
                   onPaneClick={onPaneClick}
+                  deleteKeyCode={activeTab === "design" && !isHelpOpen && !(isCompact && (memoVisible || componentsVisible)) ? ["Backspace", "Delete"] : null}
                   fitView
+                  fitViewOptions={{ maxZoom: 1 }}
                 >
-                  <Background />
+                  <Background color="#d4dce6" gap={20} size={1} />
                   <Controls />
                   <MiniMap />
                   <Panel position="top-right">
                     <button
                       onClick={onEvaluate}
                       disabled={isLoading}
+                      className="ui-button ui-button-success"
                       style={{
-                        padding: "10px 20px",
-                        fontSize: "16px",
-                        backgroundColor: isLoading ? "#ccc" : "#4CAF50",
+                        padding: "9px 14px",
+                        fontSize: "13px",
+                        backgroundColor: isLoading ? "var(--app-border)" : "var(--app-success)",
                         color: "white",
                         border: "none",
-                        borderRadius: "5px",
+                        borderRadius: "8px",
                         cursor: isLoading ? "wait" : "pointer",
-                        boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
                       }}
                     >
                       {isLoading ? "AIが評価中..." : "設計完了（評価する）"}
@@ -600,12 +713,18 @@ function ArchitectureFlow({
                     onChange={handleNodeUpdate}
                     onClose={() => setSelectedNode(null)}
                     onDetach={handleDetachNode} // 切り離し関数を渡す
+                    onDelete={(id) => {
+                      deleteElements({ nodes: [{ id }] });
+                      setSelectedNode(null);
+                    }}
                   />
                 )}
               </div>
             </div>
           </div>
-          <MemoPad value={memo} onChange={setMemo} />
+          <div id="memo-panel" className="workspace-side-panel side-panel-right" hidden={!memoVisible} onKeyDown={event => onPanelKeyDown(event, "memo")}>
+            <MemoPad value={memo} onChange={setMemo} />
+          </div>
         </div>
       </>
     </div>
@@ -630,23 +749,25 @@ export function ArchitectureCanvas({
 
 const tabBarStyle: React.CSSProperties = {
   display: "flex",
-  backgroundColor: "#f5f5f5",
-  borderBottom: "1px solid #ddd",
-  padding: "0 20px",
-  flexShrink: 0,
+  backgroundColor: "var(--app-subtle)",
+  padding: "0 var(--tabs-inset, 16px)",
+  flex: 1,
+  overflowX: "auto",
 };
 const tabStyle: React.CSSProperties = {
-  padding: "15px 30px",
+  padding: "var(--tab-padding, 13px 22px)",
   border: "none",
-  background: "none",
+  background: "var(--tab-hover, transparent)",
   cursor: "pointer",
-  fontSize: "16px",
-  color: "#666",
-  borderBottom: "3px solid transparent",
+  whiteSpace: "nowrap",
+  flexShrink: 0,
+  fontSize: "var(--tab-font, 14px)",
+  color: "var(--app-muted)",
+  borderBottom: "2px solid transparent",
 };
 const activeTabStyle: React.CSSProperties = {
   ...tabStyle,
-  color: "#2196F3",
+  color: "var(--app-primary)",
   fontWeight: "bold",
-  borderBottom: "3px solid #2196F3",
+  borderBottom: "2px solid var(--app-primary)",
 };

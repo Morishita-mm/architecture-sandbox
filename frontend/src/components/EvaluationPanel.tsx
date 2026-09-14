@@ -89,17 +89,17 @@ export const EvaluationPanel: React.FC<Props> = ({
             style={{
               fontSize: "64px",
               marginBottom: "20px",
-              color: "#ccc",
+              color: "var(--app-border)",
               display: "flex",
               justifyContent: "center",
             }}
           >
             <BiSearchAlt />
           </div>
-          <h2 style={{ margin: "0 0 10px 0", color: "#333" }}>
+          <h2 style={{ margin: "0 0 10px 0", color: "var(--app-text)" }}>
             まだ評価結果がありません
           </h2>
-          <p style={{ color: "#666", marginBottom: "30px" }}>
+          <p style={{ color: "var(--app-muted)", marginBottom: "30px" }}>
             現在の設計が要件を満たしているか、AIアーキテクトに診断してもらいましょう。
           </p>
           <button
@@ -107,7 +107,7 @@ export const EvaluationPanel: React.FC<Props> = ({
             disabled={isLoading}
             style={{
               ...buttonStyle,
-              backgroundColor: isLoading ? "#ccc" : "#2196F3",
+              backgroundColor: isLoading ? "var(--app-border)" : "var(--app-primary)",
               cursor: isLoading ? "wait" : "pointer",
             }}
           >
@@ -119,9 +119,9 @@ export const EvaluationPanel: React.FC<Props> = ({
   }
 
   const getScoreColor = (score: number) => {
-    if (score >= 80) return "#4CAF50";
-    if (score >= 50) return "#FF9800";
-    return "#F44336";
+    if (score >= 80) return "var(--app-success)";
+    if (score >= 50) return "var(--app-warning)";
+    return "var(--app-danger)";
   };
 
   const details = result.details || {
@@ -146,10 +146,10 @@ export const EvaluationPanel: React.FC<Props> = ({
 
   return (
     <div style={containerStyle}>
-      <div style={headerStyle}>
+      <div className="evaluation-header" style={headerStyle}>
         <h2 style={{ margin: 0 }}>アーキテクチャ評価レポート</h2>
 
-        <div style={{ display: "flex", gap: "10px" }}>
+        <div className="evaluation-actions" style={{ display: "flex", gap: "8px" }}>
           <button
             onClick={handleCopyLink}
             style={iconButtonStyle}
@@ -192,9 +192,9 @@ export const EvaluationPanel: React.FC<Props> = ({
         </div>
       </div>
 
-      <div style={topSectionStyle}>
+      <div className="evaluation-top" style={topSectionStyle}>
         {/* 左側: 総合スコア */}
-        <div style={scoreBoxStyle}>
+        <div className="evaluation-score" style={scoreBoxStyle}>
           <div style={scoreLabelStyle}>総合スコア</div>
           <div style={{ ...scoreValueStyle, color: getScoreColor(totalScore) }}>
             {totalScore}
@@ -203,7 +203,7 @@ export const EvaluationPanel: React.FC<Props> = ({
         </div>
 
         {/* 右側: レーダーチャート */}
-        <div style={chartBoxStyle}>
+        <div className="evaluation-chart" style={chartBoxStyle}>
           <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
             <RadarChart cx="50%" cy="50%" outerRadius="80%" data={chartData}>
               <PolarGrid />
@@ -212,9 +212,9 @@ export const EvaluationPanel: React.FC<Props> = ({
               <Radar
                 name="Score"
                 dataKey="A"
-                stroke="#2196F3"
-                fill="#2196F3"
-                fillOpacity={0.6}
+                stroke="var(--app-primary)"
+                fill="var(--app-primary)"
+                fillOpacity={0.18}
               />
             </RadarChart>
           </ResponsiveContainer>
@@ -224,9 +224,9 @@ export const EvaluationPanel: React.FC<Props> = ({
       <div style={contentStyle}>
         <div style={sectionStyle}>
           <h3 style={sectionTitleStyle}>
-            <BiBot size={24} color="#2196F3" /> AIからのフィードバック
+            <BiBot size={24} color="var(--app-primary)" /> AIからのフィードバック
           </h3>
-          <div style={markdownContainerStyle}>
+          <div className="evaluation-markdown" style={markdownContainerStyle}>
             <ReactMarkdown remarkPlugins={[remarkGfm]} disallowedElements={["img"]} components={{ a: ({ children }) => <span>{children}</span> }}>
               {result.feedback}
             </ReactMarkdown>
@@ -235,9 +235,9 @@ export const EvaluationPanel: React.FC<Props> = ({
 
         <div style={sectionStyle}>
           <h3 style={sectionTitleStyle}>
-            <BiBulb size={24} color="#FFC107" /> 改善のための提案
+            <BiBulb size={24} color="var(--app-warning)" /> 改善のための提案
           </h3>
-          <div style={markdownContainerStyle}>
+          <div className="evaluation-markdown" style={markdownContainerStyle}>
             <ReactMarkdown remarkPlugins={[remarkGfm]} disallowedElements={["img"]} components={{ a: ({ children }) => <span>{children}</span> }}>
               {result.improvement}
             </ReactMarkdown>
@@ -252,8 +252,8 @@ export const EvaluationPanel: React.FC<Props> = ({
 const iconButtonStyle: React.CSSProperties = {
   padding: "8px 12px",
   backgroundColor: "white",
-  color: "#555",
-  border: "1px solid #ccc",
+  color: "var(--app-muted)",
+  border: "1px solid var(--app-border)",
   borderRadius: "6px",
   cursor: "pointer",
   fontSize: "13px",
@@ -265,10 +265,10 @@ const iconButtonStyle: React.CSSProperties = {
 };
 
 const containerStyle: React.CSSProperties = {
-  padding: "30px",
+  padding: "24px",
   height: "100%",
   overflowY: "auto",
-  backgroundColor: "#f5f7fa",
+  backgroundColor: "var(--app-bg)",
 };
 
 const headerStyle: React.CSSProperties = {
@@ -282,26 +282,28 @@ const topSectionStyle: React.CSSProperties = {
   display: "flex",
   gap: "20px",
   marginBottom: "30px",
-  height: CHART_HEIGHT + 20,
+  minHeight: CHART_HEIGHT + 20,
 };
 
 const scoreBoxStyle: React.CSSProperties = {
   flex: 1,
   backgroundColor: "white",
-  borderRadius: "12px",
+  borderRadius: "10px",
+  border: "1px solid var(--app-border)",
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
   justifyContent: "center",
-  boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+  boxShadow: "var(--app-shadow)",
 };
 
 const chartBoxStyle: React.CSSProperties = {
   flex: 2,
   backgroundColor: "white",
-  borderRadius: "12px",
+  borderRadius: "10px",
+  border: "1px solid var(--app-border)",
   padding: "10px",
-  boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+  boxShadow: "var(--app-shadow)",
 };
 
 const emptyContainerStyle: React.CSSProperties = {
@@ -309,38 +311,39 @@ const emptyContainerStyle: React.CSSProperties = {
   justifyContent: "center",
   alignItems: "center",
   height: "100%",
-  backgroundColor: "#f5f7fa",
+  backgroundColor: "var(--app-bg)",
   padding: "20px",
 };
 
 const emptyCardStyle: React.CSSProperties = {
   backgroundColor: "white",
-  padding: "40px",
-  borderRadius: "12px",
+  padding: "32px",
+  borderRadius: "10px",
+  border: "1px solid var(--app-border)",
   textAlign: "center",
-  boxShadow: "0 4px 15px rgba(0,0,0,0.05)",
+  boxShadow: "var(--app-shadow)",
   maxWidth: "500px",
   width: "100%",
 };
 
 const scoreLabelStyle: React.CSSProperties = {
   fontSize: "16px",
-  color: "#666",
+  color: "var(--app-muted)",
   marginBottom: "5px",
   fontWeight: "bold",
 };
 
 const scoreValueStyle: React.CSSProperties = {
-  fontSize: "80px",
+  fontSize: "64px",
   fontWeight: "bold",
   lineHeight: 1,
 };
 
 const contentStyle: React.CSSProperties = {
   display: "flex",
-  paddingBottom: "80px",
+  paddingBottom: "24px",
   flexDirection: "column",
-  gap: "30px",
+  gap: "24px",
 };
 
 const sectionStyle: React.CSSProperties = {};
@@ -349,8 +352,8 @@ const sectionTitleStyle: React.CSSProperties = {
   fontSize: "18px",
   fontWeight: "bold",
   marginBottom: "15px",
-  color: "#333",
-  borderLeft: "4px solid #2196F3",
+  color: "var(--app-text)",
+  borderLeft: "4px solid var(--app-primary)",
   paddingLeft: "10px",
   display: "flex",
   alignItems: "center",
@@ -361,9 +364,9 @@ const markdownContainerStyle: React.CSSProperties = {
   backgroundColor: "white",
   padding: "20px",
   borderRadius: "8px",
-  border: "1px solid #e1e4e8",
+  border: "1px solid var(--app-border)",
   lineHeight: "1.7",
-  color: "#24292e",
+  color: "var(--app-text)",
   fontSize: "15px",
 };
 
@@ -372,15 +375,15 @@ const buttonStyle: React.CSSProperties = {
   color: "white",
   border: "none",
   borderRadius: "6px",
-  fontSize: "16px",
+  fontSize: "14px",
   fontWeight: "bold",
 };
 
 const retryButtonStyle: React.CSSProperties = {
   padding: "8px 16px",
   backgroundColor: "white",
-  color: "#666",
-  border: "1px solid #ccc",
+  color: "var(--app-muted)",
+  border: "1px solid var(--app-border)",
   borderRadius: "6px",
   cursor: "pointer",
   fontSize: "14px",

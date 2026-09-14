@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 const ArchitectureCanvas = lazy(() => import("./components/ArchitectureCanvas").then(module => ({ default: module.ArchitectureCanvas })));
 import { ScenarioSetup } from "./components/ScenarioSetup";
 import type { Scenario, ProjectSaveData } from "./types";
@@ -9,6 +9,9 @@ type AppPhase = "SCENARIO_SELECTION" | "CUSTOM_DEFINITION" | "CANVAS";
 
 function App() {
   const [phase, setPhase] = useState<AppPhase>("SCENARIO_SELECTION");
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, [phase]);
   const [selectedScenario, setSelectedScenario] = useState<Scenario | null>(
     null
   );
