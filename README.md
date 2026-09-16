@@ -124,7 +124,7 @@ architecture-sandbox/
 
 公開URLは [sandbox.morimizu.dev](https://sandbox.morimizu.dev)。Cloudflare Workers Static AssetsとGCP Cloud Runへ配置しています。公開・受入の記録は[現在の状態](docs/current_phase.yaml)、GitHub Actionsからの本番配置は[CI/CD手順](docs/ci-cd.md)、セットアップ・費用・rollbackは[移植手順](docs/migration-cloudflare-gcp.md)を参照してください。
 
-2026-09-14以降の学習・UX改善はローカル開発中です。このREADMEの新機能説明と掲載画像、本番画面は一致しない場合があります。[改善チェックリスト](docs/ux-improvement-checklist.md)と[Issue #5](https://github.com/Morishita-mm/architecture-sandbox/issues/5)で実装済み・実測待ち・公開待ちを追跡しています。
+2026-09-16に学習・UX改善を本番へ配置しました。公開結果と実Geminiでの確認、残る評価品質の課題は[本番受入記録](docs/production-acceptance-2026-09-16.md)、継続作業は[改善チェックリスト](docs/ux-improvement-checklist.md)と[Issue #5](https://github.com/Morishita-mm/architecture-sandbox/issues/5)で追跡しています。
 
 フロントエンドだけをローカルで確認する場合:
 

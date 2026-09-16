@@ -1,6 +1,6 @@
 project_info:
   name: Architecture Sandbox
-  last_updated: 2026-09-13
+  last_updated: 2026-09-16
   status: Production published; current release outcome is recorded in GitHub Actions
 current_status:
   deployment:
@@ -11,12 +11,14 @@ current_status:
     gcp_project_number: "431559926189"
     gcp_foundation: Owner-approved dedicated project, protected GCS state, scoped GitHub WIF and runtime identities
     cloud_run_service: Public invocation explicitly approved; health, real Gemini chat and evaluation verified
-    cloud_run_revision: architecture-sandbox-api-169ca36-34738236394-1
+    cloud_run_revision: architecture-sandbox-api-384073a-35049999538-1
     gemini_secret_version: "1"
     gemini_model: gemini-3.5-flash-lite
     production_cutover: Published at https://sandbox.morimizu.dev; AWS resources retained
     first_release: https://github.com/Morishita-mm/architecture-sandbox/actions/runs/34738236394
     first_release_result: Deployment succeeded; immediate smoke hit initial DNS propagation, identical smoke later passed
+    latest_release: https://github.com/Morishita-mm/architecture-sandbox/actions/runs/35049999538
+    latest_release_result: "Commit 384073a deployed successfully; candidate, Cloud Run promotion, Cloudflare publication and public smoke passed"
     billing_controls: Dedicated project alerts and separate Gemini / Cloud Run spend caps configured; no strict total-cost guarantee
   architecture:
     type: Stateless REST API
@@ -28,12 +30,15 @@ current_status:
     independent_review: GitHub review accepted 5012fb6 after AS-R1 to AS-R3 fixes; follow-up changes require their own review
   production_acceptance:
     transport: TLS, public health, CORS, invalid input, SPA fallback and security headers passed
-    browser: Real Gemini chat and evaluation, 3-node diagram, JSON save/restore and TinyURL challenge start passed
-    findings: Initial DNS readiness race and renamed-node badge covering input handle; bounded readiness and connection regression added
+    browser: "Release 384073a: real Gemini chat, evaluation, interview coverage and browser draft resume passed"
+    findings: "Condition text/ID mismatch and evaluation severity instability remain; tracked in issues 21 and 22"
   delivery:
     workflow: Main push or manual Production release, reusable CI then production approval
     credentials: GCP Workload Identity Federation and scoped Cloudflare Environment Secret
     bootstrap: Main protection and owner-approved production Environment configured; real WIF, artifact handoff and Cloudflare authentication passed
 remaining:
-  - Check the release run for the current main SHA; code review alone does not establish deployment success
+  - Make disclosed condition text and covered condition IDs consistent; issue 21
+  - Stabilize major-defect versus unconfirmed classification; issue 22
+  - Remove GitHub Actions Node.js 20 deprecation warnings; issue 23
+  - Add negotiated requirement changes, contradiction handling and agreed-specification versioning; issue 19
   - Retire AWS only with separate approval; this migration does not delete AWS resources
