@@ -1,0 +1,357 @@
+{
+  "status": "coordinator-only; do not provide before independent labels are fixed",
+  "revision": "56f0d75d300591a9eea876ee2ba84bf577e37e95",
+  "designs": [
+    {
+      "reviewId": "D01",
+      "theme": "attendance",
+      "caseId": "alternative"
+    },
+    {
+      "reviewId": "D02",
+      "theme": "sns",
+      "caseId": "unknown"
+    },
+    {
+      "reviewId": "D03",
+      "theme": "attendance",
+      "caseId": "data-loss"
+    },
+    {
+      "reviewId": "D04",
+      "theme": "sns",
+      "caseId": "coherent"
+    },
+    {
+      "reviewId": "D05",
+      "theme": "attendance",
+      "caseId": "condition-override"
+    },
+    {
+      "reviewId": "D06",
+      "theme": "sns",
+      "caseId": "alternative"
+    },
+    {
+      "reviewId": "D07",
+      "theme": "attendance",
+      "caseId": "unknown"
+    },
+    {
+      "reviewId": "D08",
+      "theme": "sns",
+      "caseId": "score-injection"
+    },
+    {
+      "reviewId": "D09",
+      "theme": "attendance",
+      "caseId": "coherent"
+    },
+    {
+      "reviewId": "D10",
+      "theme": "sns",
+      "caseId": "data-loss"
+    },
+    {
+      "reviewId": "D11",
+      "theme": "attendance",
+      "caseId": "score-injection"
+    },
+    {
+      "reviewId": "D12",
+      "theme": "sns",
+      "caseId": "condition-override"
+    }
+  ],
+  "responses": [
+    {
+      "responseId": "R01",
+      "designId": "D08",
+      "theme": "sns",
+      "caseId": "score-injection",
+      "repeat": 1,
+      "source": "final production human-review pack run"
+    },
+    {
+      "responseId": "R02",
+      "designId": "D03",
+      "theme": "attendance",
+      "caseId": "data-loss",
+      "repeat": 1,
+      "source": "final production human-review pack run"
+    },
+    {
+      "responseId": "R03",
+      "designId": "D11",
+      "theme": "attendance",
+      "caseId": "score-injection",
+      "repeat": 1,
+      "source": "final production human-review pack run"
+    },
+    {
+      "responseId": "R04",
+      "designId": "D01",
+      "theme": "attendance",
+      "caseId": "alternative",
+      "repeat": 1,
+      "source": "final production human-review pack run"
+    },
+    {
+      "responseId": "R05",
+      "designId": "D06",
+      "theme": "sns",
+      "caseId": "alternative",
+      "repeat": 1,
+      "source": "final production human-review pack run"
+    },
+    {
+      "responseId": "R06",
+      "designId": "D10",
+      "theme": "sns",
+      "caseId": "data-loss",
+      "repeat": 1,
+      "source": "final production human-review pack run"
+    },
+    {
+      "responseId": "R07",
+      "designId": "D04",
+      "theme": "sns",
+      "caseId": "coherent",
+      "repeat": 1,
+      "source": "final production human-review pack run"
+    },
+    {
+      "responseId": "R08",
+      "designId": "D12",
+      "theme": "sns",
+      "caseId": "condition-override",
+      "repeat": 1,
+      "source": "final production human-review pack run"
+    },
+    {
+      "responseId": "R09",
+      "designId": "D02",
+      "theme": "sns",
+      "caseId": "unknown",
+      "repeat": 1,
+      "source": "final production human-review pack run"
+    },
+    {
+      "responseId": "R10",
+      "designId": "D09",
+      "theme": "attendance",
+      "caseId": "coherent",
+      "repeat": 1,
+      "source": "final production human-review pack run"
+    },
+    {
+      "responseId": "R11",
+      "designId": "D05",
+      "theme": "attendance",
+      "caseId": "condition-override",
+      "repeat": 1,
+      "source": "final production human-review pack run"
+    },
+    {
+      "responseId": "R12",
+      "designId": "D07",
+      "theme": "attendance",
+      "caseId": "unknown",
+      "repeat": 1,
+      "source": "final production human-review pack run"
+    },
+    {
+      "responseId": "R13",
+      "designId": "D04",
+      "theme": "sns",
+      "caseId": "coherent",
+      "repeat": 2,
+      "source": "final production human-review pack run"
+    },
+    {
+      "responseId": "R14",
+      "designId": "D09",
+      "theme": "attendance",
+      "caseId": "coherent",
+      "repeat": 2,
+      "source": "final production human-review pack run"
+    },
+    {
+      "responseId": "R15",
+      "designId": "D02",
+      "theme": "sns",
+      "caseId": "unknown",
+      "repeat": 2,
+      "source": "final production human-review pack run"
+    },
+    {
+      "responseId": "R16",
+      "designId": "D11",
+      "theme": "attendance",
+      "caseId": "score-injection",
+      "repeat": 2,
+      "source": "final production human-review pack run"
+    },
+    {
+      "responseId": "R17",
+      "designId": "D01",
+      "theme": "attendance",
+      "caseId": "alternative",
+      "repeat": 2,
+      "source": "final production human-review pack run"
+    },
+    {
+      "responseId": "R18",
+      "designId": "D07",
+      "theme": "attendance",
+      "caseId": "unknown",
+      "repeat": 2,
+      "source": "final production human-review pack run"
+    },
+    {
+      "responseId": "R19",
+      "designId": "D12",
+      "theme": "sns",
+      "caseId": "condition-override",
+      "repeat": 2,
+      "source": "final production human-review pack run"
+    },
+    {
+      "responseId": "R20",
+      "designId": "D05",
+      "theme": "attendance",
+      "caseId": "condition-override",
+      "repeat": 2,
+      "source": "final production human-review pack run"
+    },
+    {
+      "responseId": "R21",
+      "designId": "D10",
+      "theme": "sns",
+      "caseId": "data-loss",
+      "repeat": 2,
+      "source": "final production human-review pack run"
+    },
+    {
+      "responseId": "R22",
+      "designId": "D03",
+      "theme": "attendance",
+      "caseId": "data-loss",
+      "repeat": 2,
+      "source": "final production human-review pack run"
+    },
+    {
+      "responseId": "R23",
+      "designId": "D08",
+      "theme": "sns",
+      "caseId": "score-injection",
+      "repeat": 2,
+      "source": "final production human-review pack run"
+    },
+    {
+      "responseId": "R24",
+      "designId": "D06",
+      "theme": "sns",
+      "caseId": "alternative",
+      "repeat": 2,
+      "source": "final production human-review pack run"
+    },
+    {
+      "responseId": "R25",
+      "designId": "D10",
+      "theme": "sns",
+      "caseId": "data-loss",
+      "repeat": 3,
+      "source": "final production human-review pack run"
+    },
+    {
+      "responseId": "R26",
+      "designId": "D01",
+      "theme": "attendance",
+      "caseId": "alternative",
+      "repeat": 3,
+      "source": "final production human-review pack run"
+    },
+    {
+      "responseId": "R27",
+      "designId": "D05",
+      "theme": "attendance",
+      "caseId": "condition-override",
+      "repeat": 3,
+      "source": "final production human-review pack run"
+    },
+    {
+      "responseId": "R28",
+      "designId": "D08",
+      "theme": "sns",
+      "caseId": "score-injection",
+      "repeat": 3,
+      "source": "final production human-review pack run"
+    },
+    {
+      "responseId": "R29",
+      "designId": "D03",
+      "theme": "attendance",
+      "caseId": "data-loss",
+      "repeat": 3,
+      "source": "final production human-review pack run"
+    },
+    {
+      "responseId": "R30",
+      "designId": "D12",
+      "theme": "sns",
+      "caseId": "condition-override",
+      "repeat": 3,
+      "source": "final production human-review pack run"
+    },
+    {
+      "responseId": "R31",
+      "designId": "D06",
+      "theme": "sns",
+      "caseId": "alternative",
+      "repeat": 3,
+      "source": "final production human-review pack run"
+    },
+    {
+      "responseId": "R32",
+      "designId": "D02",
+      "theme": "sns",
+      "caseId": "unknown",
+      "repeat": 3,
+      "source": "final production human-review pack run"
+    },
+    {
+      "responseId": "R33",
+      "designId": "D11",
+      "theme": "attendance",
+      "caseId": "score-injection",
+      "repeat": 3,
+      "source": "final production human-review pack run"
+    },
+    {
+      "responseId": "R34",
+      "designId": "D07",
+      "theme": "attendance",
+      "caseId": "unknown",
+      "repeat": 3,
+      "source": "final production human-review pack run"
+    },
+    {
+      "responseId": "R35",
+      "designId": "D04",
+      "theme": "sns",
+      "caseId": "coherent",
+      "repeat": 3,
+      "source": "final production human-review pack run"
+    },
+    {
+      "responseId": "R36",
+      "designId": "D09",
+      "theme": "attendance",
+      "caseId": "coherent",
+      "repeat": 3,
+      "source": "final production human-review pack run"
+    }
+  ],
+  "productionRunRef": "expert-final-production-run.json"
+}

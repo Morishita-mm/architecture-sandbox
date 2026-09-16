@@ -1,0 +1,122 @@
+{
+  "phase": "pre-response-defect-reconciliation",
+  "status": "not-started",
+  "instructions": "2名の独立入力判定票を変更不可で保存した後、モデル応答を開く前に記入する。canonicalDefectsの各要素はcanonicalDefectId、description、inputEvidence、requirementEvidenceを持つ。合意できない項目はdisagreementsへ残し、分母へ含めず保留件数として報告する。",
+  "responsesVisibleDuringReconciliation": false,
+  "reconciledAt": null,
+  "coordinatorId": null,
+  "reviewerIds": [
+    null,
+    null
+  ],
+  "cases": [
+    {
+      "reviewId": "D01",
+      "reviewer1DefectIds": null,
+      "reviewer2DefectIds": null,
+      "canonicalDefects": null,
+      "disagreements": null,
+      "resolution": null,
+      "status": "not-started"
+    },
+    {
+      "reviewId": "D02",
+      "reviewer1DefectIds": null,
+      "reviewer2DefectIds": null,
+      "canonicalDefects": null,
+      "disagreements": null,
+      "resolution": null,
+      "status": "not-started"
+    },
+    {
+      "reviewId": "D03",
+      "reviewer1DefectIds": null,
+      "reviewer2DefectIds": null,
+      "canonicalDefects": null,
+      "disagreements": null,
+      "resolution": null,
+      "status": "not-started"
+    },
+    {
+      "reviewId": "D04",
+      "reviewer1DefectIds": null,
+      "reviewer2DefectIds": null,
+      "canonicalDefects": null,
+      "disagreements": null,
+      "resolution": null,
+      "status": "not-started"
+    },
+    {
+      "reviewId": "D05",
+      "reviewer1DefectIds": null,
+      "reviewer2DefectIds": null,
+      "canonicalDefects": null,
+      "disagreements": null,
+      "resolution": null,
+      "status": "not-started"
+    },
+    {
+      "reviewId": "D06",
+      "reviewer1DefectIds": null,
+      "reviewer2DefectIds": null,
+      "canonicalDefects": null,
+      "disagreements": null,
+      "resolution": null,
+      "status": "not-started"
+    },
+    {
+      "reviewId": "D07",
+      "reviewer1DefectIds": null,
+      "reviewer2DefectIds": null,
+      "canonicalDefects": null,
+      "disagreements": null,
+      "resolution": null,
+      "status": "not-started"
+    },
+    {
+      "reviewId": "D08",
+      "reviewer1DefectIds": null,
+      "reviewer2DefectIds": null,
+      "canonicalDefects": null,
+      "disagreements": null,
+      "resolution": null,
+      "status": "not-started"
+    },
+    {
+      "reviewId": "D09",
+      "reviewer1DefectIds": null,
+      "reviewer2DefectIds": null,
+      "canonicalDefects": null,
+      "disagreements": null,
+      "resolution": null,
+      "status": "not-started"
+    },
+    {
+      "reviewId": "D10",
+      "reviewer1DefectIds": null,
+      "reviewer2DefectIds": null,
+      "canonicalDefects": null,
+      "disagreements": null,
+      "resolution": null,
+      "status": "not-started"
+    },
+    {
+      "reviewId": "D11",
+      "reviewer1DefectIds": null,
+      "reviewer2DefectIds": null,
+      "canonicalDefects": null,
+      "disagreements": null,
+      "resolution": null,
+      "status": "not-started"
+    },
+    {
+      "reviewId": "D12",
+      "reviewer1DefectIds": null,
+      "reviewer2DefectIds": null,
+      "canonicalDefects": null,
+      "disagreements": null,
+      "resolution": null,
+      "status": "not-started"
+    }
+  ]
+}

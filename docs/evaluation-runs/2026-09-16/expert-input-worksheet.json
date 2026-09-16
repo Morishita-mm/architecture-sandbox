@@ -1,0 +1,122 @@
+{
+  "reviewerId": null,
+  "reviewedAt": null,
+  "reviewerType": "human-expert",
+  "phase": "independent-input-labels",
+  "status": "not-started",
+  "cases": [
+    {
+      "reviewId": "D01",
+      "majorDefects": null,
+      "unknowns": null,
+      "acceptableAlternatives": null,
+      "evidence": null,
+      "judgment": null,
+      "confidence1to5": null
+    },
+    {
+      "reviewId": "D02",
+      "majorDefects": null,
+      "unknowns": null,
+      "acceptableAlternatives": null,
+      "evidence": null,
+      "judgment": null,
+      "confidence1to5": null
+    },
+    {
+      "reviewId": "D03",
+      "majorDefects": null,
+      "unknowns": null,
+      "acceptableAlternatives": null,
+      "evidence": null,
+      "judgment": null,
+      "confidence1to5": null
+    },
+    {
+      "reviewId": "D04",
+      "majorDefects": null,
+      "unknowns": null,
+      "acceptableAlternatives": null,
+      "evidence": null,
+      "judgment": null,
+      "confidence1to5": null
+    },
+    {
+      "reviewId": "D05",
+      "majorDefects": null,
+      "unknowns": null,
+      "acceptableAlternatives": null,
+      "evidence": null,
+      "judgment": null,
+      "confidence1to5": null
+    },
+    {
+      "reviewId": "D06",
+      "majorDefects": null,
+      "unknowns": null,
+      "acceptableAlternatives": null,
+      "evidence": null,
+      "judgment": null,
+      "confidence1to5": null
+    },
+    {
+      "reviewId": "D07",
+      "majorDefects": null,
+      "unknowns": null,
+      "acceptableAlternatives": null,
+      "evidence": null,
+      "judgment": null,
+      "confidence1to5": null
+    },
+    {
+      "reviewId": "D08",
+      "majorDefects": null,
+      "unknowns": null,
+      "acceptableAlternatives": null,
+      "evidence": null,
+      "judgment": null,
+      "confidence1to5": null
+    },
+    {
+      "reviewId": "D09",
+      "majorDefects": null,
+      "unknowns": null,
+      "acceptableAlternatives": null,
+      "evidence": null,
+      "judgment": null,
+      "confidence1to5": null
+    },
+    {
+      "reviewId": "D10",
+      "majorDefects": null,
+      "unknowns": null,
+      "acceptableAlternatives": null,
+      "evidence": null,
+      "judgment": null,
+      "confidence1to5": null
+    },
+    {
+      "reviewId": "D11",
+      "majorDefects": null,
+      "unknowns": null,
+      "acceptableAlternatives": null,
+      "evidence": null,
+      "judgment": null,
+      "confidence1to5": null
+    },
+    {
+      "reviewId": "D12",
+      "majorDefects": null,
+      "unknowns": null,
+      "acceptableAlternatives": null,
+      "evidence": null,
+      "judgment": null,
+      "confidence1to5": null
+    }
+  ],
+  "fieldGuide": {
+    "majorDefects": "配列で記録する。各要素は defectId、description、inputEvidence、requirementEvidence を持つ。重大欠陥がなければ空配列、判断不能なら null。",
+    "unknowns": "未確認事項の配列。なければ空配列、判断不能なら null。",
+    "acceptableAlternatives": "妥当な別解の配列。なければ空配列、判断不能なら null。"
+  }
+}
