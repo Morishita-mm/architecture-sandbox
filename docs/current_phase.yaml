@@ -35,6 +35,7 @@ current_status:
     findings: "Automated EVAL-05 production acceptance is complete. Human expert and beginner studies remain external validation work"
   delivery:
     workflow: Main push or manual Production release, reusable CI then production approval
+    documentation_handoff: "PR 34 is merged with [skip ci] so the validated release 56f0d75 remains the fixed human-study target"
     credentials: GCP Workload Identity Federation and scoped Cloudflare Environment Secret
     bootstrap: Main protection and owner-approved production Environment configured; real WIF, artifact handoff and Cloudflare authentication passed
 remaining:
