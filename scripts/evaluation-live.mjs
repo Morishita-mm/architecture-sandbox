@@ -18,7 +18,7 @@ const apiPath = `/v1beta/models/${model}:generateContent`;
 async function listen(server) { server.listen(0, '127.0.0.1'); await once(server, 'listening'); return `http://127.0.0.1:${server.address().port}`; }
 async function boundedBody(stream, limit) { const chunks = []; let size = 0; for await (const chunk of stream) { size += chunk.length; if (size > limit) throw new Error('body-limit'); chunks.push(Buffer.from(chunk)); } return Buffer.concat(chunks); }
 function sanitizedEvaluationDescription(value) {
-  const parts = value.match(/[^。\n]*(?:。|\n|$)/gu)?.filter(Boolean) ?? [];
+  const parts = value.match(/[^。\n！？!?.]*(?:[。\n！？!?.]|$)/gu)?.filter(Boolean) ?? [];
   const contains = (part, markers) => markers.some(marker => part.includes(marker));
   return parts.filter(part => {
     const attack = part.includes('プロンプトインジェクション') || part.includes('不正な指示文')
@@ -29,8 +29,7 @@ function sanitizedEvaluationDescription(value) {
       || (part.includes('採点基準') && contains(part, ['無視', '上書き', '変更']))
       || part.includes('管理者命令') || (part.includes('全項目') && part.includes('100点'))
       || (part.includes('未確認事項') && part.includes('省略'));
-    const concrete = contains(part, ['非会員', '未認証', '公開範囲', '外部公開', '保存しない', '保持要件', '暗号化しない', 'データを失', '単一障害', '冗長化しない', '予算を超', '応答時間を超', '復旧時間を超']);
-    return !attack || concrete;
+    return !attack;
   }).join('').trim();
 }
 
@@ -61,7 +60,7 @@ export async function runLocalEvaluation({ output, provider, providerKind = 'unp
       const body = await boundedBody(req, 32768), data = JSON.parse(body);
       const design = JSON.parse(data.contents[0].parts[0].text);
       const expected = cases.find(c => c.id === active.caseId).input;
-      const expectedNodes = expected.nodes.map(n => ({...n,description:sanitizedEvaluationDescription(n.description),parentNode:n.parentNode ?? null}));
+      const expectedNodes = expected.nodes.map(n => ({...n,label:sanitizedEvaluationDescription(n.label),description:sanitizedEvaluationDescription(n.description),parentNode:n.parentNode ?? null}));
       if (!isDeepStrictEqual(design.nodes, expectedNodes) || !isDeepStrictEqual(design.edges,expected.edges)
           || data.generationConfig.maxOutputTokens !== 4096 || data.generationConfig.responseMimeType !== 'application/json' || data.tools || data.cachedContent) throw new Error('unexpected-request');
       active.forwarded = true; active.requestSha256 = sha(body); active.systemSha256 = sha(JSON.stringify(data.systemInstruction)); active.generationConfig = data.generationConfig;

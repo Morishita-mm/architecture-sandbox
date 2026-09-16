@@ -1,8 +1,7 @@
 use crate::domain::model::{
     chat::{ChatRequest, ChatResponse, ChatRole, ModelChatResponse},
     evaluation::{
-        EvaluationRequest, EvaluationResult, ModelEvaluationResult,
-        sanitized_evaluation_description,
+        EvaluationRequest, EvaluationResult, ModelEvaluationResult, sanitized_evaluation_text,
     },
 };
 use reqwest::{Client, Response};
@@ -177,17 +176,31 @@ impl GeminiClient {
                 json!({
                     "id": node.id,
                     "type": node.kind,
-                    "label": node.label,
-                    "description": sanitized_evaluation_description(&node.description),
+                    "label": sanitized_evaluation_text(&node.label),
+                    "description": sanitized_evaluation_text(&node.description),
                     "parentNode": node.parent,
                 })
             })
             .collect::<Vec<_>>();
+        let interview_evidence = req
+            .interview_evidence
+            .iter()
+            .map(|item| {
+                json!({
+                    "conditionId": item.condition_id,
+                    "label": sanitized_evaluation_text(&item.label),
+                    "question": sanitized_evaluation_text(&item.question),
+                    "answer": sanitized_evaluation_text(&item.answer),
+                    "questionMessageIndex": item.question_message_index,
+                    "answerMessageIndex": item.answer_message_index,
+                })
+            })
+            .collect::<Vec<_>>();
         let design = json!({
-            "scenario":req.scenario.public_context(),
+            "scenario":sanitize_evaluation_value(req.scenario.public_context()),
             "nodes":nodes,
             "edges":req.edges,
-            "interviewEvidence":req.interview_evidence,
+            "interviewEvidence":interview_evidence,
             "interviewCoverage":req.interview_assessment()
         });
         let text = self
@@ -257,6 +270,22 @@ impl GeminiClient {
             return Err(());
         }
         Ok(text)
+    }
+}
+
+fn sanitize_evaluation_value(value: Value) -> Value {
+    match value {
+        Value::String(value) => Value::String(sanitized_evaluation_text(&value)),
+        Value::Array(values) => {
+            Value::Array(values.into_iter().map(sanitize_evaluation_value).collect())
+        }
+        Value::Object(values) => Value::Object(
+            values
+                .into_iter()
+                .map(|(key, value)| (key, sanitize_evaluation_value(value)))
+                .collect(),
+        ),
+        value => value,
     }
 }
 
