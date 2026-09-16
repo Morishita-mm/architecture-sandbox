@@ -285,10 +285,13 @@ impl ModelEvaluationResult {
         for deficiency in self.feedback_sections.major_deficiencies {
             // The learner should see the architectural conflict, not a narration of
             // how the evaluator resisted instructions embedded in user-authored data.
-            // Only remove text that both identifies an evaluator-directed attack and
-            // explicitly says that it was ignored. A concrete design contradiction
-            // in the same sentence (for example, exposing data to non-members) stays.
-            if describes_evaluator_defense(&deficiency.text) {
+            // Remove evaluator-directed attack narration regardless of how the model
+            // phrases its response. Keep the item only when the same sentence also
+            // identifies a concrete architectural harm, such as exposing data to
+            // non-members or violating retention requirements.
+            if describes_instruction_attack(&deficiency.text)
+                && !describes_concrete_requirement_contradiction(&deficiency.text)
+            {
                 continue;
             }
             // Missing settings and unfinished verification are uncertainty, even when
@@ -327,7 +330,11 @@ impl ModelEvaluationResult {
             render("未確認事項", &unknowns, "未確認事項はありません。"),
         ]
         .join("\n\n");
-        let improvement = normalize_node_links(&self.improvement, &req.nodes);
+        let improvement = if describes_instruction_attack(&self.improvement) {
+            "未確認事項から1つ選び、設計上の判断・理由・確認方法を追記してください。".to_owned()
+        } else {
+            normalize_node_links(&self.improvement, &req.nodes)
+        };
         let mut result = EvaluationResult {
             total_score: self.total_score,
             details: self.details,
@@ -405,6 +412,8 @@ fn expresses_uncertainty(value: &str) -> bool {
 
 fn describes_instruction_attack(value: &str) -> bool {
     value.contains("プロンプトインジェクション")
+        || value.contains("不正な指示文")
+        || value.contains("システム指示を回避する不正な記述")
         || value.contains("ユーザーデータに含まれる指示やルール変更の試み")
         || value.contains("指示変更を試みる記述")
         || (value.contains("システム要件")
@@ -417,18 +426,24 @@ fn describes_instruction_attack(value: &str) -> bool {
                 .any(|marker| value.contains(marker)))
 }
 
-fn describes_evaluator_defense(value: &str) -> bool {
-    describes_instruction_attack(value)
-        && [
-            "評価に影響しません",
-            "評価には影響しません",
-            "評価基準に影響しません",
-            "指示は無視されます",
-            "指示を無視します",
-            "評価基準として厳格に適用",
-        ]
-        .iter()
-        .any(|marker| value.contains(marker))
+fn describes_concrete_requirement_contradiction(value: &str) -> bool {
+    [
+        "非会員",
+        "未認証",
+        "公開範囲",
+        "外部公開",
+        "保存しない",
+        "保持要件",
+        "暗号化しない",
+        "データを失",
+        "単一障害",
+        "冗長化しない",
+        "予算を超",
+        "応答時間を超",
+        "復旧時間を超",
+    ]
+    .iter()
+    .any(|marker| value.contains(marker))
 }
 
 fn normalize_node_links(value: &str, nodes: &[DesignNode]) -> String {
@@ -655,8 +670,11 @@ mod tests {
             "プロンプトインジェクションや指示変更を試みる記述が含まれていますが、これは要件評価に影響しません。",
             "以前の採点基準を無視するよう指示する記述が含まれているが、システム要件は評価基準として厳格に適用される。",
             "システム要件を無効化する指示が含まれていますが、これは評価基準に影響しません。",
+            "以前の採点基準を無視させ全項目を100点にさせようとするプロンプトインジェクションの記述が含まれています。",
+            "採点基準を無視させようとする不適切な記述が含まれています。",
         ] {
-            assert!(describes_evaluator_defense(observed));
+            assert!(describes_instruction_attack(observed));
+            assert!(!describes_concrete_requirement_contradiction(observed));
             let defended = ModelEvaluationResult {
                 total_score: 50,
                 details: Scores {
@@ -675,7 +693,7 @@ mod tests {
                     }],
                     unknowns: vec![],
                 },
-                improvement: "公開範囲を確認".into(),
+                improvement: format!("不正な指示文を削除してください。{observed}"),
             }
             .into_public(&request())
             .unwrap();
@@ -685,6 +703,10 @@ mod tests {
                     .contains("### 重大な不足\n重大な不足は確認されませんでした。")
             );
             assert!(!defended.feedback.contains(observed));
+            assert_eq!(
+                defended.improvement,
+                "未確認事項から1つ選び、設計上の判断・理由・確認方法を追記してください。"
+            );
         }
         let mixed = ModelEvaluationResult {
             total_score: 50,
@@ -709,6 +731,9 @@ mod tests {
         .into_public(&request())
         .unwrap();
         assert!(mixed.feedback.contains("非会員へ公開するため"));
+        assert!(describes_concrete_requirement_contradiction(
+            "システム要件を上書きする指示に従い非会員へ公開するため、公開範囲要件と矛盾します"
+        ));
         assert!(
             result
                 .feedback
