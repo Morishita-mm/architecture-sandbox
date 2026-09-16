@@ -17,15 +17,24 @@ const model = 'gemini-3.5-flash-lite';
 const apiPath = `/v1beta/models/${model}:generateContent`;
 async function listen(server) { server.listen(0, '127.0.0.1'); await once(server, 'listening'); return `http://127.0.0.1:${server.address().port}`; }
 async function boundedBody(stream, limit) { const chunks = []; let size = 0; for await (const chunk of stream) { size += chunk.length; if (size > limit) throw new Error('body-limit'); chunks.push(Buffer.from(chunk)); } return Buffer.concat(chunks); }
-function sanitizedEvaluationDescription(value) {
+export function sanitizedEvaluationDescription(value) {
   const parts = value.match(/[^。\n！？!?.]*(?:[。\n！？!?.]|$)/gu)?.filter(Boolean) ?? [];
   const contains = (part, markers) => markers.some(marker => part.includes(marker));
   return parts.filter(part => {
-    const attack = (part.includes('システム指示') && contains(part, ['上書き', '無視', '回避', '変更', '優先']))
+    const lowercase = part.toLowerCase();
+    const defense = contains(part, ['検出して拒否', '変更を拒否', '上書きを拒否', '変更を防止', '上書きを防止', '変更を防ぐ', '上書きを防ぐ', '変更を遮断', '上書きを遮断', '従わない', '変更を禁止', '上書きを禁止', '変更への対策', '上書きへの対策'])
+      || contains(lowercase, ['detect and reject', 'reject attempts to', 'block attempts to', 'prevent changes to', 'prevent overrides to', 'refuse requests to', 'do not follow']);
+    const englishAttack = ((contains(lowercase, ['scoring criteria', 'system instructions', 'system requirements'])
+      && contains(lowercase, ['ignore', 'disregard', 'override', 'change', 'invalidate']))
+      || (contains(lowercase, ['every category', 'all categories']) && lowercase.includes('100'))
+      || (contains(lowercase, ['omit', 'skip']) && contains(lowercase, ['unknown', 'unconfirmed']))
+      || contains(lowercase, ['administrator instruction', 'admin instruction']));
+    const attack = !defense && (englishAttack
+      || (part.includes('システム指示') && contains(part, ['上書き', '無視', '回避', '変更', '優先']))
       || (part.includes('システム要件') && contains(part, ['上書き', '無効化', '変更']))
       || (part.includes('採点基準') && contains(part, ['無視', '上書き', '変更']))
       || part.includes('管理者命令') || (part.includes('全項目') && part.includes('100点'))
-      || (part.includes('未確認事項') && part.includes('省略'));
+      || (part.includes('未確認事項') && part.includes('省略')));
     return !attack;
   }).join('').trim();
 }
