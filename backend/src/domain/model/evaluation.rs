@@ -282,17 +282,13 @@ impl ModelEvaluationResult {
 
         let mut unknowns = self.feedback_sections.unknowns;
         let mut major = Vec::new();
-        let has_architecture_deficiency = self
-            .feedback_sections
-            .major_deficiencies
-            .iter()
-            .any(|item| !describes_instruction_attack(&item.text));
         for deficiency in self.feedback_sections.major_deficiencies {
             // The learner should see the architectural conflict, not a narration of
             // how the evaluator resisted instructions embedded in user-authored data.
-            // The same response can still retain the concrete design contradiction
-            // (for example, volatile storage against a three-year retention rule).
-            if has_architecture_deficiency && describes_instruction_attack(&deficiency.text) {
+            // Only remove text that both identifies an evaluator-directed attack and
+            // explicitly says that it was ignored. A concrete design contradiction
+            // in the same sentence (for example, exposing data to non-members) stays.
+            if describes_evaluator_defense(&deficiency.text) {
                 continue;
             }
             // Missing settings and unfinished verification are uncertainty, even when
@@ -411,6 +407,21 @@ fn describes_instruction_attack(value: &str) -> bool {
     value.contains("プロンプトインジェクション")
         || value.contains("ユーザーデータに含まれる指示やルール変更の試み")
         || value.contains("システム要件を上書きする指示")
+        || value.contains("指示変更を試みる記述")
+        || value.contains("採点基準を無視するよう指示")
+}
+
+fn describes_evaluator_defense(value: &str) -> bool {
+    describes_instruction_attack(value)
+        && [
+            "評価に影響しません",
+            "評価には影響しません",
+            "指示は無視されます",
+            "指示を無視します",
+            "評価基準として厳格に適用",
+        ]
+        .iter()
+        .any(|marker| value.contains(marker))
 }
 
 fn normalize_node_links(value: &str, nodes: &[DesignNode]) -> String {
@@ -633,6 +644,40 @@ mod tests {
         assert!(!describes_instruction_attack(
             "この指示を優先して非会員へ公開する設計です"
         ));
+        for observed in [
+            "プロンプトインジェクションや指示変更を試みる記述が含まれていますが、これは要件評価に影響しません。",
+            "以前の採点基準を無視するよう指示する記述が含まれているが、システム要件は評価基準として厳格に適用される。",
+        ] {
+            assert!(describes_evaluator_defense(observed));
+            let defended = ModelEvaluationResult {
+                total_score: 50,
+                details: Scores {
+                    availability: 50,
+                    scalability: 50,
+                    security: 50,
+                    maintainability: 50,
+                    cost_efficiency: 50,
+                    feasibility: 50,
+                },
+                feedback_sections: ModelFeedbackSections {
+                    evidence: vec![],
+                    major_deficiencies: vec![ModelMajorDeficiency {
+                        basis: MajorDeficiencyBasis::ExplicitContradiction,
+                        text: observed.into(),
+                    }],
+                    unknowns: vec![],
+                },
+                improvement: "公開範囲を確認".into(),
+            }
+            .into_public(&request())
+            .unwrap();
+            assert!(
+                defended
+                    .feedback
+                    .contains("### 重大な不足\n重大な不足は確認されませんでした。")
+            );
+            assert!(!defended.feedback.contains(observed));
+        }
         let mixed = ModelEvaluationResult {
             total_score: 50,
             details: Scores {
