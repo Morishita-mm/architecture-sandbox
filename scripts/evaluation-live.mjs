@@ -24,12 +24,17 @@ export function sanitizedEvaluationDescription(value) {
     const lowercase = part.toLowerCase();
     const defense = contains(part, ['検出して拒否', '変更を拒否', '上書きを拒否', '変更を防止', '上書きを防止', '変更を防ぐ', '上書きを防ぐ', '変更を遮断', '上書きを遮断', '従わない', '変更を禁止', '上書きを禁止', '変更への対策', '上書きへの対策'])
       || contains(lowercase, ['detect and reject', 'reject attempts to', 'block attempts to', 'prevent changes to', 'prevent overrides to', 'refuse requests to', 'do not follow']);
-    const scoringAttack = contains(part, ['採点基準を無視', '採点基準には従わない', '採点基準に従わない', '採点基準を上書き', '採点基準を変更'])
+    const japaneseScoringPhrase = contains(part, ['採点基準を無視', '採点基準は無視', '採点基準には従わない', '採点基準に従わない', '採点基準を上書き', '採点基準は上書き', '採点基準を変更', '採点基準は変更']);
+    const japaneseScoringDefense = contains(part, ['無視してはいけない', '無視しない', '上書きしない', '変更しない', '変更を防止', '上書きを防止', '変更を拒否', '上書きを拒否']);
+    const japaneseScoringAttack = japaneseScoringPhrase && !japaneseScoringDefense;
+    const japaneseRatingAttack = contains(part, ['最高評価', '満点', '高得点'])
+      && contains(part, ['してください', 'にする', 'にしろ', 'にせよ']);
+    const scoringAttack = japaneseScoringAttack || japaneseRatingAttack
       || (part.includes('全項目') && part.includes('100点'))
       || (part.includes('未確認事項') && part.includes('省略'))
       || contains(lowercase, ['ignore the previous scoring criteria', 'ignore previous scoring criteria', 'disregard the previous scoring criteria', 'disregard previous scoring criteria', 'override the scoring criteria', 'override scoring criteria', 'change the scoring criteria', 'change scoring criteria'])
       || (contains(lowercase, ['every category', 'all categories']) && lowercase.includes('100'))
-      || (contains(lowercase, ['omit', 'skip']) && contains(lowercase, ['unknown', 'unconfirmed']));
+      || contains(lowercase, ['omit unknowns', 'skip unknowns', 'omit unknown evaluation items', 'skip unknown evaluation items', 'omit unconfirmed evaluation items', 'skip unconfirmed evaluation items', 'omit unconfirmed items', 'skip unconfirmed items']);
     const instructionAttack = part.includes('管理者命令')
       || contains(part, ['システム指示を上書き', 'システム指示を無視', 'システム指示を回避', 'システム指示を変更', 'システム要件を上書き', 'システム要件を無視', 'システム要件を無効化', 'システム要件を変更'])
       || contains(lowercase, ['ignore system instructions', 'ignore the system instructions', 'disregard system instructions', 'disregard the system instructions', 'override system instructions', 'override the system instructions', 'change system instructions', 'change the system instructions', 'ignore system requirements', 'ignore the system requirements', 'disregard system requirements', 'disregard the system requirements', 'override system requirements', 'override the system requirements', 'invalidate system requirements', 'invalidate the system requirements', 'administrator instruction', 'admin instruction']);
