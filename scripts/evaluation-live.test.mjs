@@ -15,16 +15,17 @@ test('paid estimate includes thinking, missing usage stays unknown', () => {
 });
 test('recorder uses the real backend, recomputes scores and persists provenance without credentials or thought text',async t => {
   const output=await temp(t); let calls=0;
-  const report=await runLocalEvaluation({output,repeats:2,pauseMs:0,provider:async body=>{
+  const report=await runLocalEvaluation({output,fixtureFile:'docs/evaluation-fixtures-sns.json',repeats:2,pauseMs:0,provider:async body=>{
     calls++; const request=JSON.parse(body);
-    assert.match(request.systemInstruction.parts[0].text,/データ消失は不可/);
+    assert.match(request.systemInstruction.parts[0].text,/受付済み投稿を.*失わ/);
     assert.equal(request.generationConfig.maxOutputTokens,4096);
     assert.deepEqual(request.generationConfig.thinkingConfig,{thinkingLevel:'low'});
     return response();
   }});
   assert.equal(report.complete,true); assert.equal(calls,12);
   assert.equal(report.provenance.providerKind,'unpaid-fixture');
-  assert.equal(report.runs[0].result.totalScore,60);
+  assert.equal(report.provenance.fixtureFile,'docs/evaluation-fixtures-sns.json');
+  assert.equal(report.runs[0].result.totalScore,53);
   assert.equal(report.runs[0].modelVersion,'unpaid-test-model');
   assert.equal(report.runs[0].usage.thoughtsTokenCount,10);
   assert.equal(report.runs[0].requestSha256,report.runs.find(r=>r.caseId===report.runs[0].caseId && r.repeat===2).requestSha256);
@@ -33,6 +34,7 @@ test('recorder uses the real backend, recomputes scores and persists provenance 
   assert.doesNotMatch(persisted,/private-test-thought|x-goog-api-key|GEMINI_API_KEY/);
   assert.deepEqual(JSON.parse(persisted),report);
   await assert.rejects(runLocalEvaluation({output,provider:()=>{throw new Error('must not run');}}),{code:'EEXIST'});
+  await assert.rejects(runLocalEvaluation({output:await temp(t),fixtureFile:'../outside.json',provider:()=>{throw new Error('must not run');}}),/Invalid fixture file/);
 });
 test('provider error stops after one request and preserves the failed attempt',async t=>{
   let calls=0;const output=await temp(t);
