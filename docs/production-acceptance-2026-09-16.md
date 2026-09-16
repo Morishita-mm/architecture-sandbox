@@ -41,3 +41,12 @@ PRと本番releaseのTerraform、Rust、統合テスト、frontend unit、Playwr
 ## 修正候補のローカル検証
 
 Issue #21〜#23に対し、回答本文の条件断片とIDのサーバー照合、内部情報抽出要求のローカル拒否、評価区分の構造化とサーバー正規化、Node.js 24対応Actionへの更新を実装した。Rust単体11件、API統合32件、frontend単体125件、Playwright 92件、fmt・clippy・build・lint・型検査が成功した。本節はローカル検証の記録であり、上記の本番判定は次回配置と実Gemini再試験が終わるまで変更しない。
+
+## 修正後の本番再試験
+
+PR #24をmain `427d567`へマージし、[release run 35055011268](https://github.com/Morishita-mm/architecture-sandbox/actions/runs/35055011268)で配置した。全CI、候補検証、Cloud Run切替、Cloudflare配信、公開smokeが成功し、Node.js 20廃止警告は0件だった。
+
+- 通常質問3回はすべて `users` / `traffic` が一致し、停止とデータ損失の質問は `availability` が一致した。
+- 内部情報抽出要求は35msでローカル拒否し、Geminiへ送信せず、非公開条件の再掲と条件ID追加はなかった。
+- 同一設計の評価は74点、73点、72点。3回とも「重大な不足なし」で、バックアップ・復元や負荷試験は未確認事項に分類された。
+- 1回の評価で `[勤怠DB](#node=app)` と誤ったノードIDが生成された。表示側は不正参照を開かないが、正しい設定へ戻れないため、表示名が一意な場合にサーバーの実在IDへ正規化する修正と回帰試験を追加した。修正の本番配置は次回releaseで確認する。
