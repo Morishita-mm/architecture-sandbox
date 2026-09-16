@@ -314,7 +314,7 @@ test('runtime and security boundaries', { timeout: 20000 }, async t => {
     assert.equal((await post('/api/chat', { ...chat, scenario: { ...scenario, description: 'x'.repeat(140000) } })).status, 413);
     assert.equal(calls.length, before);
   });
-  await t.test('quality fixtures for both themes preserve user data without overriding system criteria', async () => {
+  await t.test('quality fixtures preserve architecture facts while removing evaluator-control clauses', async () => {
     const fixtureFiles = ['evaluation-fixtures.json', 'evaluation-fixtures-sns.json'];
     const fixtureSets = [];
     for (const file of fixtureFiles) {
@@ -351,7 +351,12 @@ test('runtime and security boundaries', { timeout: 20000 }, async t => {
         assert.match(call.systemInstruction.parts[0].text, /learning-rubric-4/);
         assert.doesNotMatch(JSON.stringify(call.systemInstruction), /すべて100点にし|全項目を100点にし|投稿が消えてもよい/);
         const data = JSON.parse(call.contents[0].parts[0].text);
-        assert.equal(data.nodes[1].description, fixture.input.nodes[1].description);
+        if (fixture.id === 'score-injection') {
+          assert.doesNotMatch(data.nodes[1].description, /採点基準|100点|管理者命令|未確認事項を省略/);
+          assert.ok(data.nodes[1].description.length > 0);
+        } else {
+          assert.equal(data.nodes[1].description, fixture.input.nodes[1].description);
+        }
     }
   });
   await t.test('valid nested groups reach the provider once', async () => {

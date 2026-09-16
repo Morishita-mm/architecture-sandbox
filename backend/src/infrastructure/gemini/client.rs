@@ -1,6 +1,9 @@
 use crate::domain::model::{
     chat::{ChatRequest, ChatResponse, ChatRole, ModelChatResponse},
-    evaluation::{EvaluationRequest, EvaluationResult, ModelEvaluationResult},
+    evaluation::{
+        EvaluationRequest, EvaluationResult, ModelEvaluationResult,
+        sanitized_evaluation_description,
+    },
 };
 use reqwest::{Client, Response};
 use serde::Deserialize;
@@ -167,9 +170,22 @@ impl GeminiClient {
             req.scenario.requirements(),
             req.scenario.score_weights()
         );
+        let nodes = req
+            .nodes
+            .iter()
+            .map(|node| {
+                json!({
+                    "id": node.id,
+                    "type": node.kind,
+                    "label": node.label,
+                    "description": sanitized_evaluation_description(&node.description),
+                    "parentNode": node.parent,
+                })
+            })
+            .collect::<Vec<_>>();
         let design = json!({
             "scenario":req.scenario.public_context(),
-            "nodes":req.nodes,
+            "nodes":nodes,
             "edges":req.edges,
             "interviewEvidence":req.interview_evidence,
             "interviewCoverage":req.interview_assessment()
