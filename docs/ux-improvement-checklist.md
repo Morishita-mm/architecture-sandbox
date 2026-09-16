@@ -4,9 +4,9 @@
 
 評価レポートの表示整理は [Issue #18](https://github.com/Morishita-mm/architecture-sandbox/issues/18)／[今回のチェックリスト](evaluation-redesign.md)で追跡。
 
-追加のホーム・学習・練習画面の注釈と任意設定は [Issue #14](https://github.com/Morishita-mm/architecture-sandbox/issues/14)／[今回のチェックリスト](learning-clarity.md)で追跡。AI評価は学習としての根拠を認めるv4へ調整したが、[追加測定](evaluation-runs/2026-09-15/rubric4-review.md)で分類・参照・改善提案の問題が残る。EVAL-04/05の品質受入は未完了。
+追加のホーム・学習・練習画面の注釈と任意設定は [Issue #14](https://github.com/Morishita-mm/architecture-sandbox/issues/14)／[今回のチェックリスト](learning-clarity.md)で追跡。AI評価は本番の実Geminiで2テーマ×6ケース×3回と修正後の対象再試験を行い、EVAL-05を完了した。結果は[本番受入記録](evaluation-runs/2026-09-16/README.md)。人間の専門家比較はEVAL-04に残す。
 
-進捗: **従来の改善項目は40 / 45項目完了**。残る5項目は専門家比較、実AIの品質受入、初学者の完走・応用の実利用検証、本番公開と受入。実AIは[Issue #13](https://github.com/Morishita-mm/architecture-sandbox/issues/13)で44要求を実測し、形式と採点方針を修正済み。ただし費用等の過大評価・意味上の誤参照が残り、EVAL-04/05は進行中。専門家比較の資料は準備済み、人間のレビュー件数は0。追加の学習コースは [Issue #6](https://github.com/Morishita-mm/architecture-sandbox/issues/6) で **7 / 7項目をローカル実装・自己検証済み**。基礎7項目の詳細は `docs/learning-course-plan.md` を参照。続く全8章への拡張は [Issue #7](https://github.com/Morishita-mm/architecture-sandbox/issues/7) で **10 / 10項目をローカル実装・自己検証済み**。8章拡張時の記録は `docs/learning-course-expansion.md`。続くコンポーネント別ステージは [Issue #8](https://github.com/Morishita-mm/architecture-sandbox/issues/8) で **8 / 8項目をローカル実装・自己検証済み**。ステージ化の記録は `docs/component-stages.md`。続く [Issue #9](https://github.com/Morishita-mm/architecture-sandbox/issues/9) のReact Flowによる体験・練習は **9 / 9項目をローカル実装・自己検証済み**。教材仕様は `docs/interactive-course-canvas.md`。続く [Issue #10](https://github.com/Morishita-mm/architecture-sandbox/issues/10) の自由設計と学習の図編集共通化は **7 / 7項目をローカル実装・自己検証済み**。共通化の構成は `docs/shared-diagram-editor.md`。続く [Issue #11](https://github.com/Morishita-mm/architecture-sandbox/issues/11) の共通カードと接続線の改善は **4 / 4項目をローカル実装・自己検証済み**。外観の記録は `docs/diagram-visual-refresh.md`。続く [Issue #12](https://github.com/Morishita-mm/architecture-sandbox/issues/12) の教材の縦配置は **4 / 4項目をローカル実装・自己検証済み**。最新の配置と検証は `docs/course-vertical-layout.md`。
+進捗: **47 / 50項目完了**。残る3項目は、人間の専門家2名による比較、初学者による独力完走、別題材への学習転移の実利用検証。実Geminiは[Issue #13](https://github.com/Morishita-mm/architecture-sandbox/issues/13)でローカル予備測定44要求に加え、本番で48要求を実行した。本番の基本36件と最終版の対象再試験6件がすべて成功し、欠陥検出・別解・未確認・誘導耐性・正式条件・部品参照を確認した。専門家比較の資料は準備済みで、人間のレビュー件数は0。学習コース、全8章、コンポーネント別ステージ、React Flow演習、図編集共通化、カード・線・縦配置の実装と自動検証は完了している。
 
 チュートリアルの図内再生・正誤表示・ユーザーガイド追加は [Issue #15](https://github.com/Morishita-mm/architecture-sandbox/issues/15)／[チェックリストと画面](tutorial-experience.md)で追跡します。
 
@@ -72,11 +72,11 @@ IT自体の初学者が、少ない部品で役割を体験してから自由設
 
 ## 5. AI評価の信頼性（基準の実装と実品質の検証を区別）
 
-- [x] EVAL-01 サーバーに`learning-rubric-3`を定義。6軸を等重みとし、総合点をサーバー側で平均計算。重大な矛盾・未確認・妥当な別解を区別する方針を画面と`docs/evaluation-quality.md`に明示。基準の実装を完了とし、実モデルの遵守率はEVAL-04/05に残す。
+- [x] EVAL-01 サーバーに採点基準を定義。重大な矛盾・未確認・妥当な別解を区別し、固定ケースは合意仕様とケース別の重点配分、自由課題は既定配分を使ってサーバー側で総合点を再計算する。方針を画面と`docs/evaluation-quality.md`に明示。実モデルの自動受入はEVAL-05、人間との比較はEVAL-04で扱う。
 - [x] EVAL-02 部品の条件・根拠を利用者の記録として評価入力に含め、AI文中の部品参照から該当設定へ戻れる。存在しない参照や任意の外部リンクを開かず、古い評価の参照は無効化。現在の部品に記録した根拠を別欄で読める。根拠の真偽やAIの意味理解を保証しない。
 - [x] EVAL-03 正式条件は従来どおりサーバーを正とする。部品に記録した条件・会話の抜粋は利用者の主張として比較し、「合意済み」という文で正式条件を上書きしない。自由メモと会話全文は自動送信しない。正式な合意管理へ拡張する場合の境界を文書化。
 - [ ] EVAL-04 6ケースの専門家比較資料を整備。`docs/evaluation-expert-review.md`に独立判定の手順、入力と空の記録票、実応答32件の比較資料を用意。人間の専門家は担当未決・0件。正解ラベル・一致率・重大欠陥の見逃し率は未確定。Codexの点検とは区別する。
-- [ ] EVAL-05 Gemini実APIを32要求測定。初回2件で不正JSONにより中断、Schema追加後18件、追加修正後12件。最終候補は6ケース各2回で有効応答12/12、欠陥指摘4/4、全100点化0/2・正式条件上書き0/2（Codex暫定点検）。費用等の過大評価・意味上の誤参照1/12が残るため受入未完了。`docs/evaluation-runs/2026-09-15/README.md`に全結果・版・費用・限界を記録。未知の入力、反復追加、人間のラベルとの比較、別モデル版の回帰が必要。
+- [x] EVAL-05 ローカル予備測定44要求の問題を修正後、本番の実Geminiで2テーマ×6ケース×3回を実行し36/36件成功。データ消失と条件上書きは12/12件で具体的な重大不足、別解と未記載は誤って重大不足にせず、部品リンクの意味上の誤参照0件、採点誘導による100点化0件だった。防御説明が利用者向け結果へ混ざる問題を本番で発見して3段階で修正し、最終版の採点誘導3/3件は重大不足なし・説明漏れなし、条件上書き3/3件は具体的矛盾を維持。合計48本番要求、自動再試行0。証跡・限界は`docs/evaluation-runs/2026-09-16/README.md`。人間のラベルとの比較はEVAL-04に残す。
 - [x] EVAL-06 「設計を確かめる」に、入力からの事実・未確認・考える問いを分けた確認、部品全体の停止を仮定する有向グラフの到達性、変更前後の部品／接続比較を実装。該当設定への移動と結果のメモ追記が可能。AI通信なし。実性能・実際の切替・データ損失は計算せず、限界を表示。
 
 ## 6. 聞き取りとカスタム課題
@@ -199,3 +199,5 @@ IT自体の初学者が、少ない部品で役割を体験してから自由設
 - 2026-09-16 固定ケースと合意仕様の実装（Issue #19）: 既定2テーマ×3ケースをサーバーへ登録し、開始時に選んだケースをschemaVersion 4で保存。AIの変更案はサーバー管理IDだけを返し、利用者の確定で仕様版と変更履歴を更新する。評価は同じ版の条件とケース別の6軸重点配分を使い、レーダーチャートを維持したまま比率を表示。旧保存形式とカスタム課題は互換性を維持。ローカルではfrontend unit **126/126**、backend unit **12/12**、backend integration **34/34**、Playwright **93/93**、lint、production build、cargo fmt/clippy/buildに成功。実Geminiの本番受入はこの記録時点で未実施。
 - 2026-09-16 合意仕様の本番受入（Issue #19）: main `39526ad` / release `35058881096`を配置。実Geminiで6ケースの許可案6/6、確定後のv2回答、同一構成に対するケース別重点配分の差（66点／51点）とサーバー再計算一致を確認。公開UIでもケース、提案、明示確定、版更新を確認した。内部情報抽出の言い換え1件はGeminiが拒否したがローカル判定を通過したため、表現を追加しprovider未呼び出しの回帰試験を追加。詳細は`docs/production-acceptance-2026-09-16.md`。
 - 2026-09-16 抽出要求の本番再試験: main `f066a36` / release `35060336627`を配置。全CI、候補確認、Cloud Run切替、Cloudflare配信、公開smokeが成功。実際にすり抜けた文言は公開APIでHTTP 200・316msの固定拒否となり、確認済み条件0件。統合試験でもGemini providerの要求数が増えないことを確認した。
+
+- 2026-09-16 AI評価の本番品質受入（Issue #13）: PR #29〜#32で、構造化結果、サーバー側の重大度正規化、部品リンク、評価器向け攻撃説明の非表示を段階的に修正。main `ccd1e33` / release `35067999727`を本番へ配置し、全CI・候補確認・Cloud Run切替・Cloudflare配信・公開smokeが成功した。実Geminiの基本36件と最終対象6件はすべてHTTP 200。欠陥検出12/12、最終誘導説明漏れ0/3、最終条件上書き検出3/3。EVAL-05を完了し、人間の専門家比較と初学者研究の3項目を残す。詳細は[本番受入記録](evaluation-runs/2026-09-16/README.md)。
