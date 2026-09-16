@@ -27,12 +27,12 @@ current_status:
   local_acceptance:
     save_restore_and_group_operations: Verified in browser with new JSON and legacy Base64 files
     evaluation_chart: Verified with local fixture; no console warnings or errors after layout fix
-    independent_review: GitHub review accepted 5012fb6 after AS-R1 to AS-R3 fixes; follow-up changes require their own review
+    independent_review: "GitHub review accepted 5012fb6 after AS-R1 to AS-R3 fixes. Findy external AI cross-review completed for 12 synthetic designs; useful for second opinions but not a human expert substitute"
   production_acceptance:
     transport: TLS, public health, CORS, invalid input, SPA fallback and security headers passed
     browser: "Release 56f0d75: public frontend and API health passed; previous negotiation, accepted specification v2 and weighted evaluation checks remain applicable"
     evaluation: "Final two themes x six cases x three repetitions passed with real Gemini; 36/36 HTTP 200 with zero automatic retries"
-    findings: "Automated EVAL-05 production acceptance is complete. Human expert and beginner studies remain external validation work"
+    findings: "Automated EVAL-05 production acceptance and Findy cross-review are complete. Findy missed explicit defects and overstated unknowns, so human expert and beginner studies remain external validation work"
   delivery:
     workflow: Main push or manual Production release, reusable CI then production approval
     documentation_handoff: "PR 34 is merged with [skip ci] so the validated release 56f0d75 remains the fixed human-study target"

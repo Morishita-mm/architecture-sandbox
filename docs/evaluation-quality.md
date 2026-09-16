@@ -69,3 +69,5 @@ node scripts/evaluation-live.mjs --allow-api --fixture sns --repeats 3 --out /tm
 専門家の記録欄: 日付／匿名reviewer ID／case ID／重大欠陥ラベル／未確認点／別解を認める理由／参照した根拠／モデルとの不一致／最終判断。現時点の件数は0、指標は未測定。
 
 [専門家向け手順](evaluation-expert-review.md)に、最終本番revisionの2テーマ・12設計を使う[匿名入力](evaluation-runs/2026-09-16/expert-inputs.json)、[入力判定票](evaluation-runs/2026-09-16/expert-input-worksheet.json)、応答を見る前の[欠陥調整票](evaluation-runs/2026-09-16/expert-defect-reconciliation.json)、[匿名応答](evaluation-runs/2026-09-16/expert-responses.json)、[応答判定票](evaluation-runs/2026-09-16/expert-response-worksheet.json)を関連付けた。旧6設計版の`evaluation-expert-inputs.json`と`evaluation-expert-worksheet.json`は履歴資料であり、新しい比較には使わない。担当者は未決。Codexの暫定点検を専門家一致率に算入しない。
+
+[Findyによる独立AIクロスレビュー](evaluation-runs/2026-09-16/findy-cross-review/README.md)も同じ12設計で実施した。代替構成と一般的な確認観点を増やす用途には使えるが、説明文の読み落とし、情報不足への過大断定、明示的欠陥の見逃しが確認された。AI間の一致は専門家指標に算入せず、不一致を一次資料・実測・人間レビューへ回すためだけに使う。
