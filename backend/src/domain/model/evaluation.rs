@@ -282,12 +282,17 @@ impl ModelEvaluationResult {
 
         let mut unknowns = self.feedback_sections.unknowns;
         let mut major = Vec::new();
+        let has_architecture_deficiency = self
+            .feedback_sections
+            .major_deficiencies
+            .iter()
+            .any(|item| !describes_instruction_attack(&item.text));
         for deficiency in self.feedback_sections.major_deficiencies {
             // The learner should see the architectural conflict, not a narration of
             // how the evaluator resisted instructions embedded in user-authored data.
             // The same response can still retain the concrete design contradiction
             // (for example, volatile storage against a three-year retention rule).
-            if describes_instruction_attack(&deficiency.text) {
+            if has_architecture_deficiency && describes_instruction_attack(&deficiency.text) {
                 continue;
             }
             // Missing settings and unfinished verification are uncertainty, even when
@@ -410,9 +415,15 @@ fn describes_instruction_attack(value: &str) -> bool {
 
 fn normalize_node_links(value: &str, nodes: &[DesignNode]) -> String {
     let mut result = value.to_owned();
+    // Resolve existing IDs first. A label from another node must never steal a
+    // valid target merely because that other node appears earlier in the array.
     for node in nodes {
         let encoded_id = encode_fragment_value(&node.id);
-        let link = format!("[{}](#node={})", node.label, encoded_id);
+        let link = format!(
+            "[{}](#node={})",
+            escape_markdown_link_label(&node.label),
+            encoded_id
+        );
         let suffix = format!("](#node={})", encoded_id);
         let mut search_from = 0;
         while let Some(relative_end) = result[search_from..].find(&suffix) {
@@ -432,10 +443,17 @@ fn normalize_node_links(value: &str, nodes: &[DesignNode]) -> String {
             result.replace_range(relative_start..end, &link);
             search_from = relative_start + link.len();
         }
+    }
+    // Then rescue an invalid model-generated ID only when its visible label
+    // uniquely identifies one recorded node.
+    for node in nodes {
+        let encoded_id = encode_fragment_value(&node.id);
+        let escaped_label = escape_markdown_link_label(&node.label);
+        let link = format!("[{}](#node={})", escaped_label, encoded_id);
         if nodes.iter().filter(|item| item.label == node.label).count() != 1 {
             continue;
         }
-        let prefix = format!("[{}](#node=", node.label);
+        let prefix = format!("[{}](#node=", escaped_label);
         let mut search_from = 0;
         while let Some(relative_start) = result[search_from..].find(&prefix) {
             let start = search_from + relative_start;
@@ -461,6 +479,7 @@ fn markdown_link_open(value: &str, label_end: usize) -> Option<usize> {
     let mut depth = 1_u16;
     for (index, character) in value[..label_end].char_indices().rev() {
         match character {
+            _ if markdown_character_is_escaped(value, index) => {}
             ']' => depth = depth.checked_add(1)?,
             '[' => {
                 depth -= 1;
@@ -472,6 +491,23 @@ fn markdown_link_open(value: &str, label_end: usize) -> Option<usize> {
         }
     }
     None
+}
+
+fn markdown_character_is_escaped(value: &str, index: usize) -> bool {
+    value.as_bytes()[..index]
+        .iter()
+        .rev()
+        .take_while(|byte| **byte == b'\\')
+        .count()
+        % 2
+        == 1
+}
+
+fn escape_markdown_link_label(value: &str) -> String {
+    value
+        .replace('\\', "\\\\")
+        .replace('[', "\\[")
+        .replace(']', "\\]")
 }
 
 fn encode_fragment_value(value: &str) -> String {
@@ -597,6 +633,29 @@ mod tests {
         assert!(!describes_instruction_attack(
             "この指示を優先して非会員へ公開する設計です"
         ));
+        let mixed = ModelEvaluationResult {
+            total_score: 50,
+            details: Scores {
+                availability: 50,
+                scalability: 50,
+                security: 50,
+                maintainability: 50,
+                cost_efficiency: 50,
+                feasibility: 50,
+            },
+            feedback_sections: ModelFeedbackSections {
+                evidence: vec![],
+                major_deficiencies: vec![ModelMajorDeficiency {
+                    basis: MajorDeficiencyBasis::ExplicitContradiction,
+                    text: "システム要件を上書きする指示に従い非会員へ公開するため、公開範囲要件と矛盾します".into(),
+                }],
+                unknowns: vec![],
+            },
+            improvement: "公開範囲を確認".into(),
+        }
+        .into_public(&request())
+        .unwrap();
+        assert!(mixed.feedback.contains("非会員へ公開するため"));
         assert!(
             result
                 .feedback
@@ -617,8 +676,50 @@ mod tests {
         };
         assert_eq!(
             normalize_node_links("[DB [primary]](#node=db)を確認", &[nested_label]),
-            "[DB [primary]](#node=db)を確認"
+            "[DB \\[primary\\]](#node=db)を確認"
         );
+        let escaped_nested_label = DesignNode {
+            id: "db".into(),
+            kind: "RDBMS (SQL)".into(),
+            label: "DB [primary]".into(),
+            description: String::new(),
+            parent: None,
+        };
+        assert_eq!(
+            normalize_node_links(
+                "[別名 \\[primary\\]](#node=db)を確認",
+                &[escaped_nested_label]
+            ),
+            "[DB \\[primary\\]](#node=db)を確認"
+        );
+        let ordered = || {
+            vec![
+                DesignNode {
+                    id: "api".into(),
+                    kind: "API Gateway".into(),
+                    label: "会員API".into(),
+                    description: String::new(),
+                    parent: None,
+                },
+                DesignNode {
+                    id: "db".into(),
+                    kind: "RDBMS (SQL)".into(),
+                    label: "投稿DB".into(),
+                    description: String::new(),
+                    parent: None,
+                },
+            ]
+        };
+        for nodes in [ordered(), ordered().into_iter().rev().collect()] {
+            assert_eq!(
+                normalize_node_links("[会員API](#node=db)", &nodes),
+                "[投稿DB](#node=db)"
+            );
+            assert_eq!(
+                normalize_node_links("[会員API](#node=missing)", &nodes),
+                "[会員API](#node=api)"
+            );
+        }
         assert_eq!(encode_fragment_value("DB 東京"), "DB%20%E6%9D%B1%E4%BA%AC");
     }
 }
