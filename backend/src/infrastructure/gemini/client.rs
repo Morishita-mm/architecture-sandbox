@@ -1,11 +1,17 @@
 use crate::domain::model::{
     chat::{ChatRequest, ChatResponse, ChatRole, ModelChatResponse},
-    evaluation::{EvaluationRequest, EvaluationResult, ModelEvaluationResult},
+    evaluation::{
+        EvaluationRequest, EvaluationResult, ModelEvaluationResult, sanitized_evaluation_text,
+    },
 };
 use reqwest::{Client, Response};
 use serde::Deserialize;
 use serde_json::{Value, json};
-use std::{collections::HashSet, env, fs, time::Duration};
+use std::{
+    collections::{HashMap, HashSet},
+    env, fs,
+    time::Duration,
+};
 
 type ConfigError = Box<dyn std::error::Error>;
 
@@ -167,11 +173,59 @@ impl GeminiClient {
             req.scenario.requirements(),
             req.scenario.score_weights()
         );
+        let provider_ids = req
+            .nodes
+            .iter()
+            .enumerate()
+            .map(|(index, node)| (node.id.as_str(), format!("provider-node-{index:04}")))
+            .collect::<HashMap<_, _>>();
+        let node_id_mapping = req
+            .nodes
+            .iter()
+            .map(|node| (provider_ids[&node.id.as_str()].clone(), node.id.clone()))
+            .collect::<Vec<_>>();
+        let nodes = req
+            .nodes
+            .iter()
+            .map(|node| {
+                json!({
+                    "id": provider_ids[&node.id.as_str()],
+                    "type": node.kind,
+                    "label": sanitized_evaluation_text(&node.label),
+                    "description": sanitized_evaluation_text(&node.description),
+                    "parentNode": node.parent.as_ref().map(|id| &provider_ids[id.as_str()]),
+                })
+            })
+            .collect::<Vec<_>>();
+        let edges = req
+            .edges
+            .iter()
+            .map(|edge| {
+                json!({
+                    "source": provider_ids[&edge.source.as_str()],
+                    "target": provider_ids[&edge.target.as_str()],
+                })
+            })
+            .collect::<Vec<_>>();
+        let interview_evidence = req
+            .interview_evidence
+            .iter()
+            .map(|item| {
+                json!({
+                    "conditionId": item.condition_id,
+                    "label": sanitized_evaluation_text(&item.label),
+                    "question": sanitized_evaluation_text(&item.question),
+                    "answer": sanitized_evaluation_text(&item.answer),
+                    "questionMessageIndex": item.question_message_index,
+                    "answerMessageIndex": item.answer_message_index,
+                })
+            })
+            .collect::<Vec<_>>();
         let design = json!({
-            "scenario":req.scenario.public_context(),
-            "nodes":req.nodes,
-            "edges":req.edges,
-            "interviewEvidence":req.interview_evidence,
+            "scenario":sanitize_evaluation_value(req.scenario.public_context()),
+            "nodes":nodes,
+            "edges":edges,
+            "interviewEvidence":interview_evidence,
             "interviewCoverage":req.interview_assessment()
         });
         let text = self
@@ -181,7 +235,8 @@ impl GeminiClient {
                 true,
             )
             .await?;
-        let result: ModelEvaluationResult = serde_json::from_str(&text).map_err(|_| ())?;
+        let mut result: ModelEvaluationResult = serde_json::from_str(&text).map_err(|_| ())?;
+        result.remap_provider_node_ids(&node_id_mapping);
         result.into_public(req)
     }
 
@@ -241,6 +296,22 @@ impl GeminiClient {
             return Err(());
         }
         Ok(text)
+    }
+}
+
+fn sanitize_evaluation_value(value: Value) -> Value {
+    match value {
+        Value::String(value) => Value::String(sanitized_evaluation_text(&value)),
+        Value::Array(values) => {
+            Value::Array(values.into_iter().map(sanitize_evaluation_value).collect())
+        }
+        Value::Object(values) => Value::Object(
+            values
+                .into_iter()
+                .map(|(key, value)| (key, sanitize_evaluation_value(value)))
+                .collect(),
+        ),
+        value => value,
     }
 }
 

@@ -17,6 +17,33 @@ const model = 'gemini-3.5-flash-lite';
 const apiPath = `/v1beta/models/${model}:generateContent`;
 async function listen(server) { server.listen(0, '127.0.0.1'); await once(server, 'listening'); return `http://127.0.0.1:${server.address().port}`; }
 async function boundedBody(stream, limit) { const chunks = []; let size = 0; for await (const chunk of stream) { size += chunk.length; if (size > limit) throw new Error('body-limit'); chunks.push(Buffer.from(chunk)); } return Buffer.concat(chunks); }
+export function sanitizedEvaluationDescription(value) {
+  const parts = value.match(/[^。\n！？!?.]*(?:[。\n！？!?.]|$)/gu)?.filter(Boolean) ?? [];
+  const contains = (part, markers) => markers.some(marker => part.includes(marker));
+  return parts.filter(part => {
+    const lowercase = part.toLowerCase();
+    const defense = contains(part, ['検出して拒否', '検出して遮断', '検出して防止', '変更を拒否', '上書きを拒否', '変更を防止', '上書きを防止', '変更を防ぐ', '上書きを防ぐ', '変更を遮断', '上書きを遮断', '指示に従わない', '命令に従わない', '変更を禁止', '上書きを禁止', '変更への対策', '上書きへの対策'])
+      || contains(lowercase, ['detect and reject', 'reject attempts to', 'block attempts to', 'prevent changes to', 'prevent overrides to', 'refuse requests to', 'do not follow user instructions', 'do not follow embedded instructions', 'do not follow untrusted instructions']);
+    const japaneseScoringPhrase = contains(part, ['採点基準を無視', '採点基準は無視', '採点基準には従わない', '採点基準に従わない', '採点基準を上書き', '採点基準は上書き', '採点基準を変更', '採点基準は変更']);
+    const japaneseScoringDefense = contains(part, ['無視してはいけない', '無視しない', '上書きしない', '変更しない', '変更を防止', '上書きを防止', '変更を拒否', '上書きを拒否']);
+    const japaneseScoringAttack = japaneseScoringPhrase && !japaneseScoringDefense && !defense;
+    const japaneseRatingAttack = contains(part, ['最高評価', '満点', '高得点'])
+      && contains(part, ['してください', 'にする', 'にしろ', 'にせよ']);
+    const japaneseNumericRatingAttack = contains(part, ['点にしてください', '点にしろ', '点にせよ']) && /[0-9]/u.test(part);
+    const englishNumericRatingAttack = contains(lowercase, ['assign this design a score of ', 'give this design a score of ', 'score this design ', 'rate this design ']);
+    const scoringAttack = japaneseScoringAttack || japaneseRatingAttack || japaneseNumericRatingAttack || englishNumericRatingAttack
+      || (part.includes('全項目') && part.includes('100点'))
+      || (part.includes('未確認事項') && part.includes('省略'))
+      || contains(lowercase, ['ignore the previous scoring criteria', 'ignore previous scoring criteria', 'disregard the previous scoring criteria', 'disregard previous scoring criteria', 'override the scoring criteria', 'override scoring criteria', 'change the scoring criteria', 'change scoring criteria'])
+      || (contains(lowercase, ['every category', 'all categories']) && lowercase.includes('100'))
+      || contains(lowercase, ['omit unknowns', 'skip unknowns', 'omit unknown evaluation items', 'skip unknown evaluation items', 'omit unconfirmed evaluation items', 'skip unconfirmed evaluation items', 'omit unconfirmed items', 'skip unconfirmed items']);
+    const instructionAttack = part.includes('管理者命令')
+      || contains(part, ['システム指示を上書き', 'システム指示を無視', 'システム指示を回避', 'システム指示を変更', 'システム要件を上書き', 'システム要件を無視', 'システム要件を無効化', 'システム要件を変更'])
+      || contains(lowercase, ['ignore system instructions', 'ignore the system instructions', 'disregard system instructions', 'disregard the system instructions', 'override system instructions', 'override the system instructions', 'change system instructions', 'change the system instructions', 'ignore system requirements', 'ignore the system requirements', 'disregard system requirements', 'disregard the system requirements', 'override system requirements', 'override the system requirements', 'invalidate system requirements', 'invalidate the system requirements', 'administrator instruction', 'admin instruction']);
+    const attack = scoringAttack || (!defense && instructionAttack);
+    return !attack;
+  }).join('').trim();
+}
 
 export function tokenEstimate(usage) {
   if (!usage || ![usage.promptTokenCount, usage.totalTokenCount].every(n => Number.isInteger(n) && n >= 0) || usage.totalTokenCount < usage.promptTokenCount) return null;
@@ -33,7 +60,7 @@ export async function runLocalEvaluation({ output, provider, providerKind = 'unp
   const fixtureBytes = await readFile(join(root, fixtureFile));
   const { cases } = JSON.parse(fixtureBytes);
   const sourceHashes = {};
-  for (const file of ['backend/target/debug/app', 'backend/src/infrastructure/gemini/client.rs', 'backend/src/infrastructure/gemini/system_prompt.txt', 'backend/src/infrastructure/gemini/evaluation.schema.json', 'backend/src/domain/model/scenario.rs', 'frontend/src/constants/architecture_defs.json', 'scripts/evaluation-live.mjs', 'scripts/evaluation-benchmark.mjs']) sourceHashes[file] = sha(await readFile(join(root,file)));
+  for (const file of ['backend/target/debug/app', 'backend/src/infrastructure/gemini/client.rs', 'backend/src/infrastructure/gemini/system_prompt.txt', 'backend/src/infrastructure/gemini/evaluation.schema.json', 'backend/src/domain/model/evaluation.rs', 'backend/src/domain/model/scenario.rs', 'frontend/src/constants/architecture_defs.json', 'scripts/evaluation-live.mjs', 'scripts/evaluation-benchmark.mjs']) sourceHashes[file] = sha(await readFile(join(root,file)));
   const plan = Array.from({length:repeats},(_,round) => cases.map((_,i) => ({caseId:cases[(i+round*2)%cases.length].id,repeat:round+1}))).flat();
   const report = { createdAt:new Date().toISOString(), provenance:{ mode:'local-backend-recording', providerKind, requestedModel:model, fixtureFile, fixtureSha256:sha(fixtureBytes), sourceHashes, repeats, maxCalls:plan.length, automaticRetries:0 }, plan, runs:[], complete:false, summaries:[] };
   async function save() { await writeFile(join(output,'report.next.json'),JSON.stringify(report,null,2)+'\n',{mode:0o600}); await rename(join(output,'report.next.json'),join(output,'report.json')); }
@@ -45,7 +72,10 @@ export async function runLocalEvaluation({ output, provider, providerKind = 'unp
       const body = await boundedBody(req, 32768), data = JSON.parse(body);
       const design = JSON.parse(data.contents[0].parts[0].text);
       const expected = cases.find(c => c.id === active.caseId).input;
-      if (!isDeepStrictEqual(design.nodes, expected.nodes.map(n => ({...n,parentNode:n.parentNode ?? null}))) || !isDeepStrictEqual(design.edges,expected.edges)
+      const ids = new Map(expected.nodes.map((node,index) => [node.id,`provider-node-${String(index).padStart(4,'0')}`]));
+      const expectedNodes = expected.nodes.map(n => ({...n,id:ids.get(n.id),label:sanitizedEvaluationDescription(n.label),description:sanitizedEvaluationDescription(n.description),parentNode:n.parentNode ? ids.get(n.parentNode) : null}));
+      const expectedEdges = expected.edges.map(edge => ({source:ids.get(edge.source),target:ids.get(edge.target)}));
+      if (!isDeepStrictEqual(design.nodes, expectedNodes) || !isDeepStrictEqual(design.edges,expectedEdges)
           || data.generationConfig.maxOutputTokens !== 4096 || data.generationConfig.responseMimeType !== 'application/json' || data.tools || data.cachedContent) throw new Error('unexpected-request');
       active.forwarded = true; active.requestSha256 = sha(body); active.systemSha256 = sha(JSON.stringify(data.systemInstruction)); active.generationConfig = data.generationConfig;
       calls++; report.providerCalls = calls; await save();
