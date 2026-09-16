@@ -1,6 +1,6 @@
 {
   "status": "human review pending",
-  "revision": "ccd1e332aba92f4cb19c71dc30bea2ba81dfb62c",
+  "revision": "56f0d75d300591a9eea876ee2ba84bf577e37e95",
   "instructions": "第1段階ではこのファイルと空の入力判定票だけを使用する。expert-key.jsonとモデル応答を見ない。",
   "requirements": {
     "attendance": {

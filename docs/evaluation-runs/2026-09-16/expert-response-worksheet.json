@@ -256,6 +256,510 @@
       "judgment": null,
       "evidence": null,
       "reason": null
+    },
+    {
+      "responseId": "R13",
+      "designId": "D04",
+      "majorDefectResults": [
+        {
+          "defectId": null,
+          "agreedDefect": null,
+          "detected": null,
+          "responseEvidence": null
+        }
+      ],
+      "majorDefectCoverageComplete": null,
+      "unknownsHandledCorrectly": null,
+      "alternativeHandledFairly": null,
+      "evidenceAndReferencesCorrect": null,
+      "requirementsPreserved": null,
+      "evaluatorMetaTextAbsent": null,
+      "judgment": null,
+      "evidence": null,
+      "reason": null
+    },
+    {
+      "responseId": "R14",
+      "designId": "D09",
+      "majorDefectResults": [
+        {
+          "defectId": null,
+          "agreedDefect": null,
+          "detected": null,
+          "responseEvidence": null
+        }
+      ],
+      "majorDefectCoverageComplete": null,
+      "unknownsHandledCorrectly": null,
+      "alternativeHandledFairly": null,
+      "evidenceAndReferencesCorrect": null,
+      "requirementsPreserved": null,
+      "evaluatorMetaTextAbsent": null,
+      "judgment": null,
+      "evidence": null,
+      "reason": null
+    },
+    {
+      "responseId": "R15",
+      "designId": "D02",
+      "majorDefectResults": [
+        {
+          "defectId": null,
+          "agreedDefect": null,
+          "detected": null,
+          "responseEvidence": null
+        }
+      ],
+      "majorDefectCoverageComplete": null,
+      "unknownsHandledCorrectly": null,
+      "alternativeHandledFairly": null,
+      "evidenceAndReferencesCorrect": null,
+      "requirementsPreserved": null,
+      "evaluatorMetaTextAbsent": null,
+      "judgment": null,
+      "evidence": null,
+      "reason": null
+    },
+    {
+      "responseId": "R16",
+      "designId": "D11",
+      "majorDefectResults": [
+        {
+          "defectId": null,
+          "agreedDefect": null,
+          "detected": null,
+          "responseEvidence": null
+        }
+      ],
+      "majorDefectCoverageComplete": null,
+      "unknownsHandledCorrectly": null,
+      "alternativeHandledFairly": null,
+      "evidenceAndReferencesCorrect": null,
+      "requirementsPreserved": null,
+      "evaluatorMetaTextAbsent": null,
+      "judgment": null,
+      "evidence": null,
+      "reason": null
+    },
+    {
+      "responseId": "R17",
+      "designId": "D01",
+      "majorDefectResults": [
+        {
+          "defectId": null,
+          "agreedDefect": null,
+          "detected": null,
+          "responseEvidence": null
+        }
+      ],
+      "majorDefectCoverageComplete": null,
+      "unknownsHandledCorrectly": null,
+      "alternativeHandledFairly": null,
+      "evidenceAndReferencesCorrect": null,
+      "requirementsPreserved": null,
+      "evaluatorMetaTextAbsent": null,
+      "judgment": null,
+      "evidence": null,
+      "reason": null
+    },
+    {
+      "responseId": "R18",
+      "designId": "D07",
+      "majorDefectResults": [
+        {
+          "defectId": null,
+          "agreedDefect": null,
+          "detected": null,
+          "responseEvidence": null
+        }
+      ],
+      "majorDefectCoverageComplete": null,
+      "unknownsHandledCorrectly": null,
+      "alternativeHandledFairly": null,
+      "evidenceAndReferencesCorrect": null,
+      "requirementsPreserved": null,
+      "evaluatorMetaTextAbsent": null,
+      "judgment": null,
+      "evidence": null,
+      "reason": null
+    },
+    {
+      "responseId": "R19",
+      "designId": "D12",
+      "majorDefectResults": [
+        {
+          "defectId": null,
+          "agreedDefect": null,
+          "detected": null,
+          "responseEvidence": null
+        }
+      ],
+      "majorDefectCoverageComplete": null,
+      "unknownsHandledCorrectly": null,
+      "alternativeHandledFairly": null,
+      "evidenceAndReferencesCorrect": null,
+      "requirementsPreserved": null,
+      "evaluatorMetaTextAbsent": null,
+      "judgment": null,
+      "evidence": null,
+      "reason": null
+    },
+    {
+      "responseId": "R20",
+      "designId": "D05",
+      "majorDefectResults": [
+        {
+          "defectId": null,
+          "agreedDefect": null,
+          "detected": null,
+          "responseEvidence": null
+        }
+      ],
+      "majorDefectCoverageComplete": null,
+      "unknownsHandledCorrectly": null,
+      "alternativeHandledFairly": null,
+      "evidenceAndReferencesCorrect": null,
+      "requirementsPreserved": null,
+      "evaluatorMetaTextAbsent": null,
+      "judgment": null,
+      "evidence": null,
+      "reason": null
+    },
+    {
+      "responseId": "R21",
+      "designId": "D10",
+      "majorDefectResults": [
+        {
+          "defectId": null,
+          "agreedDefect": null,
+          "detected": null,
+          "responseEvidence": null
+        }
+      ],
+      "majorDefectCoverageComplete": null,
+      "unknownsHandledCorrectly": null,
+      "alternativeHandledFairly": null,
+      "evidenceAndReferencesCorrect": null,
+      "requirementsPreserved": null,
+      "evaluatorMetaTextAbsent": null,
+      "judgment": null,
+      "evidence": null,
+      "reason": null
+    },
+    {
+      "responseId": "R22",
+      "designId": "D03",
+      "majorDefectResults": [
+        {
+          "defectId": null,
+          "agreedDefect": null,
+          "detected": null,
+          "responseEvidence": null
+        }
+      ],
+      "majorDefectCoverageComplete": null,
+      "unknownsHandledCorrectly": null,
+      "alternativeHandledFairly": null,
+      "evidenceAndReferencesCorrect": null,
+      "requirementsPreserved": null,
+      "evaluatorMetaTextAbsent": null,
+      "judgment": null,
+      "evidence": null,
+      "reason": null
+    },
+    {
+      "responseId": "R23",
+      "designId": "D08",
+      "majorDefectResults": [
+        {
+          "defectId": null,
+          "agreedDefect": null,
+          "detected": null,
+          "responseEvidence": null
+        }
+      ],
+      "majorDefectCoverageComplete": null,
+      "unknownsHandledCorrectly": null,
+      "alternativeHandledFairly": null,
+      "evidenceAndReferencesCorrect": null,
+      "requirementsPreserved": null,
+      "evaluatorMetaTextAbsent": null,
+      "judgment": null,
+      "evidence": null,
+      "reason": null
+    },
+    {
+      "responseId": "R24",
+      "designId": "D06",
+      "majorDefectResults": [
+        {
+          "defectId": null,
+          "agreedDefect": null,
+          "detected": null,
+          "responseEvidence": null
+        }
+      ],
+      "majorDefectCoverageComplete": null,
+      "unknownsHandledCorrectly": null,
+      "alternativeHandledFairly": null,
+      "evidenceAndReferencesCorrect": null,
+      "requirementsPreserved": null,
+      "evaluatorMetaTextAbsent": null,
+      "judgment": null,
+      "evidence": null,
+      "reason": null
+    },
+    {
+      "responseId": "R25",
+      "designId": "D10",
+      "majorDefectResults": [
+        {
+          "defectId": null,
+          "agreedDefect": null,
+          "detected": null,
+          "responseEvidence": null
+        }
+      ],
+      "majorDefectCoverageComplete": null,
+      "unknownsHandledCorrectly": null,
+      "alternativeHandledFairly": null,
+      "evidenceAndReferencesCorrect": null,
+      "requirementsPreserved": null,
+      "evaluatorMetaTextAbsent": null,
+      "judgment": null,
+      "evidence": null,
+      "reason": null
+    },
+    {
+      "responseId": "R26",
+      "designId": "D01",
+      "majorDefectResults": [
+        {
+          "defectId": null,
+          "agreedDefect": null,
+          "detected": null,
+          "responseEvidence": null
+        }
+      ],
+      "majorDefectCoverageComplete": null,
+      "unknownsHandledCorrectly": null,
+      "alternativeHandledFairly": null,
+      "evidenceAndReferencesCorrect": null,
+      "requirementsPreserved": null,
+      "evaluatorMetaTextAbsent": null,
+      "judgment": null,
+      "evidence": null,
+      "reason": null
+    },
+    {
+      "responseId": "R27",
+      "designId": "D05",
+      "majorDefectResults": [
+        {
+          "defectId": null,
+          "agreedDefect": null,
+          "detected": null,
+          "responseEvidence": null
+        }
+      ],
+      "majorDefectCoverageComplete": null,
+      "unknownsHandledCorrectly": null,
+      "alternativeHandledFairly": null,
+      "evidenceAndReferencesCorrect": null,
+      "requirementsPreserved": null,
+      "evaluatorMetaTextAbsent": null,
+      "judgment": null,
+      "evidence": null,
+      "reason": null
+    },
+    {
+      "responseId": "R28",
+      "designId": "D08",
+      "majorDefectResults": [
+        {
+          "defectId": null,
+          "agreedDefect": null,
+          "detected": null,
+          "responseEvidence": null
+        }
+      ],
+      "majorDefectCoverageComplete": null,
+      "unknownsHandledCorrectly": null,
+      "alternativeHandledFairly": null,
+      "evidenceAndReferencesCorrect": null,
+      "requirementsPreserved": null,
+      "evaluatorMetaTextAbsent": null,
+      "judgment": null,
+      "evidence": null,
+      "reason": null
+    },
+    {
+      "responseId": "R29",
+      "designId": "D03",
+      "majorDefectResults": [
+        {
+          "defectId": null,
+          "agreedDefect": null,
+          "detected": null,
+          "responseEvidence": null
+        }
+      ],
+      "majorDefectCoverageComplete": null,
+      "unknownsHandledCorrectly": null,
+      "alternativeHandledFairly": null,
+      "evidenceAndReferencesCorrect": null,
+      "requirementsPreserved": null,
+      "evaluatorMetaTextAbsent": null,
+      "judgment": null,
+      "evidence": null,
+      "reason": null
+    },
+    {
+      "responseId": "R30",
+      "designId": "D12",
+      "majorDefectResults": [
+        {
+          "defectId": null,
+          "agreedDefect": null,
+          "detected": null,
+          "responseEvidence": null
+        }
+      ],
+      "majorDefectCoverageComplete": null,
+      "unknownsHandledCorrectly": null,
+      "alternativeHandledFairly": null,
+      "evidenceAndReferencesCorrect": null,
+      "requirementsPreserved": null,
+      "evaluatorMetaTextAbsent": null,
+      "judgment": null,
+      "evidence": null,
+      "reason": null
+    },
+    {
+      "responseId": "R31",
+      "designId": "D06",
+      "majorDefectResults": [
+        {
+          "defectId": null,
+          "agreedDefect": null,
+          "detected": null,
+          "responseEvidence": null
+        }
+      ],
+      "majorDefectCoverageComplete": null,
+      "unknownsHandledCorrectly": null,
+      "alternativeHandledFairly": null,
+      "evidenceAndReferencesCorrect": null,
+      "requirementsPreserved": null,
+      "evaluatorMetaTextAbsent": null,
+      "judgment": null,
+      "evidence": null,
+      "reason": null
+    },
+    {
+      "responseId": "R32",
+      "designId": "D02",
+      "majorDefectResults": [
+        {
+          "defectId": null,
+          "agreedDefect": null,
+          "detected": null,
+          "responseEvidence": null
+        }
+      ],
+      "majorDefectCoverageComplete": null,
+      "unknownsHandledCorrectly": null,
+      "alternativeHandledFairly": null,
+      "evidenceAndReferencesCorrect": null,
+      "requirementsPreserved": null,
+      "evaluatorMetaTextAbsent": null,
+      "judgment": null,
+      "evidence": null,
+      "reason": null
+    },
+    {
+      "responseId": "R33",
+      "designId": "D11",
+      "majorDefectResults": [
+        {
+          "defectId": null,
+          "agreedDefect": null,
+          "detected": null,
+          "responseEvidence": null
+        }
+      ],
+      "majorDefectCoverageComplete": null,
+      "unknownsHandledCorrectly": null,
+      "alternativeHandledFairly": null,
+      "evidenceAndReferencesCorrect": null,
+      "requirementsPreserved": null,
+      "evaluatorMetaTextAbsent": null,
+      "judgment": null,
+      "evidence": null,
+      "reason": null
+    },
+    {
+      "responseId": "R34",
+      "designId": "D07",
+      "majorDefectResults": [
+        {
+          "defectId": null,
+          "agreedDefect": null,
+          "detected": null,
+          "responseEvidence": null
+        }
+      ],
+      "majorDefectCoverageComplete": null,
+      "unknownsHandledCorrectly": null,
+      "alternativeHandledFairly": null,
+      "evidenceAndReferencesCorrect": null,
+      "requirementsPreserved": null,
+      "evaluatorMetaTextAbsent": null,
+      "judgment": null,
+      "evidence": null,
+      "reason": null
+    },
+    {
+      "responseId": "R35",
+      "designId": "D04",
+      "majorDefectResults": [
+        {
+          "defectId": null,
+          "agreedDefect": null,
+          "detected": null,
+          "responseEvidence": null
+        }
+      ],
+      "majorDefectCoverageComplete": null,
+      "unknownsHandledCorrectly": null,
+      "alternativeHandledFairly": null,
+      "evidenceAndReferencesCorrect": null,
+      "requirementsPreserved": null,
+      "evaluatorMetaTextAbsent": null,
+      "judgment": null,
+      "evidence": null,
+      "reason": null
+    },
+    {
+      "responseId": "R36",
+      "designId": "D09",
+      "majorDefectResults": [
+        {
+          "defectId": null,
+          "agreedDefect": null,
+          "detected": null,
+          "responseEvidence": null
+        }
+      ],
+      "majorDefectCoverageComplete": null,
+      "unknownsHandledCorrectly": null,
+      "alternativeHandledFairly": null,
+      "evidenceAndReferencesCorrect": null,
+      "requirementsPreserved": null,
+      "evaluatorMetaTextAbsent": null,
+      "judgment": null,
+      "evidence": null,
+      "reason": null
     }
   ],
   "fieldGuide": {
