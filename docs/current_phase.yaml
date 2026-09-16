@@ -38,5 +38,6 @@ current_status:
     credentials: GCP Workload Identity Federation and scoped Cloudflare Environment Secret
     bootstrap: Main protection and owner-approved production Environment configured; real WIF, artifact handoff and Cloudflare authentication passed
 remaining:
-  - Complete human expert comparison and beginner usability / learning-transfer studies; issues 13 and 5
+  - "Run the prepared human expert comparison with 2 reviewers; current count 0/2; issues 13 and 5"
+  - "Run the prepared beginner pilot and usability / learning-transfer study with 5-8 participants; current counts 0/1 pilot and 0/5-8 participants; issue 5"
   - Retire AWS only with separate approval; this migration does not delete AWS resources

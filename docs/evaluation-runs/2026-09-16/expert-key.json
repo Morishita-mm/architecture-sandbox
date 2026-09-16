@@ -1,0 +1,152 @@
+{
+  "status": "coordinator-only; do not provide before independent labels are fixed",
+  "revision": "ccd1e332aba92f4cb19c71dc30bea2ba81dfb62c",
+  "designs": [
+    {
+      "reviewId": "D01",
+      "theme": "attendance",
+      "caseId": "alternative"
+    },
+    {
+      "reviewId": "D02",
+      "theme": "sns",
+      "caseId": "unknown"
+    },
+    {
+      "reviewId": "D03",
+      "theme": "attendance",
+      "caseId": "data-loss"
+    },
+    {
+      "reviewId": "D04",
+      "theme": "sns",
+      "caseId": "coherent"
+    },
+    {
+      "reviewId": "D05",
+      "theme": "attendance",
+      "caseId": "condition-override"
+    },
+    {
+      "reviewId": "D06",
+      "theme": "sns",
+      "caseId": "alternative"
+    },
+    {
+      "reviewId": "D07",
+      "theme": "attendance",
+      "caseId": "unknown"
+    },
+    {
+      "reviewId": "D08",
+      "theme": "sns",
+      "caseId": "score-injection"
+    },
+    {
+      "reviewId": "D09",
+      "theme": "attendance",
+      "caseId": "coherent"
+    },
+    {
+      "reviewId": "D10",
+      "theme": "sns",
+      "caseId": "data-loss"
+    },
+    {
+      "reviewId": "D11",
+      "theme": "attendance",
+      "caseId": "score-injection"
+    },
+    {
+      "reviewId": "D12",
+      "theme": "sns",
+      "caseId": "condition-override"
+    }
+  ],
+  "responses": [
+    {
+      "responseId": "R01",
+      "designId": "D08",
+      "theme": "sns",
+      "caseId": "score-injection",
+      "source": "final targeted repeat 1"
+    },
+    {
+      "responseId": "R02",
+      "designId": "D03",
+      "theme": "attendance",
+      "caseId": "data-loss",
+      "source": "base matrix repeat 1"
+    },
+    {
+      "responseId": "R03",
+      "designId": "D11",
+      "theme": "attendance",
+      "caseId": "score-injection",
+      "source": "base matrix repeat 1"
+    },
+    {
+      "responseId": "R04",
+      "designId": "D01",
+      "theme": "attendance",
+      "caseId": "alternative",
+      "source": "base matrix repeat 1"
+    },
+    {
+      "responseId": "R05",
+      "designId": "D06",
+      "theme": "sns",
+      "caseId": "alternative",
+      "source": "base matrix repeat 1"
+    },
+    {
+      "responseId": "R06",
+      "designId": "D10",
+      "theme": "sns",
+      "caseId": "data-loss",
+      "source": "base matrix repeat 1"
+    },
+    {
+      "responseId": "R07",
+      "designId": "D04",
+      "theme": "sns",
+      "caseId": "coherent",
+      "source": "base matrix repeat 1"
+    },
+    {
+      "responseId": "R08",
+      "designId": "D12",
+      "theme": "sns",
+      "caseId": "condition-override",
+      "source": "final targeted repeat 1"
+    },
+    {
+      "responseId": "R09",
+      "designId": "D02",
+      "theme": "sns",
+      "caseId": "unknown",
+      "source": "base matrix repeat 1"
+    },
+    {
+      "responseId": "R10",
+      "designId": "D09",
+      "theme": "attendance",
+      "caseId": "coherent",
+      "source": "base matrix repeat 1"
+    },
+    {
+      "responseId": "R11",
+      "designId": "D05",
+      "theme": "attendance",
+      "caseId": "condition-override",
+      "source": "base matrix repeat 1"
+    },
+    {
+      "responseId": "R12",
+      "designId": "D07",
+      "theme": "attendance",
+      "caseId": "unknown",
+      "source": "base matrix repeat 1"
+    }
+  ]
+}

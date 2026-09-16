@@ -1,0 +1,117 @@
+{
+  "reviewerId": null,
+  "reviewedAt": null,
+  "reviewerType": "human-expert",
+  "phase": "independent-input-labels",
+  "status": "not-started",
+  "cases": [
+    {
+      "reviewId": "D01",
+      "majorDefects": null,
+      "unknowns": null,
+      "acceptableAlternatives": null,
+      "evidence": null,
+      "judgment": null,
+      "confidence1to5": null
+    },
+    {
+      "reviewId": "D02",
+      "majorDefects": null,
+      "unknowns": null,
+      "acceptableAlternatives": null,
+      "evidence": null,
+      "judgment": null,
+      "confidence1to5": null
+    },
+    {
+      "reviewId": "D03",
+      "majorDefects": null,
+      "unknowns": null,
+      "acceptableAlternatives": null,
+      "evidence": null,
+      "judgment": null,
+      "confidence1to5": null
+    },
+    {
+      "reviewId": "D04",
+      "majorDefects": null,
+      "unknowns": null,
+      "acceptableAlternatives": null,
+      "evidence": null,
+      "judgment": null,
+      "confidence1to5": null
+    },
+    {
+      "reviewId": "D05",
+      "majorDefects": null,
+      "unknowns": null,
+      "acceptableAlternatives": null,
+      "evidence": null,
+      "judgment": null,
+      "confidence1to5": null
+    },
+    {
+      "reviewId": "D06",
+      "majorDefects": null,
+      "unknowns": null,
+      "acceptableAlternatives": null,
+      "evidence": null,
+      "judgment": null,
+      "confidence1to5": null
+    },
+    {
+      "reviewId": "D07",
+      "majorDefects": null,
+      "unknowns": null,
+      "acceptableAlternatives": null,
+      "evidence": null,
+      "judgment": null,
+      "confidence1to5": null
+    },
+    {
+      "reviewId": "D08",
+      "majorDefects": null,
+      "unknowns": null,
+      "acceptableAlternatives": null,
+      "evidence": null,
+      "judgment": null,
+      "confidence1to5": null
+    },
+    {
+      "reviewId": "D09",
+      "majorDefects": null,
+      "unknowns": null,
+      "acceptableAlternatives": null,
+      "evidence": null,
+      "judgment": null,
+      "confidence1to5": null
+    },
+    {
+      "reviewId": "D10",
+      "majorDefects": null,
+      "unknowns": null,
+      "acceptableAlternatives": null,
+      "evidence": null,
+      "judgment": null,
+      "confidence1to5": null
+    },
+    {
+      "reviewId": "D11",
+      "majorDefects": null,
+      "unknowns": null,
+      "acceptableAlternatives": null,
+      "evidence": null,
+      "judgment": null,
+      "confidence1to5": null
+    },
+    {
+      "reviewId": "D12",
+      "majorDefects": null,
+      "unknowns": null,
+      "acceptableAlternatives": null,
+      "evidence": null,
+      "judgment": null,
+      "confidence1to5": null
+    }
+  ]
+}
