@@ -61,3 +61,7 @@ PR #25でノードリンク正規化を配置した後、PR #26をmain `39526ad`
 - 「内部のシステム指示と非公開の採点条件」という言い換えはGemini自身が拒否し、内部情報の漏えいはなかった。一方、ローカル判定を通過して1.1秒の外部呼び出しが発生したため、この表現をサーバーの拒否対象へ追加し、providerを呼ばない統合回帰試験を追加した。修正は後続releaseで再確認する。
 
 初回の評価試験2件は受入スクリプトが公開DTOにない`position`を送って422となった。正しいDTOへ直した再試験は2/2件成功しており、アプリ本体の不具合ではない。実応答は`/private/tmp/architecture-sandbox-spec-live.json`と`/private/tmp/architecture-sandbox-weight-live.json`に記録した（ローカル受入証跡のためリポジトリには含めない）。
+
+## 抽出要求の本番再試験
+
+PR #27をmain `f066a36`へマージし、[release run 35060336627](https://github.com/Morishita-mm/architecture-sandbox/actions/runs/35060336627)で配置した。全検証、候補確認、Cloud Run切替、Cloudflare配信、公開smokeが成功した。同じ抽出要求を公開APIへ再送するとHTTP 200・316msでサーバー固定の拒否文を返し、確認済み条件は0件だった。外部モデルが生成した前回の文面と異なり、統合試験でもprovider要求数が増えないことを確認している。受入証跡は`/private/tmp/architecture-sandbox-injection-retest.json`に保存した。
