@@ -21,10 +21,7 @@ function sanitizedEvaluationDescription(value) {
   const parts = value.match(/[^。\n！？!?.]*(?:[。\n！？!?.]|$)/gu)?.filter(Boolean) ?? [];
   const contains = (part, markers) => markers.some(marker => part.includes(marker));
   return parts.filter(part => {
-    const attack = part.includes('プロンプトインジェクション') || part.includes('不正な指示文')
-      || part.includes('ユーザーデータに含まれる指示やルール変更の試み')
-      || part.includes('指示変更を試みる記述')
-      || (part.includes('システム指示') && contains(part, ['上書き', '無視', '回避', '変更', '優先']))
+    const attack = (part.includes('システム指示') && contains(part, ['上書き', '無視', '回避', '変更', '優先']))
       || (part.includes('システム要件') && contains(part, ['上書き', '無効化', '変更']))
       || (part.includes('採点基準') && contains(part, ['無視', '上書き', '変更']))
       || part.includes('管理者命令') || (part.includes('全項目') && part.includes('100点'))
@@ -60,8 +57,10 @@ export async function runLocalEvaluation({ output, provider, providerKind = 'unp
       const body = await boundedBody(req, 32768), data = JSON.parse(body);
       const design = JSON.parse(data.contents[0].parts[0].text);
       const expected = cases.find(c => c.id === active.caseId).input;
-      const expectedNodes = expected.nodes.map(n => ({...n,label:sanitizedEvaluationDescription(n.label),description:sanitizedEvaluationDescription(n.description),parentNode:n.parentNode ?? null}));
-      if (!isDeepStrictEqual(design.nodes, expectedNodes) || !isDeepStrictEqual(design.edges,expected.edges)
+      const ids = new Map(expected.nodes.map((node,index) => [node.id,`provider-node-${String(index).padStart(4,'0')}`]));
+      const expectedNodes = expected.nodes.map(n => ({...n,id:ids.get(n.id),label:sanitizedEvaluationDescription(n.label),description:sanitizedEvaluationDescription(n.description),parentNode:n.parentNode ? ids.get(n.parentNode) : null}));
+      const expectedEdges = expected.edges.map(edge => ({source:ids.get(edge.source),target:ids.get(edge.target)}));
+      if (!isDeepStrictEqual(design.nodes, expectedNodes) || !isDeepStrictEqual(design.edges,expectedEdges)
           || data.generationConfig.maxOutputTokens !== 4096 || data.generationConfig.responseMimeType !== 'application/json' || data.tools || data.cachedContent) throw new Error('unexpected-request');
       active.forwarded = true; active.requestSha256 = sha(body); active.systemSha256 = sha(JSON.stringify(data.systemInstruction)); active.generationConfig = data.generationConfig;
       calls++; report.providerCalls = calls; await save();

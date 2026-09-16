@@ -7,7 +7,11 @@ use crate::domain::model::{
 use reqwest::{Client, Response};
 use serde::Deserialize;
 use serde_json::{Value, json};
-use std::{collections::HashSet, env, fs, time::Duration};
+use std::{
+    collections::{HashMap, HashSet},
+    env, fs,
+    time::Duration,
+};
 
 type ConfigError = Box<dyn std::error::Error>;
 
@@ -169,16 +173,37 @@ impl GeminiClient {
             req.scenario.requirements(),
             req.scenario.score_weights()
         );
+        let provider_ids = req
+            .nodes
+            .iter()
+            .enumerate()
+            .map(|(index, node)| (node.id.as_str(), format!("provider-node-{index:04}")))
+            .collect::<HashMap<_, _>>();
+        let node_id_mapping = req
+            .nodes
+            .iter()
+            .map(|node| (provider_ids[&node.id.as_str()].clone(), node.id.clone()))
+            .collect::<Vec<_>>();
         let nodes = req
             .nodes
             .iter()
             .map(|node| {
                 json!({
-                    "id": node.id,
+                    "id": provider_ids[&node.id.as_str()],
                     "type": node.kind,
                     "label": sanitized_evaluation_text(&node.label),
                     "description": sanitized_evaluation_text(&node.description),
-                    "parentNode": node.parent,
+                    "parentNode": node.parent.as_ref().map(|id| &provider_ids[id.as_str()]),
+                })
+            })
+            .collect::<Vec<_>>();
+        let edges = req
+            .edges
+            .iter()
+            .map(|edge| {
+                json!({
+                    "source": provider_ids[&edge.source.as_str()],
+                    "target": provider_ids[&edge.target.as_str()],
                 })
             })
             .collect::<Vec<_>>();
@@ -199,7 +224,7 @@ impl GeminiClient {
         let design = json!({
             "scenario":sanitize_evaluation_value(req.scenario.public_context()),
             "nodes":nodes,
-            "edges":req.edges,
+            "edges":edges,
             "interviewEvidence":interview_evidence,
             "interviewCoverage":req.interview_assessment()
         });
@@ -210,7 +235,8 @@ impl GeminiClient {
                 true,
             )
             .await?;
-        let result: ModelEvaluationResult = serde_json::from_str(&text).map_err(|_| ())?;
+        let mut result: ModelEvaluationResult = serde_json::from_str(&text).map_err(|_| ())?;
+        result.remap_provider_node_ids(&node_id_mapping);
         result.into_public(req)
     }
 
