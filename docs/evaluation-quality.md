@@ -30,7 +30,7 @@ AIフィードバックを「確認した根拠」「重大な不足」「未確
 
 ## 評価セットと計測
 
-[6ケース](evaluation-fixtures.json)は作者が用意した候補。要件を考慮した構成、明示的なデータ消失、関数を使う別解、情報不足、採点誘導、合意を装った条件上書き。**専門家の承認を得た正解データではない**。各ケースに人が確認する問いを添える。
+[勤怠6ケース](evaluation-fixtures.json)と[招待制SNS 6ケース](evaluation-fixtures-sns.json)は作者が用意した候補。各題材に、要件を考慮した構成、明示的なデータ消失、関数を使う別解、情報不足、採点誘導、合意を装った条件上書きを用意した。**専門家の承認を得た正解データではない**。各ケースに人が確認する問いを添える。
 
 既存のバックエンド統合テストは疑似AIで入力境界、正式要件の分離、構造不正、応答異常、課金要求の無断再試行防止を確認する。これは実モデルのプロンプトインジェクション耐性を証明しない。
 
@@ -38,6 +38,7 @@ AIフィードバックを「確認した根拠」「重大な不足」「未確
 
 ```sh
 node scripts/evaluation-benchmark.mjs --responses /tmp/responses.json --out /tmp/evaluation-report.json
+node scripts/evaluation-benchmark.mjs --fixture sns --responses /tmp/sns-responses.json --out /tmp/sns-evaluation-report.json
 ```
 
 入力は`{"provenance": {"kind":"実測／疑似の別・モデル・日時"}, "runs": [{"caseId":"coherent", "repeat":1, "result":{...}}]}`。失敗は`result`の代わりに`error`を持つ。ケースごとの成功・失敗、平均、最大最小差、原入力と誘導入力の平均差、参照切れ、参照なし応答を記録。未実施ケースは平均null。`--baseline 前回のreport.json`で平均差も出す。
@@ -47,9 +48,10 @@ node scripts/evaluation-benchmark.mjs --responses /tmp/responses.json --out /tmp
 ```sh
 cargo build --locked --manifest-path backend/Cargo.toml
 node scripts/evaluation-live.mjs --allow-api --repeats 3 --out /tmp/new-evaluation-run
+node scripts/evaluation-live.mjs --allow-api --fixture sns --repeats 3 --out /tmp/new-sns-evaluation-run
 ```
 
-現行の`gemini-3.5-flash-lite`を使う。`--repeats`は2〜4、既定3。3反復は18要求。出力先は新規ディレクトリに限り、呼び出し前に確保する。逐次実行し、エラーで中断、自動再試行なし。応答は要求ごとに保存し、未完了は成功に含めない。途中終了した旧版と修正版の反復数を混ぜない。疑似APIは`providerKind: unpaid-fixture`で明確に区別する。
+現行の`gemini-3.5-flash-lite`を使う。`--fixture`は`attendance`（既定）または`sns`。`--repeats`は2〜4、既定3。1題材の3反復は18要求。出力先は新規ディレクトリに限り、呼び出し前に確保する。逐次実行し、エラーで中断、自動再試行なし。応答は要求ごとに保存し、未完了は成功に含めない。途中終了した旧版と修正版の反復数を混ぜない。疑似APIは`providerKind: unpaid-fixture`で明確に区別する。
 
 評価時はthinkingをlowとし、会話のminimal設定とは分けた。出力上限4096・タイムアウト・既存API契約は維持する。料金はusageからStandard有料単価換算で見積もり、実請求額ではないと明示する。実験ごとの生成回数上限と設定変更は[方針記録](evaluation-run-plan.md)に残す。
 

@@ -404,11 +404,8 @@ fn expresses_uncertainty(value: &str) -> bool {
 
 fn describes_instruction_attack(value: &str) -> bool {
     value.contains("プロンプトインジェクション")
-        || value.contains("ルール変更の試み")
-        || (value.contains("指示")
-            && ["上書き", "優先", "無視"]
-                .iter()
-                .any(|marker| value.contains(marker)))
+        || value.contains("ユーザーデータに含まれる指示やルール変更の試み")
+        || value.contains("システム要件を上書きする指示")
 }
 
 fn normalize_node_links(value: &str, nodes: &[DesignNode]) -> String {
@@ -421,7 +418,7 @@ fn normalize_node_links(value: &str, nodes: &[DesignNode]) -> String {
         while let Some(relative_end) = result[search_from..].find(&suffix) {
             let end = search_from + relative_end + suffix.len();
             let label_end = search_from + relative_end;
-            let Some(relative_start) = result[..label_end].rfind('[') else {
+            let Some(relative_start) = markdown_link_open(&result, label_end) else {
                 search_from = end;
                 continue;
             };
@@ -458,6 +455,23 @@ fn normalize_node_links(value: &str, nodes: &[DesignNode]) -> String {
         }
     }
     result
+}
+
+fn markdown_link_open(value: &str, label_end: usize) -> Option<usize> {
+    let mut depth = 1_u16;
+    for (index, character) in value[..label_end].char_indices().rev() {
+        match character {
+            ']' => depth = depth.checked_add(1)?,
+            '[' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(index);
+                }
+            }
+            _ => {}
+        }
+    }
+    None
 }
 
 fn encode_fragment_value(value: &str) -> String {
@@ -577,6 +591,12 @@ mod tests {
                 .contains("### 重大な不足\n- データを保存しないため保持要件と矛盾します")
         );
         assert!(!result.feedback.contains("システム要件を上書きする指示"));
+        assert!(!describes_instruction_attack(
+            "削除指示を無視するため保持要件と矛盾します"
+        ));
+        assert!(!describes_instruction_attack(
+            "この指示を優先して非会員へ公開する設計です"
+        ));
         assert!(
             result
                 .feedback
@@ -588,6 +608,17 @@ mod tests {
                 .contains("[社員のブラウザ](#node=browser)へ送信")
         );
         assert_eq!(result.improvement, "[社員のブラウザ](#node=browser)を確認");
+        let nested_label = DesignNode {
+            id: "db".into(),
+            kind: "RDBMS (SQL)".into(),
+            label: "DB [primary]".into(),
+            description: String::new(),
+            parent: None,
+        };
+        assert_eq!(
+            normalize_node_links("[DB [primary]](#node=db)を確認", &[nested_label]),
+            "[DB [primary]](#node=db)を確認"
+        );
         assert_eq!(encode_fragment_value("DB 東京"), "DB%20%E6%9D%B1%E4%BA%AC");
     }
 }

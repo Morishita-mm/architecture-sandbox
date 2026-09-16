@@ -36,7 +36,10 @@ export function summarizeRuns(cases, runs) {
 async function main() {
   const args = process.argv.slice(2);
   const value = flag => { const i = args.indexOf(flag); return i < 0 ? undefined : args[i+1]; };
-  const fixtureBytes = await readFile(new URL('../docs/evaluation-fixtures.json', import.meta.url));
+  const fixtureName = value('--fixture') ?? 'attendance';
+  const fixtureFile = {attendance:'evaluation-fixtures.json',sns:'evaluation-fixtures-sns.json'}[fixtureName];
+  if (!fixtureFile) throw new Error('Use --fixture attendance or --fixture sns.');
+  const fixtureBytes = await readFile(new URL(`../docs/${fixtureFile}`, import.meta.url));
   const { cases } = JSON.parse(fixtureBytes);
   const prompt = await readFile(new URL('../backend/src/infrastructure/gemini/system_prompt.txt', import.meta.url));
   const output = value('--out');
@@ -45,7 +48,7 @@ async function main() {
   const recorded = JSON.parse(await readFile(value('--responses'), 'utf8'));
   const runs = recorded.runs;
   if (!Array.isArray(runs)) throw new Error('responses file must contain runs[].');
-  const provenance = { mode: 'offline-analysis', source: recorded.provenance ?? 'not supplied' };
+  const provenance = { mode: 'offline-analysis', fixture: fixtureName, source: recorded.provenance ?? 'not supplied' };
   const summaries = summarizeRuns(cases, runs);
   let changesFromBaseline;
   if (value('--baseline')) {

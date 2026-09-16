@@ -25,16 +25,17 @@ export function tokenEstimate(usage) {
 }
 
 /** provider is injected only by local tests; the CLI has no arbitrary upstream option. */
-export async function runLocalEvaluation({ output, provider, providerKind = 'unpaid-fixture', repeats = 3, pauseMs = 2100, progress = () => {} }) {
+export async function runLocalEvaluation({ output, provider, providerKind = 'unpaid-fixture', fixtureFile = 'docs/evaluation-fixtures.json', repeats = 3, pauseMs = 2100, progress = () => {} }) {
   if (![2,3,4].includes(repeats) || !Number.isFinite(pauseMs) || pauseMs < 0) throw new Error('Invalid run limits');
+  if (!['docs/evaluation-fixtures.json', 'docs/evaluation-fixtures-sns.json'].includes(fixtureFile)) throw new Error('Invalid fixture file');
   // Reserve before starting a process or making a potentially billable request.
   await mkdir(output, { mode: 0o700 });
-  const fixtureBytes = await readFile(join(root, 'docs/evaluation-fixtures.json'));
+  const fixtureBytes = await readFile(join(root, fixtureFile));
   const { cases } = JSON.parse(fixtureBytes);
   const sourceHashes = {};
   for (const file of ['backend/target/debug/app', 'backend/src/infrastructure/gemini/client.rs', 'backend/src/infrastructure/gemini/system_prompt.txt', 'backend/src/infrastructure/gemini/evaluation.schema.json', 'backend/src/domain/model/scenario.rs', 'frontend/src/constants/architecture_defs.json', 'scripts/evaluation-live.mjs', 'scripts/evaluation-benchmark.mjs']) sourceHashes[file] = sha(await readFile(join(root,file)));
   const plan = Array.from({length:repeats},(_,round) => cases.map((_,i) => ({caseId:cases[(i+round*2)%cases.length].id,repeat:round+1}))).flat();
-  const report = { createdAt:new Date().toISOString(), provenance:{ mode:'local-backend-recording', providerKind, requestedModel:model, fixtureSha256:sha(fixtureBytes), sourceHashes, repeats, maxCalls:plan.length, automaticRetries:0 }, plan, runs:[], complete:false, summaries:[] };
+  const report = { createdAt:new Date().toISOString(), provenance:{ mode:'local-backend-recording', providerKind, requestedModel:model, fixtureFile, fixtureSha256:sha(fixtureBytes), sourceHashes, repeats, maxCalls:plan.length, automaticRetries:0 }, plan, runs:[], complete:false, summaries:[] };
   async function save() { await writeFile(join(output,'report.next.json'),JSON.stringify(report,null,2)+'\n',{mode:0o600}); await rename(join(output,'report.next.json'),join(output,'report.json')); }
   await save();
   const token = randomUUID(); let active, child, exited, calls = 0, stopped = false;
@@ -109,9 +110,12 @@ async function main() {
   const args = process.argv.slice(2), output = args[args.indexOf('--out')+1];
   const repeatIndex = args.indexOf('--repeats');
   const repeats = repeatIndex < 0 ? 3 : Number(args[repeatIndex+1]);
-  if (!args.includes('--allow-api') || !args.includes('--out') || !output || output.startsWith('--') || !process.env.GEMINI_API_KEY?.trim()) throw new Error('Use --allow-api --out NEW_DIRECTORY with GEMINI_API_KEY set. Build the backend first.');
+  const fixtureIndex = args.indexOf('--fixture');
+  const fixtureName = fixtureIndex < 0 ? 'attendance' : args[fixtureIndex+1];
+  const fixtureFile = {attendance:'docs/evaluation-fixtures.json',sns:'docs/evaluation-fixtures-sns.json'}[fixtureName];
+  if (!args.includes('--allow-api') || !args.includes('--out') || !output || output.startsWith('--') || !fixtureFile || !process.env.GEMINI_API_KEY?.trim()) throw new Error('Use --allow-api --out NEW_DIRECTORY [--fixture attendance|sns] with GEMINI_API_KEY set. Build the backend first.');
   const apiKey = process.env.GEMINI_API_KEY; delete process.env.GEMINI_API_KEY;
-  const report = await runLocalEvaluation({output:resolve(output),repeats,providerKind:'google-gemini-api',provider:async body => {
+  const report = await runLocalEvaluation({output:resolve(output),fixtureFile,repeats,providerKind:'google-gemini-api',provider:async body => {
     const reply = await fetch(`https://generativelanguage.googleapis.com${apiPath}`,{method:'POST',headers:{'content-type':'application/json','x-goog-api-key':apiKey},body,signal:AbortSignal.timeout(43000),redirect:'error'});
     return {status:reply.status,body:reply.ok ? await boundedBody(reply.body,65536) : Buffer.from('{}')};
   },progress:value=>process.stdout.write(JSON.stringify(value)+'\n')});
