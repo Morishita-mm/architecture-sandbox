@@ -32,13 +32,16 @@ current_status:
     transport: TLS, public health, CORS, invalid input, SPA fallback and security headers passed
     browser: "Release 384073a: real Gemini chat, evaluation, interview coverage and browser draft resume passed"
     findings: "Condition text/ID mismatch and evaluation severity instability remain; tracked in issues 21 and 22"
+  pending_release:
+    branch: codex/production-acceptance-findings
+    changes: "Server-side condition reconciliation and injection refusal; structured evaluation sections with severity normalization; Node.js 24 Actions"
+    local_verification: "Rust unit 11, API integration 32, frontend unit 125 and Playwright 92 passed; lint, typecheck, build and clippy passed"
   delivery:
     workflow: Main push or manual Production release, reusable CI then production approval
     credentials: GCP Workload Identity Federation and scoped Cloudflare Environment Secret
     bootstrap: Main protection and owner-approved production Environment configured; real WIF, artifact handoff and Cloudflare authentication passed
 remaining:
-  - Make disclosed condition text and covered condition IDs consistent; issue 21
-  - Stabilize major-defect versus unconfirmed classification; issue 22
-  - Remove GitHub Actions Node.js 20 deprecation warnings; issue 23
+  - Deploy and run real-Gemini acceptance for the local fixes to issues 21 and 22
+  - Confirm the next CI/release has no Node.js 20 deprecation warning for issue 23
   - Add negotiated requirement changes, contradiction handling and agreed-specification versioning; issue 19
   - Retire AWS only with separate approval; this migration does not delete AWS resources

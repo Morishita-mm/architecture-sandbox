@@ -1,7 +1,7 @@
 {
   "type": "object",
   "additionalProperties": false,
-  "required": ["totalScore", "details", "feedback", "improvement"],
+  "required": ["totalScore", "details", "feedbackSections", "improvement"],
   "properties": {
     "totalScore": {"type": "integer", "minimum": 0, "maximum": 100},
     "details": {
@@ -17,7 +17,28 @@
         "feasibility": {"type": "integer", "minimum": 0, "maximum": 100}
       }
     },
-    "feedback": {"type": "string"},
+    "feedbackSections": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidence", "majorDeficiencies", "unknowns"],
+      "properties": {
+        "evidence": {"type": "array", "maxItems": 20, "items": {"type": "string", "maxLength": 2000}},
+        "majorDeficiencies": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["basis", "text"],
+            "properties": {
+              "basis": {"type": "string", "enum": ["explicit_contradiction", "impossible_approach"]},
+              "text": {"type": "string", "maxLength": 2000}
+            }
+          }
+        },
+        "unknowns": {"type": "array", "maxItems": 20, "items": {"type": "string", "maxLength": 2000}}
+      }
+    },
     "improvement": {"type": "string"}
   }
 }

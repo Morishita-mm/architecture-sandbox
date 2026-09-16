@@ -163,6 +163,14 @@ impl Scenario {
         self.condition_catalog().iter().any(|item| item.id == id)
     }
 
+    pub fn condition_value(&self, id: &str) -> Option<String> {
+        self.requirements()
+            .as_object()?
+            .get(id)?
+            .as_str()
+            .map(str::to_owned)
+    }
+
     fn guided_requirements(&self) -> Value {
         match (
             self.scenario_family.unwrap_or(ScenarioFamily::Business),

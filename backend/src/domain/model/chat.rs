@@ -66,10 +66,24 @@ impl ModelChatResponse {
         {
             return Err(());
         }
+        let mut covered_condition_ids = self.covered_condition_ids.clone();
+        // Gemini can mention a condition while omitting its ID. Reconcile distinctive
+        // fragments on the server so interview progress does not depend only on the
+        // model's self-report. The catalog values never leave this process.
+        for condition in scenario.condition_catalog() {
+            if covered_condition_ids.iter().any(|id| id == &condition.id) {
+                continue;
+            }
+            if scenario
+                .condition_value(&condition.id)
+                .is_some_and(|value| mentions_condition(&self.reply, &value))
+            {
+                covered_condition_ids.push(condition.id);
+            }
+        }
         let mut seen = std::collections::HashSet::new();
         let catalog = scenario.condition_catalog();
-        let covered_conditions = self
-            .covered_condition_ids
+        let covered_conditions = covered_condition_ids
             .into_iter()
             .filter(|id| seen.insert(id.clone()))
             .filter_map(|id| catalog.iter().find(|item| item.id == id).cloned())
@@ -79,6 +93,31 @@ impl ModelChatResponse {
             covered_conditions,
         })
     }
+}
+
+fn mentions_condition(reply: &str, value: &str) -> bool {
+    let normalized_reply: String = reply.chars().filter(|c| c.is_alphanumeric()).collect();
+    value
+        .split(['、', '。', ',', '・'])
+        .filter_map(|part| {
+            let normalized: Vec<char> = part.chars().filter(|c| c.is_alphanumeric()).collect();
+            (normalized.len() >= 5).then_some(normalized)
+        })
+        .any(|part| {
+            let prefix: String = part.iter().take(5).collect();
+            if normalized_reply.contains(&prefix) {
+                return true;
+            }
+            part.iter()
+                .position(|c| c.is_ascii_digit())
+                .map(|digit| {
+                    let start = digit.saturating_sub(1);
+                    let end = (digit + 2).min(part.len());
+                    part[start..end].iter().collect::<String>()
+                })
+                .filter(|cue| cue.chars().count() >= 3)
+                .is_some_and(|cue| normalized_reply.contains(&cue))
+        })
 }
 
 #[cfg(test)]
@@ -110,5 +149,17 @@ mod tests {
             .into_public(&scenario())
             .is_err()
         );
+    }
+
+    #[test]
+    fn condition_mentioned_in_reply_is_reconciled_when_model_omits_id() {
+        let response = ModelChatResponse {
+            reply: "朝9時にみんなが一斉に打刻します。".into(),
+            covered_condition_ids: vec![],
+        }
+        .into_public(&scenario())
+        .unwrap();
+        assert_eq!(response.covered_conditions.len(), 1);
+        assert_eq!(response.covered_conditions[0].id, "traffic");
     }
 }

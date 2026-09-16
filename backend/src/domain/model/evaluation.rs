@@ -145,6 +145,37 @@ pub struct EvaluationResult {
     pub interview: Option<InterviewAssessment>,
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ModelEvaluationResult {
+    pub total_score: u8,
+    pub details: Scores,
+    pub feedback_sections: ModelFeedbackSections,
+    pub improvement: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ModelFeedbackSections {
+    pub evidence: Vec<String>,
+    pub major_deficiencies: Vec<ModelMajorDeficiency>,
+    pub unknowns: Vec<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ModelMajorDeficiency {
+    pub basis: MajorDeficiencyBasis,
+    pub text: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MajorDeficiencyBasis {
+    ExplicitContradiction,
+    ImpossibleApproach,
+}
+
 #[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Scores {
@@ -189,9 +220,155 @@ impl EvaluationResult {
     }
 }
 
+impl ModelEvaluationResult {
+    pub fn into_public(self, req: &EvaluationRequest) -> Result<EvaluationResult, ()> {
+        if self.total_score > 100
+            || !self.details.values().iter().all(|score| *score <= 100)
+            || self.feedback_sections.evidence.len() > 20
+            || self.feedback_sections.major_deficiencies.len() > 20
+            || self.feedback_sections.unknowns.len() > 20
+            || !bounded(&self.improvement, 12000)
+        {
+            return Err(());
+        }
+        let valid_item = |value: &str| bounded(value, 2000);
+        if !self
+            .feedback_sections
+            .evidence
+            .iter()
+            .all(|item| valid_item(item))
+            || !self
+                .feedback_sections
+                .unknowns
+                .iter()
+                .all(|item| valid_item(item))
+            || !self
+                .feedback_sections
+                .major_deficiencies
+                .iter()
+                .all(|item| valid_item(&item.text))
+        {
+            return Err(());
+        }
+
+        let mut unknowns = self.feedback_sections.unknowns;
+        let mut major = Vec::new();
+        for deficiency in self.feedback_sections.major_deficiencies {
+            // Missing settings and unfinished verification are uncertainty, even when
+            // the model placed them in the stronger bucket. Preserve the feedback but
+            // normalize its severity before it reaches learners.
+            if expresses_uncertainty(&deficiency.text) {
+                unknowns.push(deficiency.text);
+            } else {
+                let basis = match deficiency.basis {
+                    MajorDeficiencyBasis::ExplicitContradiction => "要件との明示的な矛盾",
+                    MajorDeficiencyBasis::ImpossibleApproach => "成立しない構成",
+                };
+                major.push(format!("{}（判定根拠: {}）", deficiency.text, basis));
+            }
+        }
+
+        let render = |title: &str, items: &[String], empty: &str| {
+            let body = if items.is_empty() {
+                empty.to_owned()
+            } else {
+                items
+                    .iter()
+                    .map(|item| format!("- {}", deduplicate_node_labels(item, &req.nodes)))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            };
+            format!("### {title}\n{body}")
+        };
+        let feedback = [
+            render(
+                "確認した根拠",
+                &self.feedback_sections.evidence,
+                "確認できた根拠はありません。",
+            ),
+            render("重大な不足", &major, "重大な不足は確認されませんでした。"),
+            render("未確認事項", &unknowns, "未確認事項はありません。"),
+        ]
+        .join("\n\n");
+        let improvement = deduplicate_node_labels(&self.improvement, &req.nodes);
+        let mut result = EvaluationResult {
+            total_score: self.total_score,
+            details: self.details,
+            feedback,
+            improvement,
+            interview: Some(req.interview_assessment()),
+        };
+        if !result.validate() {
+            return Err(());
+        }
+        result.total_score = result.mean_score();
+        Ok(result)
+    }
+}
+
+impl Scores {
+    fn values(&self) -> [u8; 6] {
+        [
+            self.availability,
+            self.scalability,
+            self.security,
+            self.maintainability,
+            self.cost_efficiency,
+            self.feasibility,
+        ]
+    }
+}
+
+fn expresses_uncertainty(value: &str) -> bool {
+    [
+        "未確認",
+        "未実施",
+        "不明",
+        "未定",
+        "記載がない",
+        "記載されていない",
+        "確認が必要",
+        "検証が必要",
+        "今後確認",
+    ]
+    .iter()
+    .any(|marker| value.contains(marker))
+}
+
+fn deduplicate_node_labels(value: &str, nodes: &[DesignNode]) -> String {
+    let mut result = value.to_owned();
+    for node in nodes {
+        let encoded_id = node.id.replace('%', "%25").replace(' ', "%20");
+        let link = format!("[{}](#node={})", node.label, encoded_id);
+        result = result.replace(&format!("{} {}", node.label, link), &link);
+        for particle in ["から", "へ", "を", "で", "に", "と", "が", "は", "の"] {
+            result = result.replace(&format!("{}{}{}", node.label, particle, link), &link);
+        }
+    }
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn request() -> EvaluationRequest {
+        EvaluationRequest {
+            scenario: serde_json::from_value(serde_json::json!({
+                "id":"internal_tool", "title":"勤怠", "description":"勤怠"
+            }))
+            .unwrap(),
+            nodes: vec![DesignNode {
+                id: "browser".into(),
+                kind: "Web Browser".into(),
+                label: "社員のブラウザ".into(),
+                description: String::new(),
+                parent: None,
+            }],
+            edges: vec![],
+            interview_evidence: vec![],
+        }
+    }
 
     #[test]
     fn duplicate_score_keys_are_not_silently_accepted() {
@@ -225,5 +402,44 @@ mod tests {
             assert!(result.validate());
             assert_eq!(result.mean_score(), expected);
         }
+    }
+
+    #[test]
+    fn uncertain_major_items_are_normalized_and_duplicate_node_labels_are_removed() {
+        let result = ModelEvaluationResult {
+            total_score: 99,
+            details: Scores {
+                availability: 60,
+                scalability: 60,
+                security: 60,
+                maintainability: 60,
+                cost_efficiency: 60,
+                feasibility: 60,
+            },
+            feedback_sections: ModelFeedbackSections {
+                evidence: vec!["社員のブラウザから[社員のブラウザ](#node=browser)へ送信".into()],
+                major_deficiencies: vec![ModelMajorDeficiency {
+                    basis: MajorDeficiencyBasis::ExplicitContradiction,
+                    text: "バックアップ試験が未実施です".into(),
+                }],
+                unknowns: vec![],
+            },
+            improvement: "社員のブラウザ [社員のブラウザ](#node=browser)を確認".into(),
+        }
+        .into_public(&request())
+        .unwrap();
+        assert_eq!(result.total_score, 60);
+        assert!(result.feedback.contains("重大な不足は確認されませんでした"));
+        assert!(
+            result
+                .feedback
+                .contains("### 未確認事項\n- バックアップ試験が未実施です")
+        );
+        assert!(
+            result
+                .feedback
+                .contains("[社員のブラウザ](#node=browser)へ送信")
+        );
+        assert_eq!(result.improvement, "[社員のブラウザ](#node=browser)を確認");
     }
 }

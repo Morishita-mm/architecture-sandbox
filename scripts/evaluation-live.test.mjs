@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runLocalEvaluation, tokenEstimate } from './evaluation-live.mjs';
 
-const evaluation = {totalScore:100,details:{availability:60,scalability:70,security:50,maintainability:60,costEfficiency:40,feasibility:80},feedback:'[勤怠API](#node=app) 未確認',improvement:'復元試験を行う'};
+const evaluation = {totalScore:100,details:{availability:60,scalability:70,security:50,maintainability:60,costEfficiency:40,feasibility:80},feedbackSections:{evidence:['[勤怠API](#node=app)を確認'],majorDeficiencies:[],unknowns:['復元方法は未確認']},improvement:'復元試験を行う'};
 const response = (finishReason = 'STOP') => ({status:200,body:JSON.stringify({modelVersion:'unpaid-test-model',usageMetadata:{promptTokenCount:100,candidatesTokenCount:40,thoughtsTokenCount:10,totalTokenCount:150},candidates:[{finishReason,content:{parts:[{thought:true,text:'private-test-thought'},{text:JSON.stringify(evaluation)}]}}]})});
 async function temp(t) { const directory = await mkdtemp(join(tmpdir(),'evaluation-test-')); t.after(()=>rm(directory,{recursive:true,force:true})); return join(directory,'output'); }
 
