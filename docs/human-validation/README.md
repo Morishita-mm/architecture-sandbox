@@ -6,8 +6,9 @@
 
 1. 2名を選び、[手順](../evaluation-expert-review.md)を共有する。
 2. 第1段階では[匿名入力](../evaluation-runs/2026-09-16/expert-inputs.json)と[入力判定票](../evaluation-runs/2026-09-16/expert-input-worksheet.json)だけを各人へ渡す。
-3. 提出後にコピーを固定し、[匿名応答](../evaluation-runs/2026-09-16/expert-responses.json)と[応答判定票](../evaluation-runs/2026-09-16/expert-response-worksheet.json)を渡す。
-4. 管理者だけが[対応表](../evaluation-runs/2026-09-16/expert-key.json)を開き、不一致と指標を集計する。
+3. 提出後にコピーを固定する。モデル応答を見せずに[欠陥調整票](../evaluation-runs/2026-09-16/expert-defect-reconciliation.json)を記入し、合意した共通欠陥IDと保留を固定する。
+4. 調整票の固定後に[匿名応答](../evaluation-runs/2026-09-16/expert-responses.json)と[応答判定票](../evaluation-runs/2026-09-16/expert-response-worksheet.json)を渡す。
+5. 管理者だけが[対応表](../evaluation-runs/2026-09-16/expert-key.json)を開き、不一致と指標を集計する。
 
 完了条件は2名の独立判定、相談前の不一致記録、合意または保留、専門家一致率・重大欠陥見逃し率・別解への誤判定の分子／分母が残ること。
 

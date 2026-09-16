@@ -10,10 +10,10 @@
       "designId": "D08",
       "majorDefectResults": [
         {
-          "defectId": null,
           "agreedDefect": null,
           "detected": null,
-          "responseEvidence": null
+          "responseEvidence": null,
+          "canonicalDefectId": null
         }
       ],
       "majorDefectCoverageComplete": null,
@@ -31,10 +31,10 @@
       "designId": "D03",
       "majorDefectResults": [
         {
-          "defectId": null,
           "agreedDefect": null,
           "detected": null,
-          "responseEvidence": null
+          "responseEvidence": null,
+          "canonicalDefectId": null
         }
       ],
       "majorDefectCoverageComplete": null,
@@ -52,10 +52,10 @@
       "designId": "D11",
       "majorDefectResults": [
         {
-          "defectId": null,
           "agreedDefect": null,
           "detected": null,
-          "responseEvidence": null
+          "responseEvidence": null,
+          "canonicalDefectId": null
         }
       ],
       "majorDefectCoverageComplete": null,
@@ -73,10 +73,10 @@
       "designId": "D01",
       "majorDefectResults": [
         {
-          "defectId": null,
           "agreedDefect": null,
           "detected": null,
-          "responseEvidence": null
+          "responseEvidence": null,
+          "canonicalDefectId": null
         }
       ],
       "majorDefectCoverageComplete": null,
@@ -94,10 +94,10 @@
       "designId": "D06",
       "majorDefectResults": [
         {
-          "defectId": null,
           "agreedDefect": null,
           "detected": null,
-          "responseEvidence": null
+          "responseEvidence": null,
+          "canonicalDefectId": null
         }
       ],
       "majorDefectCoverageComplete": null,
@@ -115,10 +115,10 @@
       "designId": "D10",
       "majorDefectResults": [
         {
-          "defectId": null,
           "agreedDefect": null,
           "detected": null,
-          "responseEvidence": null
+          "responseEvidence": null,
+          "canonicalDefectId": null
         }
       ],
       "majorDefectCoverageComplete": null,
@@ -136,10 +136,10 @@
       "designId": "D04",
       "majorDefectResults": [
         {
-          "defectId": null,
           "agreedDefect": null,
           "detected": null,
-          "responseEvidence": null
+          "responseEvidence": null,
+          "canonicalDefectId": null
         }
       ],
       "majorDefectCoverageComplete": null,
@@ -157,10 +157,10 @@
       "designId": "D12",
       "majorDefectResults": [
         {
-          "defectId": null,
           "agreedDefect": null,
           "detected": null,
-          "responseEvidence": null
+          "responseEvidence": null,
+          "canonicalDefectId": null
         }
       ],
       "majorDefectCoverageComplete": null,
@@ -178,10 +178,10 @@
       "designId": "D02",
       "majorDefectResults": [
         {
-          "defectId": null,
           "agreedDefect": null,
           "detected": null,
-          "responseEvidence": null
+          "responseEvidence": null,
+          "canonicalDefectId": null
         }
       ],
       "majorDefectCoverageComplete": null,
@@ -199,10 +199,10 @@
       "designId": "D09",
       "majorDefectResults": [
         {
-          "defectId": null,
           "agreedDefect": null,
           "detected": null,
-          "responseEvidence": null
+          "responseEvidence": null,
+          "canonicalDefectId": null
         }
       ],
       "majorDefectCoverageComplete": null,
@@ -220,10 +220,10 @@
       "designId": "D05",
       "majorDefectResults": [
         {
-          "defectId": null,
           "agreedDefect": null,
           "detected": null,
-          "responseEvidence": null
+          "responseEvidence": null,
+          "canonicalDefectId": null
         }
       ],
       "majorDefectCoverageComplete": null,
@@ -241,10 +241,10 @@
       "designId": "D07",
       "majorDefectResults": [
         {
-          "defectId": null,
           "agreedDefect": null,
           "detected": null,
-          "responseEvidence": null
+          "responseEvidence": null,
+          "canonicalDefectId": null
         }
       ],
       "majorDefectCoverageComplete": null,
@@ -262,10 +262,10 @@
       "designId": "D04",
       "majorDefectResults": [
         {
-          "defectId": null,
           "agreedDefect": null,
           "detected": null,
-          "responseEvidence": null
+          "responseEvidence": null,
+          "canonicalDefectId": null
         }
       ],
       "majorDefectCoverageComplete": null,
@@ -283,10 +283,10 @@
       "designId": "D09",
       "majorDefectResults": [
         {
-          "defectId": null,
           "agreedDefect": null,
           "detected": null,
-          "responseEvidence": null
+          "responseEvidence": null,
+          "canonicalDefectId": null
         }
       ],
       "majorDefectCoverageComplete": null,
@@ -304,10 +304,10 @@
       "designId": "D02",
       "majorDefectResults": [
         {
-          "defectId": null,
           "agreedDefect": null,
           "detected": null,
-          "responseEvidence": null
+          "responseEvidence": null,
+          "canonicalDefectId": null
         }
       ],
       "majorDefectCoverageComplete": null,
@@ -325,10 +325,10 @@
       "designId": "D11",
       "majorDefectResults": [
         {
-          "defectId": null,
           "agreedDefect": null,
           "detected": null,
-          "responseEvidence": null
+          "responseEvidence": null,
+          "canonicalDefectId": null
         }
       ],
       "majorDefectCoverageComplete": null,
@@ -346,10 +346,10 @@
       "designId": "D01",
       "majorDefectResults": [
         {
-          "defectId": null,
           "agreedDefect": null,
           "detected": null,
-          "responseEvidence": null
+          "responseEvidence": null,
+          "canonicalDefectId": null
         }
       ],
       "majorDefectCoverageComplete": null,
@@ -367,10 +367,10 @@
       "designId": "D07",
       "majorDefectResults": [
         {
-          "defectId": null,
           "agreedDefect": null,
           "detected": null,
-          "responseEvidence": null
+          "responseEvidence": null,
+          "canonicalDefectId": null
         }
       ],
       "majorDefectCoverageComplete": null,
@@ -388,10 +388,10 @@
       "designId": "D12",
       "majorDefectResults": [
         {
-          "defectId": null,
           "agreedDefect": null,
           "detected": null,
-          "responseEvidence": null
+          "responseEvidence": null,
+          "canonicalDefectId": null
         }
       ],
       "majorDefectCoverageComplete": null,
@@ -409,10 +409,10 @@
       "designId": "D05",
       "majorDefectResults": [
         {
-          "defectId": null,
           "agreedDefect": null,
           "detected": null,
-          "responseEvidence": null
+          "responseEvidence": null,
+          "canonicalDefectId": null
         }
       ],
       "majorDefectCoverageComplete": null,
@@ -430,10 +430,10 @@
       "designId": "D10",
       "majorDefectResults": [
         {
-          "defectId": null,
           "agreedDefect": null,
           "detected": null,
-          "responseEvidence": null
+          "responseEvidence": null,
+          "canonicalDefectId": null
         }
       ],
       "majorDefectCoverageComplete": null,
@@ -451,10 +451,10 @@
       "designId": "D03",
       "majorDefectResults": [
         {
-          "defectId": null,
           "agreedDefect": null,
           "detected": null,
-          "responseEvidence": null
+          "responseEvidence": null,
+          "canonicalDefectId": null
         }
       ],
       "majorDefectCoverageComplete": null,
@@ -472,10 +472,10 @@
       "designId": "D08",
       "majorDefectResults": [
         {
-          "defectId": null,
           "agreedDefect": null,
           "detected": null,
-          "responseEvidence": null
+          "responseEvidence": null,
+          "canonicalDefectId": null
         }
       ],
       "majorDefectCoverageComplete": null,
@@ -493,10 +493,10 @@
       "designId": "D06",
       "majorDefectResults": [
         {
-          "defectId": null,
           "agreedDefect": null,
           "detected": null,
-          "responseEvidence": null
+          "responseEvidence": null,
+          "canonicalDefectId": null
         }
       ],
       "majorDefectCoverageComplete": null,
@@ -514,10 +514,10 @@
       "designId": "D10",
       "majorDefectResults": [
         {
-          "defectId": null,
           "agreedDefect": null,
           "detected": null,
-          "responseEvidence": null
+          "responseEvidence": null,
+          "canonicalDefectId": null
         }
       ],
       "majorDefectCoverageComplete": null,
@@ -535,10 +535,10 @@
       "designId": "D01",
       "majorDefectResults": [
         {
-          "defectId": null,
           "agreedDefect": null,
           "detected": null,
-          "responseEvidence": null
+          "responseEvidence": null,
+          "canonicalDefectId": null
         }
       ],
       "majorDefectCoverageComplete": null,
@@ -556,10 +556,10 @@
       "designId": "D05",
       "majorDefectResults": [
         {
-          "defectId": null,
           "agreedDefect": null,
           "detected": null,
-          "responseEvidence": null
+          "responseEvidence": null,
+          "canonicalDefectId": null
         }
       ],
       "majorDefectCoverageComplete": null,
@@ -577,10 +577,10 @@
       "designId": "D08",
       "majorDefectResults": [
         {
-          "defectId": null,
           "agreedDefect": null,
           "detected": null,
-          "responseEvidence": null
+          "responseEvidence": null,
+          "canonicalDefectId": null
         }
       ],
       "majorDefectCoverageComplete": null,
@@ -598,10 +598,10 @@
       "designId": "D03",
       "majorDefectResults": [
         {
-          "defectId": null,
           "agreedDefect": null,
           "detected": null,
-          "responseEvidence": null
+          "responseEvidence": null,
+          "canonicalDefectId": null
         }
       ],
       "majorDefectCoverageComplete": null,
@@ -619,10 +619,10 @@
       "designId": "D12",
       "majorDefectResults": [
         {
-          "defectId": null,
           "agreedDefect": null,
           "detected": null,
-          "responseEvidence": null
+          "responseEvidence": null,
+          "canonicalDefectId": null
         }
       ],
       "majorDefectCoverageComplete": null,
@@ -640,10 +640,10 @@
       "designId": "D06",
       "majorDefectResults": [
         {
-          "defectId": null,
           "agreedDefect": null,
           "detected": null,
-          "responseEvidence": null
+          "responseEvidence": null,
+          "canonicalDefectId": null
         }
       ],
       "majorDefectCoverageComplete": null,
@@ -661,10 +661,10 @@
       "designId": "D02",
       "majorDefectResults": [
         {
-          "defectId": null,
           "agreedDefect": null,
           "detected": null,
-          "responseEvidence": null
+          "responseEvidence": null,
+          "canonicalDefectId": null
         }
       ],
       "majorDefectCoverageComplete": null,
@@ -682,10 +682,10 @@
       "designId": "D11",
       "majorDefectResults": [
         {
-          "defectId": null,
           "agreedDefect": null,
           "detected": null,
-          "responseEvidence": null
+          "responseEvidence": null,
+          "canonicalDefectId": null
         }
       ],
       "majorDefectCoverageComplete": null,
@@ -703,10 +703,10 @@
       "designId": "D07",
       "majorDefectResults": [
         {
-          "defectId": null,
           "agreedDefect": null,
           "detected": null,
-          "responseEvidence": null
+          "responseEvidence": null,
+          "canonicalDefectId": null
         }
       ],
       "majorDefectCoverageComplete": null,
@@ -724,10 +724,10 @@
       "designId": "D04",
       "majorDefectResults": [
         {
-          "defectId": null,
           "agreedDefect": null,
           "detected": null,
-          "responseEvidence": null
+          "responseEvidence": null,
+          "canonicalDefectId": null
         }
       ],
       "majorDefectCoverageComplete": null,
@@ -745,10 +745,10 @@
       "designId": "D09",
       "majorDefectResults": [
         {
-          "defectId": null,
           "agreedDefect": null,
           "detected": null,
-          "responseEvidence": null
+          "responseEvidence": null,
+          "canonicalDefectId": null
         }
       ],
       "majorDefectCoverageComplete": null,
@@ -763,7 +763,7 @@
     }
   ],
   "fieldGuide": {
-    "majorDefectResults": "第1段階後に合意した重大欠陥を1件ずつ配列へ複製し、defectId、agreedDefect、detected、responseEvidenceを記録する。合意欠陥が0件なら空配列。",
+    "majorDefectResults": "応答を見る前に固定した欠陥調整票から、合意した重大欠陥を1件ずつ配列へ複製し、canonicalDefectId、agreedDefect、detected、responseEvidenceを記録する。合意欠陥が0件なら空配列。",
     "majorDefectCoverageComplete": "合意した重大欠陥をすべて majorDefectResults に転記した場合だけ true。",
     "judgment": "問題なし／問題あり／保留。部分検出があれば majorDefectResults の各行を根拠に判定する。"
   }
