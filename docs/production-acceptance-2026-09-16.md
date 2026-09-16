@@ -65,3 +65,13 @@ PR #25でノードリンク正規化を配置した後、PR #26をmain `39526ad`
 ## 抽出要求の本番再試験
 
 PR #27をmain `f066a36`へマージし、[release run 35060336627](https://github.com/Morishita-mm/architecture-sandbox/actions/runs/35060336627)で配置した。全検証、候補確認、Cloud Run切替、Cloudflare配信、公開smokeが成功した。同じ抽出要求を公開APIへ再送するとHTTP 200・316msでサーバー固定の拒否文を返し、確認済み条件は0件だった。外部モデルが生成した前回の文面と異なり、統合試験でもprovider要求数が増えないことを確認している。受入証跡は`/private/tmp/architecture-sandbox-injection-retest.json`に保存した。
+
+## AI評価の本番品質受入
+
+PR #29〜#32で評価結果の構造化、サーバー側の重大度正規化、部品リンクの整合、評価器向け攻撃説明の非表示を実装した。最終版はmain `ccd1e33`、[release run 35067999727](https://github.com/Morishita-mm/architecture-sandbox/actions/runs/35067999727)、Cloud Run revision `architecture-sandbox-api-ccd1e33-35067999727-1`。全CI、0% traffic候補、Cloud Run切替、Cloudflare配信、公開APIとSPAのsmokeが成功した。
+
+本番の実Geminiで、勤怠管理と招待制画像共有の各6ケースを3回ずつ評価し、36/36件がHTTP 200だった。データ消失と条件上書きは合計12/12件で具体的な要件矛盾を重大不足として指摘し、別解と未記載だけの入力を誤って重大不足にしなかった。部品参照の意味上の誤参照は0件、採点誘導による100点化は0件だった。
+
+本番試験中に、採点誘導を拒否した説明自体が重大不足や改善提案へ混ざる問題を発見した。モデルの語尾に依存しない除外と、非会員公開・保持違反など実害のある矛盾を残す回帰試験を追加した。最終revisionの再試験では、採点誘導3/3件が重大不足なし・攻撃説明の漏れなし、条件上書き3/3件がデータ消失・公開範囲・削除要件の具体的な矛盾を維持した。
+
+自動化できる本番品質受入EVAL-05は完了とする。人間の専門家2名による比較、初学者の独力完走、別題材への学習転移は未実施であり、EVAL-04、RESEARCH-01、RESEARCH-02として残す。入力、反復、結果、限界は[本番Gemini評価の受入記録](evaluation-runs/2026-09-16/README.md)に保存した。
