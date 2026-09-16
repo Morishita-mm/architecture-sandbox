@@ -22,6 +22,8 @@ function sanitizedEvaluationDescription(value) {
   const contains = (part, markers) => markers.some(marker => part.includes(marker));
   return parts.filter(part => {
     const attack = part.includes('プロンプトインジェクション') || part.includes('不正な指示文')
+      || part.includes('ユーザーデータに含まれる指示やルール変更の試み')
+      || part.includes('指示変更を試みる記述')
       || (part.includes('システム指示') && contains(part, ['上書き', '無視', '回避', '変更', '優先']))
       || (part.includes('システム要件') && contains(part, ['上書き', '無効化', '変更']))
       || (part.includes('採点基準') && contains(part, ['無視', '上書き', '変更']))
