@@ -338,14 +338,43 @@ fn expresses_uncertainty(value: &str) -> bool {
 fn deduplicate_node_labels(value: &str, nodes: &[DesignNode]) -> String {
     let mut result = value.to_owned();
     for node in nodes {
-        let encoded_id = node.id.replace('%', "%25").replace(' ', "%20");
+        if nodes.iter().filter(|item| item.label == node.label).count() != 1 {
+            continue;
+        }
+        let encoded_id = encode_fragment_value(&node.id);
         let link = format!("[{}](#node={})", node.label, encoded_id);
+        let prefix = format!("[{}](#node=", node.label);
+        let mut search_from = 0;
+        while let Some(relative_start) = result[search_from..].find(&prefix) {
+            let start = search_from + relative_start;
+            let Some(relative_end) = result[start..].find(')') else {
+                break;
+            };
+            let end = start + relative_end + 1;
+            if result[start..end].chars().any(|c| matches!(c, '\n' | '\r')) {
+                break;
+            }
+            result.replace_range(start..end, &link);
+            search_from = start + link.len();
+        }
         result = result.replace(&format!("{} {}", node.label, link), &link);
         for particle in ["から", "へ", "を", "で", "に", "と", "が", "は", "の"] {
             result = result.replace(&format!("{}{}{}", node.label, particle, link), &link);
         }
     }
     result
+}
+
+fn encode_fragment_value(value: &str) -> String {
+    let mut encoded = String::with_capacity(value.len());
+    for byte in value.bytes() {
+        if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'.' | b'_' | b'~') {
+            encoded.push(byte as char);
+        } else {
+            encoded.push_str(&format!("%{byte:02X}"));
+        }
+    }
+    encoded
 }
 
 #[cfg(test)]
@@ -417,7 +446,7 @@ mod tests {
                 feasibility: 60,
             },
             feedback_sections: ModelFeedbackSections {
-                evidence: vec!["社員のブラウザから[社員のブラウザ](#node=browser)へ送信".into()],
+                evidence: vec!["社員のブラウザから[社員のブラウザ](#node=wrong)へ送信".into()],
                 major_deficiencies: vec![ModelMajorDeficiency {
                     basis: MajorDeficiencyBasis::ExplicitContradiction,
                     text: "バックアップ試験が未実施です".into(),
@@ -441,5 +470,6 @@ mod tests {
                 .contains("[社員のブラウザ](#node=browser)へ送信")
         );
         assert_eq!(result.improvement, "[社員のブラウザ](#node=browser)を確認");
+        assert_eq!(encode_fragment_value("DB 東京"), "DB%20%E6%9D%B1%E4%BA%AC");
     }
 }

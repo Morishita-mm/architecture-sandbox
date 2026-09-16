@@ -225,7 +225,7 @@ test('runtime and security boundaries', { timeout: 20000 }, async t => {
     reply = JSON.stringify({
       ...result,
       feedbackSections: {
-        evidence: ['ブラウザからアプリへ接続しています。'],
+        evidence: ['ブラウザ [ブラウザ](#node=wrong)からアプリへ接続しています。'],
         majorDeficiencies: [
           { basis: 'explicit_contradiction', text: '復元試験が未実施です。' },
           { basis: 'explicit_contradiction', text: 'データを保存しないという記述が、データ保持要件と矛盾します。' },
@@ -239,6 +239,8 @@ test('runtime and security boundaries', { timeout: 20000 }, async t => {
     assert.match(body.feedback, /### 重大な不足\n- データを保存しない/);
     assert.doesNotMatch(body.feedback.split('### 未確認事項')[0], /復元試験が未実施/);
     assert.match(body.feedback, /### 未確認事項\n- 復元試験が未実施/);
+    assert.match(body.feedback, /\[ブラウザ\]\(#node=node-1\)からアプリ/);
+    assert.doesNotMatch(body.feedback, /#node=wrong/);
     reply = JSON.stringify(result);
   });
   await t.test('malformed graph and oversized body are rejected before any AI request', async () => {
