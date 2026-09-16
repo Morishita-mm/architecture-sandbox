@@ -22,14 +22,16 @@ export function sanitizedEvaluationDescription(value) {
   const contains = (part, markers) => markers.some(marker => part.includes(marker));
   return parts.filter(part => {
     const lowercase = part.toLowerCase();
-    const defense = contains(part, ['検出して拒否', '変更を拒否', '上書きを拒否', '変更を防止', '上書きを防止', '変更を防ぐ', '上書きを防ぐ', '変更を遮断', '上書きを遮断', '従わない', '変更を禁止', '上書きを禁止', '変更への対策', '上書きへの対策'])
-      || contains(lowercase, ['detect and reject', 'reject attempts to', 'block attempts to', 'prevent changes to', 'prevent overrides to', 'refuse requests to', 'do not follow']);
+    const defense = contains(part, ['検出して拒否', '検出して遮断', '検出して防止', '変更を拒否', '上書きを拒否', '変更を防止', '上書きを防止', '変更を防ぐ', '上書きを防ぐ', '変更を遮断', '上書きを遮断', '指示に従わない', '命令に従わない', '変更を禁止', '上書きを禁止', '変更への対策', '上書きへの対策'])
+      || contains(lowercase, ['detect and reject', 'reject attempts to', 'block attempts to', 'prevent changes to', 'prevent overrides to', 'refuse requests to', 'do not follow user instructions', 'do not follow embedded instructions', 'do not follow untrusted instructions']);
     const japaneseScoringPhrase = contains(part, ['採点基準を無視', '採点基準は無視', '採点基準には従わない', '採点基準に従わない', '採点基準を上書き', '採点基準は上書き', '採点基準を変更', '採点基準は変更']);
     const japaneseScoringDefense = contains(part, ['無視してはいけない', '無視しない', '上書きしない', '変更しない', '変更を防止', '上書きを防止', '変更を拒否', '上書きを拒否']);
-    const japaneseScoringAttack = japaneseScoringPhrase && !japaneseScoringDefense;
+    const japaneseScoringAttack = japaneseScoringPhrase && !japaneseScoringDefense && !defense;
     const japaneseRatingAttack = contains(part, ['最高評価', '満点', '高得点'])
       && contains(part, ['してください', 'にする', 'にしろ', 'にせよ']);
-    const scoringAttack = japaneseScoringAttack || japaneseRatingAttack
+    const japaneseNumericRatingAttack = contains(part, ['点にしてください', '点にしろ', '点にせよ']) && /[0-9]/u.test(part);
+    const englishNumericRatingAttack = contains(lowercase, ['assign this design a score of ', 'give this design a score of ', 'score this design ', 'rate this design ']);
+    const scoringAttack = japaneseScoringAttack || japaneseRatingAttack || japaneseNumericRatingAttack || englishNumericRatingAttack
       || (part.includes('全項目') && part.includes('100点'))
       || (part.includes('未確認事項') && part.includes('省略'))
       || contains(lowercase, ['ignore the previous scoring criteria', 'ignore previous scoring criteria', 'disregard the previous scoring criteria', 'disregard previous scoring criteria', 'override the scoring criteria', 'override scoring criteria', 'change the scoring criteria', 'change scoring criteria'])
