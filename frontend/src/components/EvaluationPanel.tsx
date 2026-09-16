@@ -116,13 +116,14 @@ export const EvaluationPanel: React.FC<Props> = ({
     <div className="evaluation-start-actions"><button className="ui-button" onClick={onReview}>図と設定から確かめる</button><button className="ui-button ui-button-primary" onClick={onEvaluate} disabled={isLoading}>{isLoading ? 'AIが診断中...' : '現在の設計を評価する'}</button></div>
   </div></div>;
 
+  const totalWeight = Object.values(result.weights).reduce((sum, value) => sum + value, 0);
   const chartData = [
-    { subject: '可用性', meaning: '止まりにくさ', A: result.details.availability },
-    { subject: '拡張性', meaning: '利用の増加への対応', A: result.details.scalability },
-    { subject: '安全性', meaning: '情報や機能を守る', A: result.details.security },
-    { subject: '保守性', meaning: '変更・運用のしやすさ', A: result.details.maintainability },
-    { subject: 'コスト', meaning: '費用の効率', A: result.details.costEfficiency },
-    { subject: '実現性', meaning: '構成を実装できるか', A: result.details.feasibility },
+    { subject: '可用性', meaning: '停止・復旧・記録の保全', A: result.details.availability, weight: result.weights.availability },
+    { subject: '拡張性', meaning: '負荷・応答・情報の新しさ', A: result.details.scalability, weight: result.weights.scalability },
+    { subject: '安全性', meaning: '情報や機能を守る', A: result.details.security, weight: result.weights.security },
+    { subject: '保守性', meaning: '変更・運用のしやすさ', A: result.details.maintainability, weight: result.weights.maintainability },
+    { subject: 'コスト', meaning: '費用の効率', A: result.details.costEfficiency, weight: result.weights.costEfficiency },
+    { subject: '実現性', meaning: '構成を実装できるか', A: result.details.feasibility, weight: result.weights.feasibility },
   ];
   const feedback = splitEvaluationFeedback(result.feedback);
   const recordedNodes = nodes.filter(n => n.data.design?.requirement || n.data.design?.evidence);
@@ -138,7 +139,7 @@ export const EvaluationPanel: React.FC<Props> = ({
     <p className={`evaluation-freshness${freshness !== 'current' ? ' evaluation-outdated' : ''}`} role="status">{freshness === 'stale' ? '変更前の設計に対する評価です。現在の設計を再評価してください。' : freshness === 'unknown' ? '読み込んだ評価です。現在の設計との対応が未確認のため、再評価してください。' : '現在の設計に対する評価です。'}</p>
 
     <section className="evaluation-overview" aria-label="評価のスコア">
-      <div className="evaluation-score"><h3>総合スコア</h3><div className="evaluation-score-value">{result.totalScore}<span>/ 100</span></div><p>根拠と未確認事項もあわせて振り返りましょう。</p><span className="evaluation-score-note">AIによる学習のための評価</span></div>
+      <div className="evaluation-score"><h3>総合スコア</h3><div className="evaluation-score-value">{result.totalScore}<span>/ 100</span></div><p>{scenario.profileId ? `今回のケースの重点配分で算出した仕様v${scenario.specificationVersion ?? 1}の評価です。` : '根拠と未確認事項もあわせて振り返りましょう。'}</p><span className="evaluation-score-note">AIによる学習のための評価</span></div>
       <div className="evaluation-radar">
         <h3>構成のバランス</h3>
         <div className="evaluation-chart" role="img" aria-label="6つの観点のレーダーチャート。各点数は「観点ごとのスコア」に記載しています。">
@@ -152,7 +153,7 @@ export const EvaluationPanel: React.FC<Props> = ({
           </ResponsiveContainer>
         </div>
       </div>
-      <div className="evaluation-dimensions"><h3><BiBarChartAlt2 aria-hidden="true" />観点ごとのスコア</h3><dl>{chartData.map(axis => <div className="evaluation-dimension" key={axis.subject}><dt>{axis.subject}<small>{axis.meaning}</small></dt><dd><strong>{axis.A}<span>/100</span></strong><div className="evaluation-score-track" aria-hidden="true"><span style={{ width: `${axis.A}%` }} /></div></dd></div>)}</dl></div>
+      <div className="evaluation-dimensions"><h3><BiBarChartAlt2 aria-hidden="true" />観点ごとのスコア</h3><dl>{chartData.map(axis => <div className="evaluation-dimension" key={axis.subject}><dt>{axis.subject}<small>{axis.meaning}</small>{scenario.profileId && <em>重点 {Math.round(axis.weight / totalWeight * 100)}%</em>}</dt><dd><strong>{axis.A}<span>/100</span></strong><div className="evaluation-score-track" aria-hidden="true"><span style={{ width: `${axis.A}%` }} /></div></dd></div>)}</dl></div>
     </section>
 
     {result.interview && result.interview.total > 0 && <section className="evaluation-interview" aria-labelledby="evaluation-interview-title">
@@ -164,7 +165,7 @@ export const EvaluationPanel: React.FC<Props> = ({
 
     <details className="evaluation-criteria"><summary><span className="evaluation-disclosure-icon"><BiHelpCircle aria-hidden="true" /></span><span>何を基準に評価する？<small>評価に使う情報と、点数の目安</small></span><BiChevronDown className="evaluation-chevron" aria-hidden="true" /></summary>
       <div className="evaluation-criteria-content"><div className="evaluation-criteria-grid"><section><h3>見ているのは、構成と設計の意図</h3><dl className="evaluation-criteria-facts"><div><dt>評価する情報</dt><dd>題材に設定された条件と、部品・接続・役割・短い設計理由を照合します。</dd></div><div><dt>詳しい設定は任意</dt><dd>製品名や実機テストの結果をすべて埋める必要はありません。記入した項目の数では加点しません。</dd></div><div><dt>聞き取りの記録</dt><dd>AIの回答で確認できた条件IDと、その根拠となる質問・回答を渡します。会話全体や要件メモは自動送信しません。</dd></div></dl></section>
-        <section><h3>点数の目安</h3><p className="evaluation-criteria-lead">現在の採点では6軸を等しく扱い、総合点はその平均です。</p><dl className="evaluation-score-bands">{scoreBands.map(([range, meaning]) => <div key={range}><dt>{range}</dt><dd>{meaning}</dd></div>)}</dl></section></div>
+        <section><h3>点数の目安</h3><p className="evaluation-criteria-lead">{scenario.profileId ? '観点ごとの点数に、今回のケースで重要な特性の比重を掛けて総合点を算出します。0%の観点も診断には残り、必須条件の矛盾が相殺されるわけではありません。' : 'この課題には個別の重点配分がないため、6軸を等しく扱います。'}</p><dl className="evaluation-score-bands">{scoreBands.map(([range, meaning]) => <div key={range}><dt>{range}</dt><dd>{meaning}</dd></div>)}</dl></section></div>
         <p className="evaluation-criteria-note">未記録の内容は「未確認」として扱います。要件を満たす別の構成も認めます。価格・処理性能・可用性は実測していません。旧版の評価は採点基準が異なる場合があります。</p>
         <button className="ui-button" onClick={onReview}>図と設定から確かめる</button>
       </div>

@@ -2,7 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { readFile, mkdir } from 'node:fs/promises';
 const node = (id: string, label: string, originalType: string, x: number, y: number) => ({ id, type: 'custom', position: { x, y }, data: { label, originalType, description: '' } });
 const project = { schemaVersion: 2, version: '1.0', timestamp: '2026-09-15T00:00:00Z', projectId: 'review-test', scenario: { id: 'internal_tool', title: '社内勤怠管理システム', description: '勤怠' }, memo: '元のメモ', chatHistory: [], evaluation: null, diagram: { nodes: [node('client', '利用者', 'Web Browser', 50, 20), node('app', '受付API', 'App Server', 50, 180), node('db', '勤怠DB', 'RDBMS (SQL)', 50, 360)], edges: [{ id: 'ca', source: 'client', target: 'app' }, { id: 'ad', source: 'app', target: 'db' }] } };
-const result = { totalScore: 70, details: { availability: 70, scalability: 70, security: 70, maintainability: 70, costEfficiency: 70, feasibility: 70 }, feedback: '## 確認した根拠\n[受付API](#node=app)を確認。[偽の部品](#node=missing)\n[外部](https://evil.example)', improvement: '[勤怠DB](#node=db)の復元を確認しましょう。' };
+const result = { totalScore: 70, details: { availability: 70, scalability: 70, security: 70, maintainability: 70, costEfficiency: 70, feasibility: 70 }, weights: { availability: 1, scalability: 1, security: 1, maintainability: 1, costEfficiency: 1, feasibility: 1 }, feedback: '## 確認した根拠\n[受付API](#node=app)を確認。[偽の部品](#node=missing)\n[外部](https://evil.example)', improvement: '[勤怠DB](#node=db)の復元を確認しましょう。' };
 async function load(page: Page, data: unknown = project) {
   let calls = 0; const bodies: unknown[] = [];
   await page.route('**/*', route => {

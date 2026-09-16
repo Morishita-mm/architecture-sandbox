@@ -442,8 +442,19 @@ button svg, a svg { flex-shrink: 0; }
 
 .course-header-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .interview-progress { border-top: 1px solid var(--app-border); padding: 10px 20px; background: #f7fafc; color: var(--app-text); font-size: 13px; }
+.scenario-case-summary { display: flex; justify-content: space-between; gap: 16px; padding: 12px 20px; border-bottom: 1px solid #cfddf4; background: #f4f8ff; }
+.scenario-case-summary div { display: grid; gap: 2px; }
+.scenario-case-summary div:last-child { text-align: right; }
+.scenario-case-summary span { color: var(--app-muted); font-size: 11px; }
+.scenario-case-summary strong { color: #234e93; font-size: 13px; }
 .interview-progress > div { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
 .interview-progress span { border: 1px solid #b7d3c5; border-radius: 999px; padding: 3px 8px; background: #edf8f1; color: #17613b; }
+.specification-progress { margin: 0 20px 12px; padding: 14px; border: 1px solid #9bbcf8; border-radius: 10px; background: #f4f8ff; color: var(--app-text); }
+.specification-progress > p { margin: 6px 0 0; color: var(--app-muted); }
+.negotiation-proposal { margin-top: 10px; padding: 12px; border-radius: 8px; background: #fff; box-shadow: 0 1px 0 rgba(30, 64, 175, 0.08); }
+.negotiation-proposal p { margin: 0 0 7px; }
+.negotiation-proposal p span { display: inline-block; min-width: 4.5em; color: var(--app-muted); font-size: 12px; font-weight: 700; }
+.negotiation-proposal > div { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .help-tutorial h4 { font-size: 17px; margin: 26px 0 10px; }
 .help-tutorial p { font-size: 14px; line-height: 1.9; color: #4c6079; }
 .help-tutorial-start { display: flex; gap: 14px; background: #eaf2ff; border-left: 4px solid #2463df; padding: 18px; border-radius: 10px; margin: 20px 0; }

@@ -139,6 +139,7 @@ impl EvaluationRequest {
 pub struct EvaluationResult {
     pub total_score: u8,
     pub details: Scores,
+    pub weights: ScoreWeights,
     pub feedback: String,
     pub improvement: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -187,21 +188,36 @@ pub struct Scores {
     pub feasibility: u8,
 }
 
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ScoreWeights {
+    pub availability: u8,
+    pub scalability: u8,
+    pub security: u8,
+    pub maintainability: u8,
+    pub cost_efficiency: u8,
+    pub feasibility: u8,
+}
+
 impl EvaluationResult {
-    pub fn mean_score(&self) -> u8 {
+    pub fn weighted_score(&self) -> u8 {
         let d = &self.details;
-        let sum: u16 = [
+        let scores = [
             d.availability,
             d.scalability,
             d.security,
             d.maintainability,
             d.cost_efficiency,
             d.feasibility,
-        ]
-        .iter()
-        .map(|value| *value as u16)
-        .sum();
-        ((sum + 3) / 6) as u8
+        ];
+        let weights = self.weights.values();
+        let weight_sum: u32 = weights.iter().map(|value| *value as u32).sum();
+        let sum: u32 = scores
+            .iter()
+            .zip(weights)
+            .map(|(score, weight)| *score as u32 * weight as u32)
+            .sum();
+        ((sum + weight_sum / 2) / weight_sum) as u8
     }
     pub fn validate(&self) -> bool {
         [
@@ -212,9 +228,22 @@ impl EvaluationResult {
             self.details.maintainability,
             self.details.cost_efficiency,
             self.details.feasibility,
+            self.weights.availability,
+            self.weights.scalability,
+            self.weights.security,
+            self.weights.maintainability,
+            self.weights.cost_efficiency,
+            self.weights.feasibility,
         ]
         .iter()
         .all(|s| *s <= 100)
+            && self
+                .weights
+                .values()
+                .iter()
+                .map(|value| *value as u16)
+                .sum::<u16>()
+                > 0
             && bounded(&self.feedback, 12000)
             && bounded(&self.improvement, 12000)
     }
@@ -294,6 +323,7 @@ impl ModelEvaluationResult {
         let mut result = EvaluationResult {
             total_score: self.total_score,
             details: self.details,
+            weights: ScoreWeights::from_scenario(&req.scenario),
             feedback,
             improvement,
             interview: Some(req.interview_assessment()),
@@ -301,12 +331,42 @@ impl ModelEvaluationResult {
         if !result.validate() {
             return Err(());
         }
-        result.total_score = result.mean_score();
+        result.total_score = result.weighted_score();
         Ok(result)
     }
 }
 
 impl Scores {
+    fn values(&self) -> [u8; 6] {
+        [
+            self.availability,
+            self.scalability,
+            self.security,
+            self.maintainability,
+            self.cost_efficiency,
+            self.feasibility,
+        ]
+    }
+}
+
+impl ScoreWeights {
+    fn from_scenario(scenario: &Scenario) -> Self {
+        let weights = scenario.score_weights();
+        let weights = if weights.iter().all(|value| *value == 0) {
+            [1, 1, 1, 1, 1, 1]
+        } else {
+            weights
+        };
+        Self {
+            availability: weights[0] as u8,
+            scalability: weights[1] as u8,
+            security: weights[2] as u8,
+            maintainability: weights[3] as u8,
+            cost_efficiency: weights[4] as u8,
+            feasibility: weights[5] as u8,
+        }
+    }
+
     fn values(&self) -> [u8; 6] {
         [
             self.availability,
@@ -407,7 +467,7 @@ mod tests {
     }
 
     #[test]
-    fn mean_is_bounded_and_rounds_half_up_including_zero() {
+    fn equal_weight_score_is_bounded_and_rounds_half_up_including_zero() {
         for (values, expected) in [
             ([0, 0, 0, 0, 0, 0], 0),
             ([100; 6], 100),
@@ -424,12 +484,20 @@ mod tests {
                     cost_efficiency: values[4],
                     feasibility: values[5],
                 },
+                weights: ScoreWeights {
+                    availability: 1,
+                    scalability: 1,
+                    security: 1,
+                    maintainability: 1,
+                    cost_efficiency: 1,
+                    feasibility: 1,
+                },
                 feedback: "根拠".into(),
                 improvement: "改善".into(),
                 interview: None,
             };
             assert!(result.validate());
-            assert_eq!(result.mean_score(), expected);
+            assert_eq!(result.weighted_score(), expected);
         }
     }
 

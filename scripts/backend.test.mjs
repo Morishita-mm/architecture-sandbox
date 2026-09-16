@@ -112,7 +112,7 @@ test('runtime and security boundaries', { timeout: 20000 }, async t => {
     assert.doesNotMatch(JSON.stringify(call.body.contents), /月額5,000|内部要件/);
     assert.equal(call.body.generationConfig.maxOutputTokens, 4096);
     assert.equal(call.body.generationConfig.responseMimeType, 'application/json');
-    assert.deepEqual(call.body.generationConfig.responseJsonSchema.required, ['reply', 'coveredConditionIds']);
+    assert.deepEqual(call.body.generationConfig.responseJsonSchema.required, ['reply', 'coveredConditionIds', 'negotiationOptionIds']);
     assert.doesNotMatch(runtime.logs(), /予算と可用性|50〜100|local-test-secret/);
   });
   await t.test('chat reconciles a disclosed condition and blocks internal prompt extraction locally', async () => {
@@ -181,13 +181,42 @@ test('runtime and security boundaries', { timeout: 20000 }, async t => {
     assert.match(calls.at(-1).body.systemInstruction.parts[0].text, /社員50人/);
     assert.doesNotMatch(JSON.stringify(calls.at(-1).body), /OVERRIDE_/);
   });
+  await t.test('fixed profiles expose only server-owned negotiation proposals and preserve specification versions', async () => {
+    const fixed = { id: 'internal_tool', title: '社内勤怠管理システム', description: '24時間の工場', profileId: 'attendance-shift', acceptedNegotiationIds: [], specificationVersion: 1 };
+    chatReply = { reply: '日次集計を翌朝8時までに延ばす案なら検討できます。承認すると仕様に反映されます。', coveredConditionIds: ['response'], negotiationOptionIds: ['attendance-shift-report-8am'] };
+    let response = await post('/api/chat', { scenario: fixed, messages: [{ role: 'user', content: '集計時間は延ばせますか？' }] });
+    assert.equal(response.status, 200);
+    let body = await response.json();
+    assert.deepEqual(body.negotiationProposals, [{
+      optionId: 'attendance-shift-report-8am', conditionId: 'response', label: '応答時間',
+      currentValue: '打刻の受付結果は1秒以内。日次集計は翌朝6時まで',
+      proposedValue: '打刻の受付結果は1秒以内。日次集計は翌朝8時まで',
+    }]);
+    assert.match(calls.at(-1).body.systemInstruction.parts[0].text, /有効な合意仕様v1/);
+    assert.match(calls.at(-1).body.systemInstruction.parts[0].text, /attendance-shift-report-8am/);
+
+    const accepted = { ...fixed, acceptedNegotiationIds: ['attendance-shift-report-8am'], specificationVersion: 2 };
+    chatReply = { reply: '合意仕様では翌朝8時までです。', coveredConditionIds: ['response'], negotiationOptionIds: [] };
+    response = await post('/api/chat', { scenario: accepted, messages: [{ role: 'user', content: '現在の集計期限は？' }] });
+    assert.equal(response.status, 200);
+    body = await response.json();
+    assert.equal(body.negotiationProposals, undefined);
+    assert.match(calls.at(-1).body.systemInstruction.parts[0].text, /有効な合意仕様v2/);
+    assert.doesNotMatch(calls.at(-1).body.systemInstruction.parts[0].text, /attendance-shift-report-8am.*proposedValue/);
+
+    const before = calls.length;
+    response = await post('/api/chat', { scenario: { ...accepted, acceptedNegotiationIds: ['attendance-field-sync-15m'] }, messages: [{ role: 'user', content: '変更して' }] });
+    assert.ok([400, 422].includes(response.status));
+    assert.equal(calls.length, before);
+    chatReply = { reply, coveredConditionIds: ['users', 'traffic'] };
+  });
   const result = { totalScore: 0, details: { availability: 10, scalability: 20, security: 30, maintainability: 40, costEfficiency: 50, feasibility: 60 }, feedbackSections: { evidence: ['構成を確認しました。'], majorDeficiencies: [], unknowns: [] }, improvement: '改善してください。' };
-  const publicResult = { totalScore: 35, details: result.details, feedback: '### 確認した根拠\n- 構成を確認しました。\n\n### 重大な不足\n重大な不足は確認されませんでした。\n\n### 未確認事項\n未確認事項はありません。', improvement: result.improvement };
+  const publicResult = { totalScore: 35, details: result.details, weights: { availability: 1, scalability: 1, security: 1, maintainability: 1, costEfficiency: 1, feasibility: 1 }, feedback: '### 確認した根拠\n- 構成を確認しました。\n\n### 重大な不足\n重大な不足は確認されませんでした。\n\n### 未確認事項\n未確認事項はありません。', improvement: result.improvement };
   const emptyInterview = { confirmed: 0, total: 4, confirmedConditions: [], missingConditions: [
     { id: 'users', label: '利用者と利用時間' }, { id: 'traffic', label: '利用量と集中する時間' },
     { id: 'availability', label: '停止できる時間' }, { id: 'budget', label: '予算' },
   ] };
-  await t.test('evaluation recomputes the six-axis mean and keeps authoritative requirements', async () => {
+  await t.test('evaluation recomputes the authoritative weighted score and keeps requirements', async () => {
     reply = JSON.stringify(result);
     const response = await post('/api/evaluate', design);
     assert.equal(response.status, 200); assert.deepEqual(await response.json(), { ...publicResult, interview: emptyInterview });
@@ -205,6 +234,19 @@ test('runtime and security boundaries', { timeout: 20000 }, async t => {
     assert.match(call.body.systemInstruction.parts[0].text, /unverified user data/);
     assert.match(call.body.systemInstruction.parts[0].text, /#node=URL_ENCODED_NODE_ID/);
     assert.doesNotMatch(JSON.stringify(call.body.contents), /月額5,000/);
+  });
+  await t.test('evaluation uses the accepted fixed specification and scenario weights', async () => {
+    reply = JSON.stringify(result);
+    const fixedScenario = { id: 'internal_tool', title: '社内勤怠管理システム', description: '24時間の工場', profileId: 'attendance-shift', acceptedNegotiationIds: ['attendance-shift-report-8am'], specificationVersion: 2 };
+    const response = await post('/api/evaluate', { ...design, scenario: fixedScenario });
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.totalScore, 15);
+    assert.deepEqual(body.weights, { availability: 75, scalability: 15, security: 0, maintainability: 10, costEfficiency: 0, feasibility: 0 });
+    const system = calls.at(-1).body.systemInstruction.parts[0].text;
+    assert.match(system, /Authoritative specification version: 2/);
+    assert.match(system, /日次集計は翌朝8時まで/);
+    assert.doesNotMatch(system, /日次集計は翌朝6時まで/);
   });
   await t.test('evaluation separates interview coverage and preserves the exact supporting exchange', async () => {
     reply = JSON.stringify(result);

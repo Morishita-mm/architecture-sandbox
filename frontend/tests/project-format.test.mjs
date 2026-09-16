@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFile } from 'node:fs/promises';
 import { normalizeProject, parseProject, serializeProject, parseChallenge, createChallengeUrl, parseEvaluation, chatContext, MAX_FILE_BYTES } from '../src/utils/projectFormat.ts';
+import { SCENARIOS, startFixedScenario } from '../src/scenarios.ts';
 
 const result = { totalScore: 0, details: { availability: 0, scalability: 10, security: 20, maintainability: 30, costEfficiency: 40, feasibility: 50 }, feedback: '説明', improvement: '改善' };
 const node = { id: 'dndnode_0', type: 'custom', position: { x: 10, y: 20 }, data: { label: 'ブラウザ', originalType: 'Web Browser', description: '日本語の説明' } };
@@ -43,7 +44,7 @@ test('group hierarchy is ordered and saved, arbitrary style and extra fields are
   assert.deepEqual(parseProject(serializeProject(loaded)), loaded);
 });
 for (const [name, mutate] of [
-  ['unknown schema', p => { p.schemaVersion = 4; }],
+  ['unknown schema', p => { p.schemaVersion = 5; }],
   ['duplicate node id', p => { p.diagram.nodes.push(structuredClone(p.diagram.nodes[0])); }],
   ['dangling parent', p => { p.diagram.nodes[0].parentNode = 'missing'; }],
   ['parent cycle', p => { p.diagram.nodes[0].type = 'group'; p.diagram.nodes[0].data.originalType = 'Subnet'; p.diagram.nodes[0].parentNode = p.diagram.nodes[0].id; }],
@@ -70,6 +71,27 @@ test('public challenge round trips maintain preset identity and remove hidden re
   assert.equal(decoded.id, 'internal_tool'); assert.equal(decoded.isCustom, undefined);
   assert.doesNotMatch(url.toString(), /SECRET|requirements|forged/);
   assert.match(url.searchParams.get('challenge'), /^\{/);
+});
+test('new fixed attempts choose one stable case and preserve agreed specification revisions', () => {
+  const base = SCENARIOS.find(item => item.id === 'internal_tool');
+  assert.deepEqual([0, 1, 2].map(index => startFixedScenario(base, index).profileId), ['attendance-office', 'attendance-shift', 'attendance-field']);
+  const scenario = { ...startFixedScenario(base, 1), acceptedNegotiationIds: ['attendance-shift-report-8am'], specificationVersion: 2 };
+  const p = project();
+  p.scenario = scenario;
+  p.requirementRevisions = [{
+    version: 2, acceptedAt: '2026-09-16T05:00:00Z', optionId: 'attendance-shift-report-8am', conditionId: 'response', label: '応答時間',
+    currentValue: '日次集計は翌朝6時まで', proposedValue: '日次集計は翌朝8時まで',
+  }];
+  const normalized = normalizeProject(p);
+  assert.equal(normalized.schemaVersion, 4);
+  assert.deepEqual(parseProject(serializeProject(normalized)), normalized);
+  assert.deepEqual(parseChallenge(new URL(createChallengeUrl(scenario, 'https://sandbox.morimizu.dev')).searchParams.get('challenge')), scenario);
+  for (const invalid of [
+    { ...scenario, profileId: 'sns-live-event' },
+    { ...scenario, acceptedNegotiationIds: ['attendance-field-sync-15m'] },
+    { ...scenario, specificationVersion: 1 },
+  ]) assert.throws(() => normalizeProject({ ...p, scenario: invalid }));
+  assert.throws(() => normalizeProject({ ...p, requirementRevisions: [] }));
 });
 test('custom and legacy challenge links retain difficulty/role, recover preset shares', () => {
   const custom = project().scenario;

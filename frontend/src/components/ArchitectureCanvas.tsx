@@ -18,6 +18,8 @@ import type {
   ProjectSaveData,
   AppNodeData,
   InterviewEvidence,
+  NegotiationProposal,
+  RequirementRevision,
 } from "../types";
 import { Header } from "./Header";
 import { ChatInterface } from "./ChatInterface";
@@ -70,11 +72,13 @@ function ArchitectureFlow({
   const { nodes, edges } = history.present;
   const { screenToFlowPosition, getViewport, setViewport, getNodes, getEdges, getIntersectingNodes, deleteElements } = useReactFlow();
   const [activeTab, setActiveTab] = useState<"chat" | "design" | "evaluate">(loadedProjectData?.evaluation ? "evaluate" : initialTab);
+  const [currentScenario, setCurrentScenario] = useState(selectedScenario);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => loadedProjectData?.chatHistory ?? [{ role: "model", content: selectedScenario.customMode === 'self_defined'
     ? `こんにちは。「${selectedScenario.title}」の仕様を一緒に整理します。今わかっている条件から、どの点を確かめましょうか？`
-    : `こんにちは。「${selectedScenario.title}」について、どのような点から詳細を詰めていきましょうか？` }]);
+    : `こんにちは。「${selectedScenario.title}」の今回のケースは「${selectedScenario.description}」です。どの条件から詳しく確認しますか？` }]);
   const [memo, setMemo] = useState(loadedProjectData?.memo ?? "");
   const [interviewEvidence, setInterviewEvidence] = useState<InterviewEvidence[]>(loadedProjectData?.interviewEvidence ?? []);
+  const [requirementRevisions, setRequirementRevisions] = useState<RequirementRevision[]>(loadedProjectData?.requirementRevisions ?? []);
   const [evaluatedKey, setEvaluatedKey] = useState<string | null>(loadedEvaluationKey);
   const [evaluationResult, setEvaluationResult] = useState<EvaluationResult | null>(loadedProjectData?.evaluation ?? null);
   const [isLoading, setIsLoading] = useState(false);
@@ -88,7 +92,21 @@ function ArchitectureFlow({
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const selectedNode = nodes.find(n => n.id === selectedNodeId) ?? null;
   const setSelectedNode = useCallback((node: Node<AppNodeData> | null) => { setSelectedNodeId(node?.id ?? null); if (node) setSelectedEdgeId(null); }, []);
-  const currentScenario = selectedScenario;
+  const acceptNegotiation = useCallback((proposal: NegotiationProposal) => {
+    const accepted = currentScenario.acceptedNegotiationIds ?? [];
+    if (accepted.includes(proposal.optionId)) return;
+    const nextVersion = (currentScenario.specificationVersion ?? 1) + 1;
+    setCurrentScenario({
+      ...currentScenario,
+      acceptedNegotiationIds: [...accepted, proposal.optionId],
+      specificationVersion: nextVersion,
+    });
+    setRequirementRevisions(revisions => [
+      ...revisions,
+      { ...proposal, version: nextVersion, acceptedAt: new Date().toISOString() },
+    ]);
+    setNotice(`仕様v${nextVersion}として「${proposal.label}」の変更を確定しました。評価はこの仕様で行います。`);
+  }, [currentScenario]);
   const [helpTopic, setHelpTopic] = useState<'index' | 'learning' | null>(null);
   const [isNoteOpen, setIsNoteOpen] = useState(false);
   const [isReviewOpen, setIsReviewOpen] = useState(false);
@@ -470,8 +488,9 @@ function ArchitectureFlow({
 
   const [startedAt] = useState(() => new Date().toISOString());
   const projectData: ProjectSaveData = {
-    schemaVersion: 2, version: projectVersion, timestamp: startedAt, projectId,
-    scenario: publicScenario(currentScenario), memo, chatHistory: chatMessages, interviewEvidence, evaluation: evaluationResult,
+    schemaVersion: currentScenario.profileId ? 4 : 2, version: projectVersion, timestamp: startedAt, projectId,
+    scenario: publicScenario(currentScenario), memo, chatHistory: chatMessages, interviewEvidence,
+    ...(currentScenario.profileId ? { requirementRevisions } : {}), evaluation: evaluationResult,
     diagram: { nodes: nodes.map(n => ({ id: n.id, type: n.type || 'custom', position: n.position, data: n.data,
       style: n.type === 'group' ? { ...n.style, width: n.width ?? n.style?.width, height: n.height ?? n.style?.height } : n.style,
       parentNode: n.parentNode, extent: n.extent === 'parent' ? 'parent' : undefined,
@@ -545,7 +564,7 @@ function ArchitectureFlow({
     const currentEdges = getEdges();
     try {
       const payload: ProjectSaveData = {
-        schemaVersion: 2,
+        schemaVersion: currentScenario.profileId ? 4 : 2,
         version: projectVersion,
         timestamp: new Date().toISOString(),
         projectId: projectId,
@@ -570,6 +589,7 @@ function ArchitectureFlow({
         },
         chatHistory: chatMessages,
         interviewEvidence,
+        ...(currentScenario.profileId ? { requirementRevisions } : {}),
         evaluation: evaluationState === "current" ? evaluationResult : null,
       };
       const safeTitle = currentScenario.title.trim() || "untitled";
@@ -592,6 +612,7 @@ function ArchitectureFlow({
     currentScenario,
     chatMessages,
     interviewEvidence,
+    requirementRevisions,
     memo,
     evaluationResult,
     evaluationState,
@@ -705,6 +726,8 @@ function ArchitectureFlow({
                 onSendMessage={setChatMessages}
                 evidence={interviewEvidence}
                 onUpdateEvidence={setInterviewEvidence}
+                requirementRevisions={requirementRevisions}
+                onAcceptNegotiation={acceptNegotiation}
                 request={chatRequest}
               />
             </div>
