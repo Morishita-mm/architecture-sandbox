@@ -113,5 +113,10 @@
       "judgment": null,
       "confidence1to5": null
     }
-  ]
+  ],
+  "fieldGuide": {
+    "majorDefects": "配列で記録する。各要素は defectId、description、inputEvidence、requirementEvidence を持つ。重大欠陥がなければ空配列、判断不能なら null。",
+    "unknowns": "未確認事項の配列。なければ空配列、判断不能なら null。",
+    "acceptableAlternatives": "妥当な別解の配列。なければ空配列、判断不能なら null。"
+  }
 }

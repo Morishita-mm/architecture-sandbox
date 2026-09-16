@@ -8,7 +8,15 @@
     {
       "responseId": "R01",
       "designId": "D08",
-      "majorDefectDetected": null,
+      "majorDefectResults": [
+        {
+          "defectId": null,
+          "agreedDefect": null,
+          "detected": null,
+          "responseEvidence": null
+        }
+      ],
+      "majorDefectCoverageComplete": null,
       "unknownsHandledCorrectly": null,
       "alternativeHandledFairly": null,
       "evidenceAndReferencesCorrect": null,
@@ -21,7 +29,15 @@
     {
       "responseId": "R02",
       "designId": "D03",
-      "majorDefectDetected": null,
+      "majorDefectResults": [
+        {
+          "defectId": null,
+          "agreedDefect": null,
+          "detected": null,
+          "responseEvidence": null
+        }
+      ],
+      "majorDefectCoverageComplete": null,
       "unknownsHandledCorrectly": null,
       "alternativeHandledFairly": null,
       "evidenceAndReferencesCorrect": null,
@@ -34,7 +50,15 @@
     {
       "responseId": "R03",
       "designId": "D11",
-      "majorDefectDetected": null,
+      "majorDefectResults": [
+        {
+          "defectId": null,
+          "agreedDefect": null,
+          "detected": null,
+          "responseEvidence": null
+        }
+      ],
+      "majorDefectCoverageComplete": null,
       "unknownsHandledCorrectly": null,
       "alternativeHandledFairly": null,
       "evidenceAndReferencesCorrect": null,
@@ -47,7 +71,15 @@
     {
       "responseId": "R04",
       "designId": "D01",
-      "majorDefectDetected": null,
+      "majorDefectResults": [
+        {
+          "defectId": null,
+          "agreedDefect": null,
+          "detected": null,
+          "responseEvidence": null
+        }
+      ],
+      "majorDefectCoverageComplete": null,
       "unknownsHandledCorrectly": null,
       "alternativeHandledFairly": null,
       "evidenceAndReferencesCorrect": null,
@@ -60,7 +92,15 @@
     {
       "responseId": "R05",
       "designId": "D06",
-      "majorDefectDetected": null,
+      "majorDefectResults": [
+        {
+          "defectId": null,
+          "agreedDefect": null,
+          "detected": null,
+          "responseEvidence": null
+        }
+      ],
+      "majorDefectCoverageComplete": null,
       "unknownsHandledCorrectly": null,
       "alternativeHandledFairly": null,
       "evidenceAndReferencesCorrect": null,
@@ -73,7 +113,15 @@
     {
       "responseId": "R06",
       "designId": "D10",
-      "majorDefectDetected": null,
+      "majorDefectResults": [
+        {
+          "defectId": null,
+          "agreedDefect": null,
+          "detected": null,
+          "responseEvidence": null
+        }
+      ],
+      "majorDefectCoverageComplete": null,
       "unknownsHandledCorrectly": null,
       "alternativeHandledFairly": null,
       "evidenceAndReferencesCorrect": null,
@@ -86,7 +134,15 @@
     {
       "responseId": "R07",
       "designId": "D04",
-      "majorDefectDetected": null,
+      "majorDefectResults": [
+        {
+          "defectId": null,
+          "agreedDefect": null,
+          "detected": null,
+          "responseEvidence": null
+        }
+      ],
+      "majorDefectCoverageComplete": null,
       "unknownsHandledCorrectly": null,
       "alternativeHandledFairly": null,
       "evidenceAndReferencesCorrect": null,
@@ -99,7 +155,15 @@
     {
       "responseId": "R08",
       "designId": "D12",
-      "majorDefectDetected": null,
+      "majorDefectResults": [
+        {
+          "defectId": null,
+          "agreedDefect": null,
+          "detected": null,
+          "responseEvidence": null
+        }
+      ],
+      "majorDefectCoverageComplete": null,
       "unknownsHandledCorrectly": null,
       "alternativeHandledFairly": null,
       "evidenceAndReferencesCorrect": null,
@@ -112,7 +176,15 @@
     {
       "responseId": "R09",
       "designId": "D02",
-      "majorDefectDetected": null,
+      "majorDefectResults": [
+        {
+          "defectId": null,
+          "agreedDefect": null,
+          "detected": null,
+          "responseEvidence": null
+        }
+      ],
+      "majorDefectCoverageComplete": null,
       "unknownsHandledCorrectly": null,
       "alternativeHandledFairly": null,
       "evidenceAndReferencesCorrect": null,
@@ -125,7 +197,15 @@
     {
       "responseId": "R10",
       "designId": "D09",
-      "majorDefectDetected": null,
+      "majorDefectResults": [
+        {
+          "defectId": null,
+          "agreedDefect": null,
+          "detected": null,
+          "responseEvidence": null
+        }
+      ],
+      "majorDefectCoverageComplete": null,
       "unknownsHandledCorrectly": null,
       "alternativeHandledFairly": null,
       "evidenceAndReferencesCorrect": null,
@@ -138,7 +218,15 @@
     {
       "responseId": "R11",
       "designId": "D05",
-      "majorDefectDetected": null,
+      "majorDefectResults": [
+        {
+          "defectId": null,
+          "agreedDefect": null,
+          "detected": null,
+          "responseEvidence": null
+        }
+      ],
+      "majorDefectCoverageComplete": null,
       "unknownsHandledCorrectly": null,
       "alternativeHandledFairly": null,
       "evidenceAndReferencesCorrect": null,
@@ -151,7 +239,15 @@
     {
       "responseId": "R12",
       "designId": "D07",
-      "majorDefectDetected": null,
+      "majorDefectResults": [
+        {
+          "defectId": null,
+          "agreedDefect": null,
+          "detected": null,
+          "responseEvidence": null
+        }
+      ],
+      "majorDefectCoverageComplete": null,
       "unknownsHandledCorrectly": null,
       "alternativeHandledFairly": null,
       "evidenceAndReferencesCorrect": null,
@@ -161,5 +257,10 @@
       "evidence": null,
       "reason": null
     }
-  ]
+  ],
+  "fieldGuide": {
+    "majorDefectResults": "第1段階後に合意した重大欠陥を1件ずつ配列へ複製し、defectId、agreedDefect、detected、responseEvidenceを記録する。合意欠陥が0件なら空配列。",
+    "majorDefectCoverageComplete": "合意した重大欠陥をすべて majorDefectResults に転記した場合だけ true。",
+    "judgment": "問題なし／問題あり／保留。部分検出があれば majorDefectResults の各行を根拠に判定する。"
+  }
 }
