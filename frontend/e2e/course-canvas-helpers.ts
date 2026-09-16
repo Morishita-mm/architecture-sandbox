@@ -1,0 +1,9 @@
+import { expect, type Page } from '@playwright/test';
+export const button = async (page: Page, name: string) => page.getByRole('button', { name, exact: true }).click();
+export async function editor(page: Page) { const d = page.locator('.learning-accessible-controls'); if (!(await d.getAttribute('open') !== null)) await d.locator('summary').click(); }
+export async function connect(page: Page, source: string, target: string) { await editor(page); await page.getByRole('combobox', { name: '接続元', exact: true }).selectOption(source); await page.getByRole('combobox', { name: '接続先', exact: true }).selectOption(target); await button(page, '接続する'); }
+export async function remove(page: Page, value: string) { await editor(page); await page.getByRole('combobox', { name: '部品・接続を選ぶ', exact: true }).selectOption(value); await button(page, '選択を削除'); }
+export async function stop(page: Page, value: string, stopped: boolean) { await editor(page); await page.getByRole('combobox', { name: '部品・接続を選ぶ', exact: true }).selectOption(value); await page.getByRole('checkbox', { name: 'この部品を停止する' }).setChecked(stopped); }
+export async function balance(page: Page) { await button(page, 'App Serverを追加'); await button(page, 'Load Balancerを追加'); await remove(page, 'browser-1--app-1'); await connect(page, 'browser-1', 'balancer-1'); await connect(page, 'balancer-1', 'app-1'); await connect(page, 'balancer-1', 'app-2'); await connect(page, 'app-2', 'database-1'); }
+export async function gateway(page: Page) { await button(page, 'API Gatewayを追加'); await connect(page, 'browser-1', 'gateway-1'); await connect(page, 'gateway-1', 'app-1'); await remove(page, 'browser-1--app-1'); }
+export async function canvasReady(page: Page) { await expect(page.locator('.react-flow')).toHaveCount(1); expect(await page.evaluate('document.documentElement.scrollWidth <= innerWidth')).toBe(true); }

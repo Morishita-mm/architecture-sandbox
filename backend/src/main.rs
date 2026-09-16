@@ -219,7 +219,9 @@ async fn handle_chat(
         .chat(&payload)
         .await
         .map_err(|_| ApiError::Upstream)?;
-    Ok(Json(serde_json::json!({"reply":reply})))
+    Ok(Json(
+        serde_json::to_value(reply).map_err(|_| ApiError::Upstream)?,
+    ))
 }
 
 fn valid_share_url(target: &str, origin: &Url) -> bool {

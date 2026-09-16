@@ -1,12 +1,5 @@
 import { useCallback, useRef, useState, useEffect, useLayoutEffect, lazy, Suspense } from "react";
-import ReactFlow, {
-  Background,
-  Controls,
-  MiniMap,
-  useNodesState,
-  useEdgesState,
-  addEdge,
-  type Connection,
+import {
   type Node,
   type NodeMouseHandler,
   type NodeDragHandler,
@@ -15,42 +8,49 @@ import ReactFlow, {
   Panel,
 } from "reactflow";
 
-import "reactflow/dist/style.css";
+import { DiagramCanvas } from "./DiagramCanvas";
 import { Sidebar } from "./Sidebar";
-import { BiChat, BiNetworkChart, BiBarChart, BiCube, BiNotepad } from "react-icons/bi";
+import { BiChat, BiNetworkChart, BiBarChart, BiCube, BiNotepad, BiBulb } from "react-icons/bi";
 import type {
   EvaluationResult,
   ChatMessage,
   Scenario,
   ProjectSaveData,
   AppNodeData,
+  InterviewEvidence,
 } from "../types";
 import { Header } from "./Header";
 import { ChatInterface } from "./ChatInterface";
 import { MemoPad } from "./MemoPad";
+import { DesignNoteDialog } from "./DesignNoteDialog";
 const EvaluationPanel = lazy(() => import("./EvaluationPanel").then(module => ({ default: module.EvaluationPanel })));
 import { v4 as uuidv4 } from "uuid";
 import { saveProjectToLocalFile } from "../utils/fileHandler";
-import { nodeTypes, NODE_CATEGORIES } from "../constants/nodeTypes";
+import { NODE_CATEGORIES } from "../constants/nodeTypes";
 import { PropertiesPanel } from "./PropertiesPanel";
+import { ConnectionPanel } from "./ConnectionPanel";
+import { DesignReviewDialog } from "./DesignReviewDialog";
 import { HelpModal } from "./HelpModal";
 
 interface ArchitectureCanvasProps {
   selectedScenario: Scenario;
   onBackToSelection: () => void;
   loadedProjectData: ProjectSaveData | null;
+  loadedEvaluationKey?: string | null;
+  initialTab?: "chat" | "design";
 }
 
 import { API_BASE_URL } from "../config";
 import { parseEvaluation, publicScenario } from "../utils/projectFormat";
 import { postJson } from "../utils/api";
+import { useDiagramEditor, diagramHistoryShortcut, COMPONENT_DRAG_TYPE } from "../utils/useDiagramEditor";
+import { insertDiagramNode } from "../utils/diagramEditing";
+import { NODE_CARD_WIDTH, NODE_CARD_MIN_HEIGHT } from "../utils/nodeStyles";
+import { evaluationInput, evaluationKey, checkEvaluationSize } from "../utils/designSnapshot";
+import { saveDraft } from "../utils/draftStore";
+import { useLocalDraft } from "../utils/useLocalDraft";
 
 const getId = () => uuidv4();
-
-const onDragOver = (event: React.DragEvent) => {
-  event.preventDefault();
-  event.dataTransfer.dropEffect = "move";
-};
 
 // グループとして扱うタイプ定義（新規作成時のラベル判定用）
 const GROUP_TYPES = NODE_CATEGORIES.find(c => c.id === 'group')!.items.map(i => i.type);
@@ -61,28 +61,45 @@ function ArchitectureFlow({
   selectedScenario,
   onBackToSelection,
   loadedProjectData,
+  loadedEvaluationKey = null,
+  initialTab = "chat",
 }: ArchitectureCanvasProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const [nodes, setNodes, onNodesChange] = useNodesState<AppNodeData>(loadedProjectData?.diagram.nodes ?? []);
-  const [edges, setEdges, onEdgesChange] = useEdgesState((loadedProjectData?.diagram.edges ?? []).map((e, index) => ({ ...e, id: e.id ?? `loaded-edge-${index}` })));
+  const editor = useDiagramEditor<AppNodeData>({ nodes: (loadedProjectData?.diagram.nodes ?? []) as Node<AppNodeData>[], edges: (loadedProjectData?.diagram.edges ?? []).map((e, index) => ({ ...e, id: e.id ?? `loaded-edge-${index}` })) });
+  const { history, dispatch: dispatchDiagram, setNodes, setEdges, onNodesChange, onEdgesChange, onConnect } = editor;
+  const { nodes, edges } = history.present;
   const { screenToFlowPosition, getViewport, setViewport, getNodes, getEdges, getIntersectingNodes, deleteElements } = useReactFlow();
-  const [activeTab, setActiveTab] = useState<"chat" | "design" | "evaluate">(loadedProjectData?.evaluation ? "evaluate" : "chat");
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => loadedProjectData?.chatHistory ?? [{ role: "model", content: `こんにちは。「${selectedScenario.title}」について、どのような点から詳細を詰めていきましょうか？` }]);
+  const [activeTab, setActiveTab] = useState<"chat" | "design" | "evaluate">(loadedProjectData?.evaluation ? "evaluate" : initialTab);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => loadedProjectData?.chatHistory ?? [{ role: "model", content: selectedScenario.customMode === 'self_defined'
+    ? `こんにちは。「${selectedScenario.title}」の仕様を一緒に整理します。今わかっている条件から、どの点を確かめましょうか？`
+    : `こんにちは。「${selectedScenario.title}」について、どのような点から詳細を詰めていきましょうか？` }]);
   const [memo, setMemo] = useState(loadedProjectData?.memo ?? "");
+  const [interviewEvidence, setInterviewEvidence] = useState<InterviewEvidence[]>(loadedProjectData?.interviewEvidence ?? []);
+  const [evaluatedKey, setEvaluatedKey] = useState<string | null>(loadedEvaluationKey);
   const [evaluationResult, setEvaluationResult] = useState<EvaluationResult | null>(loadedProjectData?.evaluation ?? null);
   const [isLoading, setIsLoading] = useState(false);
   const [projectId] = useState(() => loadedProjectData?.projectId ?? uuidv4());
   const [notice, setNotice] = useState("");
+  const [leaveWithoutSaving, setLeaveWithoutSaving] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [projectVersion, setProjectVersion] = useState(() => loadedProjectData ? (Number(loadedProjectData.version) + 1).toFixed(1) : "1.0");
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
+  const selectedEdge = edges.find(e => e.id === selectedEdgeId);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const selectedNode = nodes.find(n => n.id === selectedNodeId) ?? null;
-  const setSelectedNode = useCallback((node: Node<AppNodeData> | null) => setSelectedNodeId(node?.id ?? null), []);
+  const setSelectedNode = useCallback((node: Node<AppNodeData> | null) => { setSelectedNodeId(node?.id ?? null); if (node) setSelectedEdgeId(null); }, []);
   const currentScenario = selectedScenario;
-  const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [helpTopic, setHelpTopic] = useState<'index' | 'learning' | null>(null);
+  const [isNoteOpen, setIsNoteOpen] = useState(false);
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const isHelpOpen = helpTopic !== null || isNoteOpen || isReviewOpen;
+  const inspectDesign = (nodeId?: string, edgeId?: string) => {
+    setActiveTab('design'); setMobilePanel(null); setSelectedNodeId(nodeId ?? null); setSelectedEdgeId(edgeId ?? null);
+    requestAnimationFrame(() => { document.getElementById(nodeId ? 'node-label' : 'edge-payload')?.focus(); });
+  };
   const [isMemoOpen, setIsMemoOpen] = useState(true);
   const [isComponentsOpen, setIsComponentsOpen] = useState(true);
-  const [mobilePanel, setMobilePanel] = useState<SidePanel | null>("memo");
+  const [mobilePanel, setMobilePanel] = useState<SidePanel | null>(null);
   const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 760px)").matches);
   const memoToggleRef = useRef<HTMLButtonElement>(null);
   const componentsToggleRef = useRef<HTMLButtonElement>(null);
@@ -141,7 +158,7 @@ function ArchitectureFlow({
   };
   const selectTab = (tab: typeof activeTab) => {
     setActiveTab(tab);
-    setMobilePanel(tab === "design" && isComponentsOpen ? "components" : isMemoOpen ? "memo" : null);
+    setMobilePanel(tab === "design" && isComponentsOpen ? "components" : null);
   };
   const onPanelKeyDown = (event: React.KeyboardEvent, panel: SidePanel) => {
     if (event.key === "Escape") {
@@ -151,12 +168,8 @@ function ArchitectureFlow({
     }
   };
   const evaluationRequest = useRef<AbortController | null>(null);
+  const chatRequest = useRef<AbortController | null>(null);
   useEffect(() => () => evaluationRequest.current?.abort(), []);
-
-  const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => eds.length < 400 ? addEdge(params, eds) : eds),
-    [setEdges]
-  );
 
   // ----------------------------------------------------------------
   // 親子関係を解除する関数 (プロパティパネル用)
@@ -210,7 +223,7 @@ function ArchitectureFlow({
 
       // 重なっているグループノードを探す (type === 'group' で判定)
       const intersections = getIntersectingNodes(node).filter(
-        (n) => n.type === "group"
+        (n) => n.type === "group" && n.data.originalType !== "Security Group"
       );
 
       const targetGroup = intersections[intersections.length - 1];
@@ -228,8 +241,8 @@ function ArchitectureFlow({
         };
 
         // 親のサイズを拡張するか判定
-        const childWidth = node.width || 150;
-        const childHeight = node.height || 40;
+        const childWidth = node.width || NODE_CARD_WIDTH;
+        const childHeight = node.height || NODE_CARD_MIN_HEIGHT;
         const padding = 20;
 
         const requiredWidth = relativePos.x + childWidth + padding;
@@ -307,7 +320,7 @@ function ArchitectureFlow({
         .slice()
         .reverse()
         .find((g) => {
-          if (g.type !== "group") return false;
+          if (g.type !== "group" || g.data.originalType === "Security Group") return false;
           // 自分自身がグループなら入れない
           if (type === "group") return false;
 
@@ -336,8 +349,8 @@ function ArchitectureFlow({
         };
 
         // 親のサイズ拡張チェック
-        const childWidth = 150;
-        const childHeight = 40;
+        const childWidth = NODE_CARD_WIDTH;
+        const childHeight = NODE_CARD_MIN_HEIGHT;
         const padding = 20;
 
         const requiredWidth = finalPosition.x + childWidth + padding;
@@ -381,8 +394,9 @@ function ArchitectureFlow({
         extent: parentNodeId ? "parent" : undefined,
       };
 
-      setNodes((nds) => {
-        let nextNodes = [...nds.map(n => ({ ...n, selected: false })), newNode];
+      dispatchDiagram({ type: 'change', update: graph => {
+        const inserted = insertDiagramNode(graph, newNode);
+        let nextNodes = inserted.nodes;
         if (groupUpdate) {
           nextNodes = nextNodes.map((n) => {
             if (n.id === groupUpdate!.id) {
@@ -400,25 +414,24 @@ function ArchitectureFlow({
             return n;
           });
         }
-        return nextNodes;
-      });
-      setEdges(eds => eds.map(e => ({ ...e, selected: false })));
+        return { ...inserted, nodes: nextNodes };
+      } });
       setSelectedNode(newNode);
       return newNode;
     },
-    [setNodes, setEdges, getNodes, setSelectedNode]
+    [dispatchDiagram, getNodes, setSelectedNode]
   );
 
   const onDrop = useCallback((event: React.DragEvent) => {
     event.preventDefault();
-    addComponent(event.dataTransfer.getData("application/reactflow/label"), screenToFlowPosition({ x: event.clientX, y: event.clientY }));
+    addComponent(event.dataTransfer.getData(COMPONENT_DRAG_TYPE), screenToFlowPosition({ x: event.clientX, y: event.clientY }));
   }, [addComponent, screenToFlowPosition]);
 
   const onAddFromSidebar = (label: string) => {
     const bounds = reactFlowWrapper.current?.getBoundingClientRect();
     if (!bounds) return;
     const isGroup = GROUP_TYPES.includes(label);
-    const width = isGroup ? 300 : 180;
+    const width = isGroup ? 300 : NODE_CARD_WIDTH;
     const height = isGroup ? 200 : 64;
     const center = screenToFlowPosition({ x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 });
     const position = { x: center.x - width / 2, y: center.y - height / 2 };
@@ -448,23 +461,55 @@ function ArchitectureFlow({
   }, [setSelectedNode]);
 
   const onPaneClick = useCallback(() => {
-    setSelectedNode(null);
+    setSelectedNode(null); setSelectedEdgeId(null);
   }, [setSelectedNode]);
 
-  const handleNodeUpdate = useCallback(
-    (id: string, newData: AppNodeData) => {
-      setNodes((nds) =>
-        nds.map((node) => {
-          if (node.id === id) {
-            const updatedNode = { ...node, data: { ...newData } };
-            return updatedNode;
-          }
-          return node;
-        })
-      );
-    },
-    [setNodes]
-  );
+  const handleNodeUpdate = useCallback((id: string, newData: AppNodeData) => {
+    dispatchDiagram({ type: 'change', group: `edit:${id}`, update: graph => ({ ...graph, nodes: graph.nodes.map(node => node.id === id ? { ...node, data: { ...newData } } : node) }) });
+  }, [dispatchDiagram]);
+
+  const [startedAt] = useState(() => new Date().toISOString());
+  const projectData: ProjectSaveData = {
+    schemaVersion: 2, version: projectVersion, timestamp: startedAt, projectId,
+    scenario: publicScenario(currentScenario), memo, chatHistory: chatMessages, interviewEvidence, evaluation: evaluationResult,
+    diagram: { nodes: nodes.map(n => ({ id: n.id, type: n.type || 'custom', position: n.position, data: n.data,
+      style: n.type === 'group' ? { ...n.style, width: n.width ?? n.style?.width, height: n.height ?? n.style?.height } : n.style,
+      parentNode: n.parentNode, extent: n.extent === 'parent' ? 'parent' : undefined,
+    })), edges: edges.map(e => ({ id: e.id, source: e.source, target: e.target, ...(e.data ? { data: e.data } : {}) })) },
+  };
+  const currentKey = evaluationKey(currentScenario, projectData.diagram, interviewEvidence);
+  const evaluationState = !evaluatedKey ? 'unknown' : evaluatedKey === currentKey ? 'current' : 'stale';
+  const draft = { project: projectData, evaluationKey: evaluatedKey };
+  const autosave = useLocalDraft(draft);
+  const returnHome = async () => {
+    chatRequest.current?.abort('leave');
+    evaluationRequest.current?.abort('leave');
+    try { await saveDraft(draft); onBackToSelection(); }
+    catch { setLeaveWithoutSaving(true); setNotice('このブラウザに保存できませんでした。部品名などの入力を確認し、プロジェクト保存でファイルを保存してください。'); }
+  };
+  const undo = () => { setSelectedEdgeId(null); editor.undo(); setSelectedNode(null); };
+  const redo = () => { setSelectedEdgeId(null); editor.redo(); setSelectedNode(null); };
+  const onWorkspaceKeyDown = (event: React.KeyboardEvent) => {
+    if (activeTab !== 'design' || isHelpOpen || (isCompact && (memoVisible || componentsVisible))) return;
+    if ((event.target as HTMLElement).closest('input, textarea, select, [contenteditable=true]')) return;
+    const edgeElement = (event.target as HTMLElement).closest('.react-flow__edge');
+    if (edgeElement && (event.key === 'Enter' || event.key === ' ')) {
+      event.preventDefault(); setSelectedNode(null); setSelectedEdgeId(edgeElement.querySelector('.react-flow__edge-path')?.id ?? null);
+      requestAnimationFrame(() => document.getElementById('edge-payload')?.focus()); return;
+    }
+    const nodeElement = (event.target as HTMLElement).closest('.react-flow__node');
+    if (nodeElement && (event.key === 'Enter' || event.key === ' ')) {
+      const node = nodes.find(item => item.id === nodeElement.getAttribute('data-id'));
+      if (node) {
+        event.preventDefault();
+        setSelectedNode(node);
+        requestAnimationFrame(() => document.getElementById('node-label')?.focus());
+      }
+      return;
+    }
+    if (nodeElement && event.key === 'Escape') setSelectedNode(null);
+    diagramHistoryShortcut(event, undo, redo);
+  };
 
   const onEvaluate = useCallback(async () => {
     const currentNodes = getNodes();
@@ -477,32 +522,22 @@ function ArchitectureFlow({
     const controller = new AbortController();
     evaluationRequest.current = controller;
     setIsLoading(true);
-    const designData = {
-      scenario: publicScenario(currentScenario),
-      nodes: currentNodes.map((n) => {
-        const data = n.data as AppNodeData;
-        return {
-          id: n.id,
-          type: data.originalType || "Unknown",
-          label: data.label,
-          description: data.description || "",
-          parentNode: n.parentNode,
-        };
-      }),
-      edges: currentEdges.map((e) => ({ source: e.source, target: e.target })),
-    };
+    const designData = evaluationInput(currentScenario, currentNodes.map(n => ({ ...n, type: n.type || 'custom' })), currentEdges, interviewEvidence);
+    const requestKey = evaluationKey(currentScenario, { nodes: currentNodes.map(n => ({ ...n, type: n.type || 'custom' })), edges: currentEdges }, interviewEvidence);
     try {
+      checkEvaluationSize(designData);
       const result = parseEvaluation(await postJson(`${API_BASE_URL}/api/evaluate`, designData, controller.signal));
       if (controller.signal.aborted) return;
       setEvaluationResult(result);
+      setEvaluatedKey(requestKey);
       setActiveTab("evaluate");
     } catch (error) {
       if (!controller.signal.aborted) setNotice(error instanceof Error ? error.message : "評価中にエラーが発生しました。");
     } finally {
       evaluationRequest.current = null;
-      if (!controller.signal.aborted) setIsLoading(false);
+      if (!controller.signal.aborted || controller.signal.reason === 'leave') setIsLoading(false);
     }
-  }, [getNodes, getEdges, currentScenario]);
+  }, [getNodes, getEdges, currentScenario, interviewEvidence]);
 
   const onSaveProject = useCallback(async () => {
     setIsSaving(true);
@@ -530,15 +565,17 @@ function ArchitectureFlow({
             source: e.source,
             target: e.target,
             id: e.id,
+            ...(e.data ? { data: e.data } : {}),
           })),
         },
         chatHistory: chatMessages,
-        evaluation: evaluationResult,
+        interviewEvidence,
+        evaluation: evaluationState === "current" ? evaluationResult : null,
       };
       const safeTitle = currentScenario.title.trim() || "untitled";
       const filename = `${safeTitle}_v${projectVersion}.json`;
       saveProjectToLocalFile(payload, filename);
-      setNotice(`「${filename}」をローカルに保存しました。`);
+      setNotice(`「${filename}」をローカルに保存しました。${evaluationResult && evaluationState !== "current" ? "対応が未確認・変更前の評価はファイルに含めていません。" : ""}`);
       setProjectVersion((currentVer) => {
         const v = parseFloat(currentVer) || 1.0;
         return (v + 1.0).toFixed(1);
@@ -554,14 +591,17 @@ function ArchitectureFlow({
     getEdges,
     currentScenario,
     chatMessages,
+    interviewEvidence,
     memo,
     evaluationResult,
+    evaluationState,
     projectVersion,
     projectId,
   ]);
 
   return (
     <div
+      onKeyDown={onWorkspaceKeyDown}
       style={{
         display: "flex",
         flexDirection: "column",
@@ -571,15 +611,26 @@ function ArchitectureFlow({
     >
       <Header
         title={currentScenario.title}
-        onBack={onBackToSelection}
+        onBack={returnHome}
         onSave={onSaveProject}
         isSaving={isSaving}
-        onOpenHelp={() => setIsHelpOpen(true)}
+        onOpenHelp={() => setHelpTopic('index')}
       />
 
+      <div className="draft-status" aria-live="polite" data-state={autosave.status}>
+        {autosave.status === 'saved' ? 'このブラウザに自動保存済み' : autosave.status === 'saving' ? 'このブラウザに保存中…' : '自動保存できません。入力や空き容量を確認し、ファイルにも保存してください。'}
+        {autosave.status === 'error' && <button className="ui-button" onClick={autosave.retry}>保存を再試行</button>}
+      </div>
       {notice && <div role="status" style={{ padding: "8px 20px", background: "#fff3cd", display: "flex", justifyContent: "space-between" }}><span>{notice}</span><button onClick={() => setNotice("")} aria-label="通知を閉じる">閉じる</button></div>}
+      {leaveWithoutSaving && autosave.status !== 'saved' && <div className="draft-exit">
+        <p>保存できなかった変更は失われます。必要な作業は先にJSONファイルへ保存してください。</p>
+        <button className="ui-button" onClick={() => { chatRequest.current?.abort('leave'); evaluationRequest.current?.abort('leave'); onBackToSelection(); }}>ブラウザに保存せずホームへ戻る</button>
+        <button className="ui-button" onClick={() => setLeaveWithoutSaving(false)}>編集を続ける</button>
+      </div>}
 
-      <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
+      {helpTopic && <HelpModal isOpen initialTopic={helpTopic === 'learning' ? 'learning' : undefined} initialHintArea={activeTab === 'design' ? 'diagram' : activeTab === 'evaluate' ? 'reflection' : 'questions'} onClose={() => setHelpTopic(null)} />}
+      <DesignReviewDialog isOpen={isReviewOpen} graph={{ nodes, edges }} memo={memo} onAppend={setMemo} onClose={() => setIsReviewOpen(false)} onInspect={inspectDesign} />
+      <DesignNoteDialog isOpen={isNoteOpen} memo={memo} nodes={nodes} onClose={() => setIsNoteOpen(false)} onAppend={value => { setMemo(value); setNotice('要件メモに記録を追加しました。メモから編集できます。'); }} />
 
       <>
         <div className="workspace-navigation">
@@ -610,6 +661,17 @@ function ArchitectureFlow({
             評価結果
           </button>
         </div>
+        </div>
+
+        <div className="diagram-toolbar" role="group" aria-label="ワークスペースの操作">
+        {activeTab === 'design' && <>
+          <div className="diagram-history" role="group" aria-label="構成図の履歴">
+            <button className="ui-button" onClick={undo} disabled={!history.past.length}>元に戻す</button>
+            <button className="ui-button" onClick={redo} disabled={!history.future.length}>やり直す</button>
+          </div>
+        </>}
+        <button className="panel-toggle learning-hint-trigger" onClick={() => setHelpTopic('learning')} aria-haspopup="dialog"><BiBulb size={18} aria-hidden="true" />設計のヒント</button>
+        <button className="panel-toggle learning-hint-trigger" onClick={() => setIsReviewOpen(true)} aria-haspopup="dialog"><BiNetworkChart size={18} aria-hidden="true" />設計を確かめる</button>
         <div className="workspace-panel-actions" role="group" aria-label="サイドパネルの表示">
           {activeTab === "design" && (
             <button ref={componentsToggleRef} className="panel-toggle" onClick={() => togglePanel("components")} aria-expanded={componentsVisible} aria-controls="components-panel" aria-label="コンポーネントの表示切り替え" title={componentsVisible ? "コンポーネントを閉じる" : "コンポーネントを開く"}>
@@ -621,7 +683,6 @@ function ArchitectureFlow({
           </button>
         </div>
         </div>
-
         <div className="workspace-content" style={{ display: "flex", flex: 1, overflow: "hidden" }}>
           {isCompact && (memoVisible || componentsVisible) && <button className="side-panel-backdrop" aria-label="サイドパネルを閉じる" onClick={() => closePanel(memoVisible ? "memo" : "components")} />}
           <div id="components-panel" className="workspace-side-panel side-panel-left" hidden={!componentsVisible} onKeyDown={event => onPanelKeyDown(event, "components")}>
@@ -642,6 +703,9 @@ function ArchitectureFlow({
                 scenario={currentScenario}
                 messages={chatMessages}
                 onSendMessage={setChatMessages}
+                evidence={interviewEvidence}
+                onUpdateEvidence={setInterviewEvidence}
+                request={chatRequest}
               />
             </div>
             {activeTab === "evaluate" && (
@@ -652,6 +716,10 @@ function ArchitectureFlow({
                   onEvaluate={onEvaluate}
                   isLoading={isLoading}
                   scenario={currentScenario}
+                  freshness={evaluationState}
+                  nodes={nodes}
+                  onInspect={id => inspectDesign(id)}
+                  onReview={() => setIsReviewOpen(true)}
                 />
                 </Suspense>
               </div>
@@ -668,25 +736,22 @@ function ArchitectureFlow({
                 ref={reactFlowWrapper}
                 style={{ flex: 1, height: "100%", position: "relative" }}
               >
-                <ReactFlow
+                <DiagramCanvas
                   nodes={nodes}
                   edges={edges}
+                  miniMap={!isCompact}
                   onNodesChange={onNodesChange}
                   onEdgesChange={onEdgesChange}
                   onConnect={onConnect}
                   onDrop={onDrop}
-                  onDragOver={onDragOver}
-                  onNodeDragStop={onNodeDragStop}
-                  nodeTypes={nodeTypes}
+                  onNodeDragStop={(event, node, moved) => { onNodeDragStop(event, node, moved); editor.finish(); }}
                   onNodeClick={onNodeClick}
                   onPaneClick={onPaneClick}
+                  onEdgeClick={(_, edge) => { setSelectedNode(null); setSelectedEdgeId(edge.id); }}
                   deleteKeyCode={activeTab === "design" && !isHelpOpen && !(isCompact && (memoVisible || componentsVisible)) ? ["Backspace", "Delete"] : null}
                   fitView
                   fitViewOptions={{ maxZoom: 1 }}
                 >
-                  <Background color="#d4dce6" gap={20} size={1} />
-                  <Controls />
-                  <MiniMap />
                   <Panel position="top-right">
                     <button
                       onClick={onEvaluate}
@@ -705,13 +770,20 @@ function ArchitectureFlow({
                       {isLoading ? "AIが評価中..." : "設計完了（評価する）"}
                     </button>
                   </Panel>
-                </ReactFlow>
+                </DiagramCanvas>
 
+                {selectedEdge && <ConnectionPanel key={selectedEdge.id} edge={selectedEdge} nodes={nodes} onClose={() => setSelectedEdgeId(null)} onEditEnd={() => dispatchDiagram({ type: 'finish' })} onDelete={() => { setEdges(current => current.filter(e => e.id !== selectedEdge.id)); setSelectedEdgeId(null); }} onChange={data => dispatchDiagram({ type: 'change', group: `edge:${selectedEdge.id}`, update: graph => ({ ...graph, edges: graph.edges.map(e => e.id === selectedEdge.id ? { ...e, data } : e) }) })} />}
                 {selectedNode && (
                   <PropertiesPanel
+                    key={selectedNode.id}
                     selectedNode={selectedNode}
                     onChange={handleNodeUpdate}
                     onClose={() => setSelectedNode(null)}
+                    onEditEnd={() => dispatchDiagram({ type: 'finish' })}
+                    nodes={nodes}
+                    edges={edges}
+                    onConnect={(source, target) => onConnect({ source, target, sourceHandle: null, targetHandle: null })}
+                    onEditConnection={id => { setSelectedNode(null); setSelectedEdgeId(id); requestAnimationFrame(() => document.getElementById("edge-payload")?.focus()); }}
                     onDetach={handleDetachNode} // 切り離し関数を渡す
                     onDelete={(id) => {
                       deleteElements({ nodes: [{ id }] });
@@ -723,7 +795,7 @@ function ArchitectureFlow({
             </div>
           </div>
           <div id="memo-panel" className="workspace-side-panel side-panel-right" hidden={!memoVisible} onKeyDown={event => onPanelKeyDown(event, "memo")}>
-            <MemoPad value={memo} onChange={setMemo} />
+            <MemoPad value={memo} onChange={setMemo} onAddRecord={() => setIsNoteOpen(true)} />
           </div>
         </div>
       </>
@@ -735,6 +807,8 @@ export function ArchitectureCanvas({
   selectedScenario,
   onBackToSelection,
   loadedProjectData,
+  loadedEvaluationKey = null,
+  initialTab = "chat",
 }: ArchitectureCanvasProps) {
   return (
     <ReactFlowProvider>
@@ -742,6 +816,8 @@ export function ArchitectureCanvas({
         selectedScenario={selectedScenario}
         onBackToSelection={onBackToSelection}
         loadedProjectData={loadedProjectData}
+        loadedEvaluationKey={loadedEvaluationKey}
+        initialTab={initialTab}
       />
     </ReactFlowProvider>
   );

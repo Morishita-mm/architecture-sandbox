@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { BiRocket, BiServer, BiWallet, BiSlider } from "react-icons/bi";
+import { BiBookContent, BiChevronRight, BiMessageSquareDetail, BiRocket, BiServer, BiSlider, BiWallet } from "react-icons/bi";
 
-import type { Scenario, ScenarioDifficulty, PartnerRole } from "../types";
+import type { CustomScenarioMode, PartnerRole, Scenario, ScenarioDifficulty, ScenarioFamily } from "../types";
 
 interface Props {
   initialScenario: Scenario;
@@ -9,298 +9,107 @@ interface Props {
   onCancel: () => void;
 }
 
-export const ScenarioSetup: React.FC<Props> = ({
-  initialScenario,
-  onConfirm,
-  onCancel,
-}) => {
-  const [title, setTitle] = useState(initialScenario.title);
-  const [description, setDescription] = useState(initialScenario.description);
-  const [difficulty, setDifficulty] = useState<ScenarioDifficulty>(initialScenario.difficulty ?? "medium");
-  const [partnerRole, setPartnerRole] = useState<PartnerRole>(initialScenario.partnerRole ?? "ceo");
+const families: { id: ScenarioFamily; title: string; description: string; examples: string }[] = [
+  { id: 'business', title: '社内業務', description: '記録・申請・検索を扱う', examples: '勤怠、顧客管理、備品管理' },
+  { id: 'content', title: 'コンテンツ', description: '情報を投稿・保存・配信する', examples: 'SNS、ブログ、画像・動画共有' },
+  { id: 'realtime', title: 'リアルタイム', description: '情報をすばやく届ける', examples: 'チャット、通知、ライブ更新' },
+  { id: 'transaction', title: '取引・予約', description: '重複や在庫の矛盾を防ぐ', examples: 'EC、予約、フリマ、決済' },
+];
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onConfirm({
-      ...initialScenario,
-      title,
-      description,
-      difficulty,
-      partnerRole,
-    });
+const difficulties: { id: ScenarioDifficulty; title: string; description: string }[] = [
+  { id: 'small', title: '基本', description: '少ない条件から役割と接続を考える' },
+  { id: 'medium', title: '標準', description: '集中アクセスや故障時の条件も扱う' },
+  { id: 'large', title: '発展', description: '複数の優先条件とトレードオフを扱う' },
+];
+
+const partners: { id: PartnerRole; title: string; description: string; icon: React.ReactNode }[] = [
+  { id: 'ceo', title: '非技術系CEO', description: '目的から話し、質問に応じて条件を説明', icon: <BiRocket aria-hidden="true" /> },
+  { id: 'cto', title: '技術責任者（CTO）', description: '品質・運用・技術上のリスクを重視', icon: <BiServer aria-hidden="true" /> },
+  { id: 'cfo', title: '財務担当（CFO）', description: '費用対効果と運用費を重視', icon: <BiWallet aria-hidden="true" /> },
+];
+
+export const ScenarioSetup: React.FC<Props> = ({ initialScenario, onConfirm, onCancel }) => {
+  const [mode, setMode] = useState<CustomScenarioMode>(initialScenario.customMode ?? 'guided');
+  const [title, setTitle] = useState(initialScenario.title === 'カスタム設計（フリーテーマ）' ? '' : initialScenario.title);
+  const [description, setDescription] = useState(initialScenario.description === 'テーマを決め、条件をおまかせするか、自分で仕様を整理して設計します。' ? '' : initialScenario.description);
+  const [family, setFamily] = useState<ScenarioFamily>(initialScenario.scenarioFamily ?? 'business');
+  const [difficulty, setDifficulty] = useState<ScenarioDifficulty>(initialScenario.difficulty ?? 'medium');
+  const [partnerRole, setPartnerRole] = useState<PartnerRole>(initialScenario.partnerRole ?? 'ceo');
+
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    const common = { id: 'custom', title: title.trim(), description: description.trim(), isCustom: true as const, partnerRole, customMode: mode };
+    onConfirm(mode === 'guided' ? { ...common, difficulty, scenarioFamily: family } : common);
   };
 
-  return (
-    <div style={containerStyle}>
-      <div className="setup-card" style={cardStyle}>
-        <h2 style={titleStyle}>
-          <BiSlider style={{ marginRight: '10px', color: 'var(--app-muted)' }} />
-          テーマ設定</h2>
-        <p style={descStyle}>
-          あなたが設計したいシステム（ゲーム、EC、SNSなど）を定義してください。
-          <br />
-          <strong>
-            具体的な数値（トラフィックなど）は、クライアント役のAIとの会話で探る必要があります。
-          </strong>
-        </p>
+  return <main className="scenario-setup-screen">
+    <section className="scenario-setup-card" aria-labelledby="scenario-setup-title">
+      <header className="scenario-setup-header">
+        <BiSlider aria-hidden="true" />
+        <div><p>カスタム設計</p><h1 id="scenario-setup-title">自分のテーマで設計する</h1></div>
+      </header>
 
-        <form onSubmit={handleSubmit}>
-          <div style={formGroupStyle}>
-            <label style={labelStyle}>タイトル (Title)</label>
-            <input
-              style={inputStyle}
-              maxLength={120}
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="例: フリマアプリ、MMORPGのサーバー"
-              required
-            />
+      <form onSubmit={handleSubmit}>
+        <fieldset className="scenario-setup-section">
+          <legend>1. 進め方を選ぶ</legend>
+          <div className="scenario-mode-grid">
+            <label className={mode === 'guided' ? 'scenario-choice is-selected' : 'scenario-choice'}>
+              <input type="radio" name="custom-mode" value="guided" checked={mode === 'guided'} onChange={() => setMode('guided')} />
+              <BiMessageSquareDetail aria-hidden="true" />
+              <span><strong>条件をおまかせ</strong><small>テーマに合う、あらかじめ用意した条件を固定し、AIへの聞き取りから明らかにします。</small></span>
+            </label>
+            <label className={mode === 'self_defined' ? 'scenario-choice is-selected' : 'scenario-choice'}>
+              <input type="radio" name="custom-mode" value="self_defined" checked={mode === 'self_defined'} onChange={() => setMode('self_defined')} />
+              <BiBookContent aria-hidden="true" />
+              <span><strong>自分で仕様を決める</strong><small>書いた条件を基準に設計します。未設定の観点は仕様の不足として確認します。</small></span>
+            </label>
           </div>
+          <p className="scenario-mode-note">{mode === 'guided'
+            ? '開始時に条件セットを一度だけ固定し、途中保存・再開・評価でも同じ条件を使います。詳細条件は聞き取りの中で確認します。'
+            : '隠れた正解は作りません。AIは未記載の条件を勝手に確定せず、追加で決めるべき観点を質問します。'}</p>
+        </fieldset>
 
-          <div style={formGroupStyle}>
-            <label style={labelStyle}>概要 (Description)</label>
-            <textarea
-              style={{ ...inputStyle, minHeight: "80px", resize: "vertical" }}
-              maxLength={2000}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="例: ユーザー同士がアイテムを売買する。画像のやり取りが多い。"
-              required
-            />
-          </div>
+        <div className="scenario-setup-section scenario-fields">
+          <h2>2. テーマを説明する</h2>
+          <label htmlFor="scenario-title">テーマ名</label>
+          <input id="scenario-title" maxLength={120} value={title} onChange={event => setTitle(event.target.value)} placeholder="例：フリマアプリ" required />
+          <label htmlFor="scenario-description">{mode === 'guided' ? '利用者と、できるようにしたいこと' : '利用者・機能・わかっている条件'}</label>
+          <textarea id="scenario-description" maxLength={2000} value={description} onChange={event => setDescription(event.target.value)}
+            placeholder={mode === 'guided' ? '例：利用者同士が商品の写真を載せて売買できる。' : '例：利用者同士が商品を売買する。本人だけが出品を変更でき、同じ商品を二重に購入できないようにしたい。'} required />
+          <p>{mode === 'guided' ? '数値や故障時の条件は、クライアント役への質問で確認します。' : 'まだ決まっていない条件は空いたままで構いません。設計前に確認すべき項目として整理します。'}</p>
+        </div>
 
-          <div style={formGroupStyle}>
-            <label style={labelStyle}>規模感・難易度 (Difficulty)</label>
-            <div style={radioGroupStyle}>
-              <label style={radioLabelStyle(difficulty === "small")}>
-                <input
-                  type="radio"
-                  name="difficulty"
-                  value="small"
-                  checked={difficulty === "small"}
-                  onChange={() => setDifficulty("small")}
-                  style={{ marginRight: "8px" }}
-                />
-                <div>
-                  <div style={{ fontWeight: "bold" }}>★☆☆ 小規模</div>
-                  <div style={{ fontSize: "12px", color: "var(--app-muted)" }}>
-                    社内ツール・個人開発レベル
-                  </div>
-                </div>
-              </label>
+        {mode === 'guided' && <>
+          <fieldset className="scenario-setup-section">
+            <legend>3. 近いサービスの型を選ぶ</legend>
+            <p>完全に一致しなくても、最も重要な利用場面が近いものを選びます。</p>
+            <div className="scenario-family-grid">{families.map(item => <label key={item.id} className={family === item.id ? 'scenario-family is-selected' : 'scenario-family'}>
+              <input type="radio" name="scenario-family" value={item.id} checked={family === item.id} onChange={() => setFamily(item.id)} />
+              <strong>{item.title}</strong><span>{item.description}</span><small>{item.examples}</small>
+            </label>)}</div>
+          </fieldset>
+          <fieldset className="scenario-setup-section">
+            <legend>4. 課題の複雑さ</legend>
+            <div className="scenario-level-grid">{difficulties.map(item => <label key={item.id} className={difficulty === item.id ? 'scenario-level is-selected' : 'scenario-level'}>
+              <input type="radio" name="difficulty" value={item.id} checked={difficulty === item.id} onChange={() => setDifficulty(item.id)} />
+              <strong>{item.title}</strong><small>{item.description}</small>
+            </label>)}</div>
+          </fieldset>
+        </>}
 
-              <label style={radioLabelStyle(difficulty === "medium")}>
-                <input
-                  type="radio"
-                  name="difficulty"
-                  value="medium"
-                  checked={difficulty === "medium"}
-                  onChange={() => setDifficulty("medium")}
-                  style={{ marginRight: "8px" }}
-                />
-                <div>
-                  <div style={{ fontWeight: "bold" }}>★★☆ 中規模</div>
-                  <div style={{ fontSize: "12px", color: "var(--app-muted)" }}>
-                    急成長中のスタートアップ
-                  </div>
-                </div>
-              </label>
+        <fieldset className="scenario-setup-section">
+          <legend>{mode === 'guided' ? '5' : '3'}. 相談相手</legend>
+          <div className="scenario-partner-grid">{partners.map(item => <label key={item.id} className={partnerRole === item.id ? 'scenario-partner is-selected' : 'scenario-partner'}>
+            <input type="radio" name="partner" value={item.id} checked={partnerRole === item.id} onChange={() => setPartnerRole(item.id)} />
+            {item.icon}<span><strong>{item.title}</strong><small>{item.description}</small></span>
+          </label>)}</div>
+        </fieldset>
 
-              <label style={radioLabelStyle(difficulty === "large")}>
-                <input
-                  type="radio"
-                  name="difficulty"
-                  value="large"
-                  checked={difficulty === "large"}
-                  onChange={() => setDifficulty("large")}
-                  style={{ marginRight: "8px" }}
-                />
-                <div>
-                  <div style={{ fontWeight: "bold" }}>★★★ 大規模</div>
-                  <div style={{ fontSize: "12px", color: "var(--app-muted)" }}>
-                    Global・ミッションクリティカル
-                  </div>
-                </div>
-              </label>
-            </div>
-          </div>
-
-          <div style={formGroupStyle}>
-            <label style={labelStyle}>相談相手 (Partner)</label>
-            <div style={radioGroupStyle}>
-              <label style={radioLabelStyle(partnerRole === "ceo")}>
-                <input
-                  type="radio"
-                  name="partner"
-                  value="ceo"
-                  checked={partnerRole === "ceo"}
-                  onChange={() => setPartnerRole("ceo")}
-                  style={{ marginRight: "8px" }}
-                />
-                <div>
-                  <div style={{ fontWeight: "bold" }}>
-                    <BiRocket style={{ marginRight: '8px', color: '#E91E63' }} />
-                    非技術系CEO</div>
-                  <div style={{ fontSize: "12px", color: "var(--app-muted)" }}>
-                    夢を語る・要件がふわっとしている
-                  </div>
-                </div>
-              </label>
-
-              <label style={radioLabelStyle(partnerRole === "cto")}>
-                <input
-                  type="radio"
-                  name="partner"
-                  value="cto"
-                  checked={partnerRole === "cto"}
-                  onChange={() => setPartnerRole("cto")}
-                  style={{ marginRight: "8px" }}
-                />
-                <div>
-                  <div style={{ fontWeight: "bold" }}>
-                    <BiServer style={{ marginRight: '8px', color: 'var(--app-primary)' }} />
-                    技術責任者 (CTO)</div>
-                  <div style={{ fontSize: "12px", color: "var(--app-muted)" }}>
-                    品質・堅牢性重視・SPOF許さない
-                  </div>
-                </div>
-              </label>
-
-              <label style={radioLabelStyle(partnerRole === "cfo")}>
-                <input
-                  type="radio"
-                  name="partner"
-                  value="cfo"
-                  checked={partnerRole === "cfo"}
-                  onChange={() => setPartnerRole("cfo")}
-                  style={{ marginRight: "8px" }}
-                />
-                <div>
-                  <div style={{ fontWeight: "bold" }}>
-                    <BiWallet style={{ marginRight: '8px', color: 'var(--app-success)' }} />
-                    財務担当 (CFO)</div>
-                  <div style={{ fontSize: "12px", color: "var(--app-muted)" }}>
-                    コスト重視・高額な構成に厳しい
-                  </div>
-                </div>
-              </label>
-            </div>
-          </div>
-
-          <div style={buttonGroupStyle}>
-            <button type="button" onClick={onCancel} style={cancelButtonStyle}>
-              戻る
-            </button>
-            <button type="submit" style={confirmButtonStyle}>
-              決定してクライアントと話す →
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
-
-// --- Styles ---
-const containerStyle: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-  minHeight: "100vh",
-  padding: "20px",
-  backgroundColor: "var(--app-bg)",
-};
-
-const cardStyle: React.CSSProperties = {
-  width: "100%",
-  maxWidth: "600px",
-  backgroundColor: "white",
-  borderRadius: "10px",
-  border: "1px solid var(--app-border)",
-  boxShadow: "var(--app-shadow)",
-};
-
-const titleStyle: React.CSSProperties = {
-  marginTop: 0,
-  marginBottom: "10px",
-  color: "var(--app-text)",
-  textAlign: "center",
-};
-
-const descStyle: React.CSSProperties = {
-  marginBottom: "30px",
-  color: "var(--app-muted)",
-  textAlign: "center",
-  lineHeight: "1.5",
-  fontSize: "14px",
-};
-
-const formGroupStyle: React.CSSProperties = {
-  marginBottom: "20px",
-};
-
-const labelStyle: React.CSSProperties = {
-  display: "block",
-  marginBottom: "8px",
-  fontWeight: "bold",
-  color: "var(--app-text)",
-  fontSize: "14px",
-};
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "12px",
-  fontSize: "14px",
-  borderRadius: "6px",
-  border: "1px solid var(--app-border)",
-  backgroundColor: "var(--app-subtle)",
-  fontFamily: "inherit",
-};
-
-const radioGroupStyle: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: "10px",
-};
-
-const radioLabelStyle = (isActive: boolean): React.CSSProperties => ({
-  display: "flex",
-  alignItems: "center",
-  padding: "12px",
-  borderRadius: "6px",
-  border: `1px solid ${isActive ? "var(--app-primary)" : "var(--app-border)"}`,
-  backgroundColor: isActive ? "var(--app-primary-soft)" : "white",
-  cursor: "pointer",
-  transition: "border-color 0.15s, background-color 0.15s",
-});
-
-const buttonGroupStyle: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  marginTop: "40px",
-  gap: "10px",
-};
-
-const confirmButtonStyle: React.CSSProperties = {
-  flex: 2,
-  padding: "12px",
-  backgroundColor: "var(--app-success)",
-  color: "white",
-  border: "none",
-  borderRadius: "6px",
-  fontWeight: "bold",
-  fontSize: "14px",
-  cursor: "pointer",
-};
-
-const cancelButtonStyle: React.CSSProperties = {
-  flex: 1,
-  padding: "12px",
-  backgroundColor: "#f6f8fa",
-  color: "var(--app-text)",
-  border: "1px solid #d1d5da",
-  borderRadius: "6px",
-  fontWeight: "bold",
-  fontSize: "14px",
-  cursor: "pointer",
+        <footer className="scenario-setup-actions">
+          <button type="button" className="ui-button" onClick={onCancel}>戻る</button>
+          <button type="submit" className="ui-button ui-button-success">{mode === 'guided' ? '条件を固定して聞き取りへ' : '仕様を整理しながら始める'}<BiChevronRight aria-hidden="true" /></button>
+        </footer>
+      </form>
+    </section>
+  </main>;
 };

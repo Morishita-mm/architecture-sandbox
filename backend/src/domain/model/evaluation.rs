@@ -1,4 +1,4 @@
-use super::scenario::{Scenario, bounded};
+use super::scenario::{Scenario, ScenarioCondition, bounded};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
@@ -27,6 +27,28 @@ pub struct EvaluationRequest {
     pub scenario: Scenario,
     pub nodes: Vec<DesignNode>,
     pub edges: Vec<DesignEdge>,
+    #[serde(default, rename = "interviewEvidence")]
+    pub interview_evidence: Vec<InterviewEvidence>,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct InterviewEvidence {
+    pub condition_id: String,
+    pub label: String,
+    pub question: String,
+    pub answer: String,
+    pub question_message_index: usize,
+    pub answer_message_index: usize,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct InterviewAssessment {
+    pub confirmed: usize,
+    pub total: usize,
+    pub confirmed_conditions: Vec<ScenarioCondition>,
+    pub missing_conditions: Vec<ScenarioCondition>,
 }
 
 impl EvaluationRequest {
@@ -71,6 +93,44 @@ impl EvaluationRequest {
             && self.edges.iter().all(|e| {
                 nodes.contains_key(e.source.as_str()) && nodes.contains_key(e.target.as_str())
             })
+            && self.interview_evidence.len() <= 100
+            && self
+                .interview_evidence
+                .iter()
+                .map(|item| item.condition_id.as_str())
+                .collect::<HashSet<_>>()
+                .len()
+                == self.interview_evidence.len()
+            && self.interview_evidence.iter().all(|item| {
+                self.scenario.has_condition(&item.condition_id)
+                    && bounded(&item.condition_id, 40)
+                    && bounded(&item.label, 80)
+                    && bounded(&item.question, 4000)
+                    && bounded(&item.answer, 4000)
+                    && item.question_message_index < item.answer_message_index
+                    && item.answer_message_index < 1000
+            })
+    }
+
+    pub fn interview_assessment(&self) -> InterviewAssessment {
+        let confirmed_ids: HashSet<_> = self
+            .interview_evidence
+            .iter()
+            .map(|item| item.condition_id.as_str())
+            .collect();
+        let catalog = self.scenario.condition_catalog();
+        let (confirmed_conditions, missing_conditions): (
+            Vec<ScenarioCondition>,
+            Vec<ScenarioCondition>,
+        ) = catalog
+            .into_iter()
+            .partition(|condition| confirmed_ids.contains(condition.id.as_str()));
+        InterviewAssessment {
+            confirmed: confirmed_conditions.len(),
+            total: confirmed_conditions.len() + missing_conditions.len(),
+            confirmed_conditions,
+            missing_conditions,
+        }
     }
 }
 
@@ -81,6 +141,8 @@ pub struct EvaluationResult {
     pub details: Scores,
     pub feedback: String,
     pub improvement: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub interview: Option<InterviewAssessment>,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -95,6 +157,21 @@ pub struct Scores {
 }
 
 impl EvaluationResult {
+    pub fn mean_score(&self) -> u8 {
+        let d = &self.details;
+        let sum: u16 = [
+            d.availability,
+            d.scalability,
+            d.security,
+            d.maintainability,
+            d.cost_efficiency,
+            d.feasibility,
+        ]
+        .iter()
+        .map(|value| *value as u16)
+        .sum();
+        ((sum + 3) / 6) as u8
+    }
     pub fn validate(&self) -> bool {
         [
             self.total_score,
@@ -109,5 +186,44 @@ impl EvaluationResult {
         .all(|s| *s <= 100)
             && bounded(&self.feedback, 12000)
             && bounded(&self.improvement, 12000)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn duplicate_score_keys_are_not_silently_accepted() {
+        // Observed from the real provider despite application/json mode.
+        let response = r#"{"totalScore":31,"details":{"availability":10,"scalability":50,"scalability":50,"security":40,"maintainability":30,"costEfficiency":50,"feasibility":50},"feedback":"根拠","improvement":"改善"}"#;
+        assert!(serde_json::from_str::<EvaluationResult>(response).is_err());
+    }
+
+    #[test]
+    fn mean_is_bounded_and_rounds_half_up_including_zero() {
+        for (values, expected) in [
+            ([0, 0, 0, 0, 0, 0], 0),
+            ([100; 6], 100),
+            ([0, 0, 0, 0, 0, 3], 1),
+            ([10, 20, 30, 40, 50, 60], 35),
+        ] {
+            let result = EvaluationResult {
+                total_score: 99,
+                details: Scores {
+                    availability: values[0],
+                    scalability: values[1],
+                    security: values[2],
+                    maintainability: values[3],
+                    cost_efficiency: values[4],
+                    feasibility: values[5],
+                },
+                feedback: "根拠".into(),
+                improvement: "改善".into(),
+                interview: None,
+            };
+            assert!(result.validate());
+            assert_eq!(result.mean_score(), expected);
+        }
     }
 }

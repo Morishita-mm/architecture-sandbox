@@ -1,192 +1,47 @@
-import React, { useState } from "react";
-import { NODE_CATEGORIES, type NodeCategory } from "../constants/nodeTypes";
+import { startComponentDrag } from '../utils/useDiagramEditor';
+import { useState } from 'react';
+import { NODE_CATEGORIES } from '../constants/nodeTypes';
+import { basicComponents, componentCategoryNames, componentGuides } from '../constants/componentGuides';
+import { ComponentHelpDialog } from './ComponentHelpDialog';
 
 export const Sidebar = ({ onAdd }: { onAdd: (type: string) => void }) => {
-  // アコーディオンの開閉状態管理 (初期値として主要なカテゴリを開いておく)
-  const [openCategories, setOpenCategories] = useState<string[]>([
-    "client",
-    "traffic",
-    "compute",
-    "database",
-  ]);
+  const [openCategories, setOpenCategories] = useState(['client', 'traffic', 'compute', 'database', 'integration']);
+  const [query, setQuery] = useState('');
+  const [showAll, setShowAll] = useState(true);
+  const [help, setHelp] = useState<{ type: string; trigger: HTMLButtonElement } | null>(null);
+  const words = query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+  const categories = NODE_CATEGORIES.map(category => ({ ...category, items: category.items.filter(item => {
+    const guide = componentGuides[item.type];
+    const searchable = [item.label, ...Object.values(guide)].join(' ').toLocaleLowerCase();
+    return words.length ? words.every(word => searchable.includes(word)) : showAll || basicComponents.has(item.type);
+  }) })).filter(category => category.items.length);
 
-  const toggleCategory = (id: string) => {
-    setOpenCategories((prev) =>
-      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
-    );
-  };
-
-  // ドラッグ開始時の処理
-  const onDragStart = (
-    event: React.DragEvent,
-    nodeType: string,
-    label: string,
-    color: string,
-    bgColor: string
-  ) => {
-    // ReactFlowのノードタイプとしては 'default' を使用し、
-    // ラベルで論理的な種類を区別します
-    event.dataTransfer.setData("application/reactflow/type", nodeType);
-    event.dataTransfer.setData("application/reactflow/label", label);
-    // スタイル適用のため色情報を渡す
-    event.dataTransfer.setData("application/reactflow/color", color);
-    event.dataTransfer.setData("application/reactflow/bgcolor", bgColor);
-    event.dataTransfer.effectAllowed = "move";
-  };
-
-  return (
-    <aside className="component-sidebar" style={sidebarStyle} aria-label="コンポーネント" tabIndex={-1}>
-      <h2 className="side-panel-heading" style={descriptionStyle}>コンポーネント</h2>
-      <p className="component-sidebar-hint">選択して追加<span className="component-drag-hint">・ドラッグで配置</span></p>
-
-      <div style={{ flex: 1, overflowY: "auto" }}>
-        {NODE_CATEGORIES.map((category) => (
-          <CategorySection
-            key={category.id}
-            category={category}
-            isOpen={openCategories.includes(category.id)}
-            onToggle={() => toggleCategory(category.id)}
-            onDragStart={onDragStart}
-            onAdd={onAdd}
-          />
-        ))}
-      </div>
-    </aside>
-  );
-};
-
-// --- サブコンポーネント: カテゴリセクション ---
-const CategorySection = ({
-  category,
-  isOpen,
-  onToggle,
-  onDragStart,
-  onAdd,
-}: {
-  category: NodeCategory;
-  isOpen: boolean;
-  onToggle: () => void;
-  onAdd: (type: string) => void;
-  onDragStart: (
-    e: React.DragEvent,
-    type: string,
-    label: string,
-    color: string,
-    bgColor: string
-  ) => void;
-}) => {
-  return (
-    <div style={{ marginBottom: "10px" }}>
-      <button
-        aria-expanded={isOpen}
-        onClick={onToggle}
-        style={{
-          ...headerStyle,
-          borderLeft: `3px solid ${category.color}`,
-          backgroundColor: isOpen ? "var(--app-subtle)" : "transparent",
-        }}
-      >
-        <span style={{ fontWeight: "bold", color: "var(--app-text)" }}>
-          {category.label}
-        </span>
-        <span style={{ fontSize: "12px", color: "#888" }}>
-          {isOpen ? "▼" : "▶"}
-        </span>
-      </button>
-
-      {isOpen && (
-        <div style={listStyle}>
-          {category.items.map((item) => (
-            <button
-              key={item.type}
-              className="dndnode"
-              type="button"
-              onClick={() => onAdd(item.type)}
-              onDragStart={(event) =>
-                onDragStart(
-                  event,
-                  "default",
-                  item.label,
-                  category.color,
-                  category.bgColor
-                )
-              }
-              draggable
-              style={{
-                ...nodeStyle,
-                borderColor: "var(--app-border)",
-                // サイドバー上の見た目は白背景でスッキリさせる
-                backgroundColor: "var(--component-background, white)",
-              }}
-            >
-              <span
-                style={{
-                  width: "8px",
-                  height: "8px",
-                  borderRadius: "50%",
-                  backgroundColor: category.color,
-                  marginRight: "8px",
-                }}
-              />
-              {item.label}
-            </button>
-          ))}
-        </div>
-      )}
+  return <aside className="component-sidebar" aria-label="コンポーネント" tabIndex={-1}>
+    <h2 className="side-panel-heading">コンポーネント</h2>
+    <p className="component-sidebar-hint">選択して追加<span className="component-drag-hint">・ドラッグで配置</span></p>
+    <label className="component-search">名前・やりたいこと
+      <input type="search" value={query} onChange={event => setQuery(event.target.value)} aria-label="部品を検索" placeholder="画像、保存、通知…" />
+    </label>
+    <button className="component-library-toggle" aria-pressed={showAll} onClick={() => setShowAll(!showAll)}>{showAll ? '基本の8種類に戻す' : '全32種類を見る'}</button>
+    <div className="component-list">
+      {!categories.length && <p>該当する部品がありません。別の目的や名前で検索してください。</p>}
+      {categories.map(category => {
+        const open = words.length > 0 || openCategories.includes(category.id);
+        return <section key={category.id} className="component-category">
+          <button className="component-category-heading" aria-label={`${componentCategoryNames[category.id]} (${category.label})`} aria-expanded={open} style={{ borderLeftColor: category.color }} onClick={() => setOpenCategories(previous => previous.includes(category.id) ? previous.filter(id => id !== category.id) : [...previous, category.id])}>
+            {componentCategoryNames[category.id]} <span aria-hidden="true">{open ? '▼' : '▶'}</span>
+          </button>
+          {open && category.items.map(item => {
+            const guide = componentGuides[item.type];
+            return <div key={item.type} className="component-item">
+                <button className="dndnode" type="button" aria-label={item.label} onClick={() => onAdd(item.type)} draggable onDragStart={event => startComponentDrag(event, item.type)}><span>{item.label}</span><small>{guide.name}</small></button>
+                {/* Separate native buttons share one card; pressing help must not add or drag a node. */}
+                <button className="component-info" aria-label={`${item.label}の説明`} aria-haspopup="dialog" aria-expanded={help?.type === item.type} aria-controls="component-help-dialog" onClick={event => setHelp({ type: item.type, trigger: event.currentTarget })}>?</button>
+            </div>;
+          })}
+        </section>;
+      })}
     </div>
-  );
-};
-
-// --- Styles ---
-const sidebarStyle: React.CSSProperties = {
-  width: "100%",
-  borderRight: "1px solid var(--app-border)",
-  padding: "8px 12px 16px",
-  backgroundColor: "#fff",
-  display: "flex",
-  flexDirection: "column",
-  height: "100%",
-};
-
-const descriptionStyle: React.CSSProperties = {
-  marginBottom: "2px",
-  fontSize: "14px",
-  fontWeight: "bold",
-  color: "var(--app-muted)",
-};
-
-const headerStyle: React.CSSProperties = {
-  width: "100%",
-  border: "none",
-  padding: "9px 10px",
-  cursor: "pointer",
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  fontSize: "12px",
-  borderRadius: "0 4px 4px 0",
-  marginBottom: "5px",
-  transition: "background-color 0.2s",
-};
-
-const listStyle: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: "6px",
-  paddingLeft: "8px",
-  paddingBottom: "10px",
-};
-
-const nodeStyle: React.CSSProperties = {
-  width: "100%",
-  textAlign: "left",
-  minHeight: "36px",
-  padding: "7px 10px",
-  border: "1px solid var(--app-border)",
-  borderRadius: "6px",
-  cursor: "grab",
-  fontSize: "13px",
-  display: "flex",
-  alignItems: "center",
-  color: "var(--app-text)",
+    {help && <ComponentHelpDialog initialType={help.type} trigger={help.trigger} onClose={() => setHelp(null)} />}
+  </aside>;
 };

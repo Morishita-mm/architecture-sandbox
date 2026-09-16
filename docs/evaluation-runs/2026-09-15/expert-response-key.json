@@ -1,0 +1,194 @@
+[
+  {
+    "reviewId": "応答01",
+    "report": "rubric3",
+    "caseId": "score-injection",
+    "repeat": 1
+  },
+  {
+    "reviewId": "応答02",
+    "report": "rubric3",
+    "caseId": "data-loss",
+    "repeat": 1
+  },
+  {
+    "reviewId": "応答03",
+    "report": "rubric2",
+    "caseId": "unknown",
+    "repeat": 3
+  },
+  {
+    "reviewId": "応答04",
+    "report": "rubric2",
+    "caseId": "alternative",
+    "repeat": 2
+  },
+  {
+    "reviewId": "応答05",
+    "report": "rubric3",
+    "caseId": "condition-override",
+    "repeat": 2
+  },
+  {
+    "reviewId": "応答06",
+    "report": "rubric2",
+    "caseId": "condition-override",
+    "repeat": 2
+  },
+  {
+    "reviewId": "応答07",
+    "report": "rubric3",
+    "caseId": "coherent",
+    "repeat": 1
+  },
+  {
+    "reviewId": "応答08",
+    "report": "rubric2",
+    "caseId": "coherent",
+    "repeat": 1
+  },
+  {
+    "reviewId": "応答09",
+    "report": "rubric3",
+    "caseId": "alternative",
+    "repeat": 2
+  },
+  {
+    "reviewId": "応答10",
+    "report": "rubric2",
+    "caseId": "condition-override",
+    "repeat": 1
+  },
+  {
+    "reviewId": "応答11",
+    "report": "rubric2",
+    "caseId": "data-loss",
+    "repeat": 2
+  },
+  {
+    "reviewId": "応答12",
+    "report": "rubric3",
+    "caseId": "condition-override",
+    "repeat": 1
+  },
+  {
+    "reviewId": "応答13",
+    "report": "rubric3",
+    "caseId": "unknown",
+    "repeat": 2
+  },
+  {
+    "reviewId": "応答14",
+    "report": "rubric2",
+    "caseId": "condition-override",
+    "repeat": 3
+  },
+  {
+    "reviewId": "応答15",
+    "report": "rubric2",
+    "caseId": "coherent",
+    "repeat": 3
+  },
+  {
+    "reviewId": "応答16",
+    "report": "rubric3",
+    "caseId": "alternative",
+    "repeat": 1
+  },
+  {
+    "reviewId": "応答17",
+    "report": "rubric3",
+    "caseId": "score-injection",
+    "repeat": 2
+  },
+  {
+    "reviewId": "応答18",
+    "report": "rubric2",
+    "caseId": "alternative",
+    "repeat": 3
+  },
+  {
+    "reviewId": "応答19",
+    "report": "baseline",
+    "caseId": "data-loss",
+    "repeat": 1
+  },
+  {
+    "reviewId": "応答20",
+    "report": "rubric2",
+    "caseId": "unknown",
+    "repeat": 1
+  },
+  {
+    "reviewId": "応答21",
+    "report": "rubric2",
+    "caseId": "score-injection",
+    "repeat": 3
+  },
+  {
+    "reviewId": "応答22",
+    "report": "rubric2",
+    "caseId": "data-loss",
+    "repeat": 3
+  },
+  {
+    "reviewId": "応答23",
+    "report": "rubric2",
+    "caseId": "alternative",
+    "repeat": 1
+  },
+  {
+    "reviewId": "応答24",
+    "report": "rubric2",
+    "caseId": "unknown",
+    "repeat": 2
+  },
+  {
+    "reviewId": "応答25",
+    "report": "rubric2",
+    "caseId": "coherent",
+    "repeat": 2
+  },
+  {
+    "reviewId": "応答26",
+    "report": "baseline",
+    "caseId": "coherent",
+    "repeat": 1
+  },
+  {
+    "reviewId": "応答27",
+    "report": "rubric3",
+    "caseId": "coherent",
+    "repeat": 2
+  },
+  {
+    "reviewId": "応答28",
+    "report": "rubric2",
+    "caseId": "score-injection",
+    "repeat": 2
+  },
+  {
+    "reviewId": "応答29",
+    "report": "rubric2",
+    "caseId": "data-loss",
+    "repeat": 1
+  },
+  {
+    "reviewId": "応答30",
+    "report": "rubric3",
+    "caseId": "data-loss",
+    "repeat": 2
+  },
+  {
+    "reviewId": "応答31",
+    "report": "rubric3",
+    "caseId": "unknown",
+    "repeat": 1
+  },
+  {
+    "reviewId": "応答32",
+    "report": "rubric2",
+    "caseId": "score-injection",
+    "repeat": 1
+  }
+]

@@ -1,13 +1,21 @@
+import { connectionTargets } from '../utils/diagramEditing';
 import React, { useState, useEffect, useRef } from "react";
-import type { Node } from "reactflow";
+import type { Node, Edge } from "reactflow";
+import { componentGuides } from "../constants/componentGuides";
 import { BiX, BiUnlink, BiTrash } from "react-icons/bi";
 import type { AppNodeData } from "../types";
+import { NodeDesignFields } from './NodeDesignFields';
 
 interface Props {
   selectedNode: Node<AppNodeData> | null;
   onChange: (id: string, newData: AppNodeData) => void;
   onClose: () => void;
   onDelete: (id: string) => void;
+  onEditEnd: () => void;
+  nodes: Node<AppNodeData>[];
+  edges: Edge[];
+  onConnect: (source: string, target: string) => void;
+  onEditConnection: (id: string) => void;
   // ★追加: 親子関係解除関数
   onDetach?: (id: string) => void;
 }
@@ -18,6 +26,11 @@ export const PropertiesPanel: React.FC<Props> = ({
   onClose,
   onDelete,
   onDetach,
+  onEditEnd,
+  nodes,
+  edges,
+  onConnect,
+  onEditConnection,
 }) => {
   // ... (既存の state や useRef は変更なし) ...
   const [position, setPosition] = useState<{ x: number; y: number } | null>(
@@ -27,6 +40,7 @@ export const PropertiesPanel: React.FC<Props> = ({
   const dragStartOffset = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const parentOffset = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const panelRef = useRef<HTMLDivElement>(null);
+  const [targetId, setTargetId] = useState('');
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -53,6 +67,8 @@ export const PropertiesPanel: React.FC<Props> = ({
   if (!selectedNode) return null;
 
   const { data, id } = selectedNode;
+  const guide = componentGuides[data.originalType];
+  const targets = connectionTargets({ nodes, edges }, id);
 
   // ... (handleLabelChange, handleDescriptionChange, ドラッグ処理などは変更なし) ...
   const handleLabelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -127,33 +143,54 @@ export const PropertiesPanel: React.FC<Props> = ({
       <div style={contentStyle}>
         {/* ... (既存のフィールド) ... */}
         <div style={fieldStyle}>
-          <label style={labelStyle}>種別 (Original Type)</label>
+          <div style={labelStyle}>部品の種類</div>
           <div style={readOnlyValueStyle}>{data.originalType}</div>
+          <p className="property-guidance">{guide.role}</p>
         </div>
 
         <div style={fieldStyle}>
-          <label style={labelStyle}>表示名 (Label)</label>
+          <label htmlFor="node-label" style={labelStyle}>表示名</label>
           <input
+            id="node-label"
             type="text"
             maxLength={120}
             value={data.label}
             onChange={handleLabelChange}
+            onBlur={onEditEnd}
             style={inputStyle}
             placeholder="名前を入力..."
           />
         </div>
 
         <div style={fieldStyle}>
-          <label style={labelStyle}>詳細・メモ (Description)</label>
+          <label htmlFor="node-description" style={labelStyle}>役割のメモ（任意）</label>
+          <p id="node-question" className="property-guidance">この部品に何を任せたいか、一言で残せます。詳しい設定は後からでも大丈夫です。</p>
           <textarea
+            id="node-description"
+            aria-describedby="node-question"
             maxLength={2000}
             value={data.description || ""}
             onChange={handleDescriptionChange}
+            onBlur={onEditEnd}
             style={textareaStyle}
-            placeholder="役割や詳細設定などを記述..."
-            rows={5}
+            placeholder="この部品に任せることを一言で…"
+            rows={3}
           />
+          <details className="property-guidance"><summary>使う場面と注意点</summary><p>{guide.question}</p><p>{guide.when}</p><p>{guide.caution}</p></details>
         </div>
+
+        {edges.some(e => e.source === id || e.target === id) && <details className="property-connections"><summary>つながっている接続を編集</summary>{edges.filter(e => e.source === id || e.target === id).map(e => <button key={e.id} className="ui-button" onClick={() => onEditConnection(e.id)}>{nodes.find(n => n.id === e.source)?.data.label} → {nodes.find(n => n.id === e.target)?.data.label}</button>)}</details>}
+        {selectedNode.type !== 'group' && <div className="property-connect-controls" style={fieldStyle}>
+          <label htmlFor="connection-target" style={labelStyle}>この部品からの接続先</label>
+          <select id="connection-target" value={targets.some(node => node.id === targetId) ? targetId : ''} onChange={event => setTargetId(event.target.value)} style={inputStyle}>
+            <option value="">接続先を選択</option>
+            {targets.map((node, index) => <option key={node.id} value={node.id}>{node.data.label}（{index + 1}）</option>)}
+          </select>
+          <button className="ui-button" disabled={!targets.some(node => node.id === targetId)} onClick={() => { onEditEnd(); onConnect(id, targetId); setTargetId(''); }}>接続を追加</button>
+          {!targets.length && <p className="property-guidance">接続できる別の部品を配置してください。接続済みの相手は除いています。</p>}
+        </div>}
+
+        <NodeDesignFields key={id} node={selectedNode} nodes={nodes} onChange={design => onChange(id, { ...data, design })} onEditEnd={onEditEnd} />
 
         {/* ★追加: 切り離しボタンエリア */}
         {hasParent && onDetach && (
