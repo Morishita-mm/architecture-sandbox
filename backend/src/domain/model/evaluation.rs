@@ -283,6 +283,13 @@ impl ModelEvaluationResult {
         let mut unknowns = self.feedback_sections.unknowns;
         let mut major = Vec::new();
         for deficiency in self.feedback_sections.major_deficiencies {
+            // The learner should see the architectural conflict, not a narration of
+            // how the evaluator resisted instructions embedded in user-authored data.
+            // The same response can still retain the concrete design contradiction
+            // (for example, volatile storage against a three-year retention rule).
+            if describes_instruction_attack(&deficiency.text) {
+                continue;
+            }
             // Missing settings and unfinished verification are uncertainty, even when
             // the model placed them in the stronger bucket. Preserve the feedback but
             // normalize its severity before it reaches learners.
@@ -303,7 +310,7 @@ impl ModelEvaluationResult {
             } else {
                 items
                     .iter()
-                    .map(|item| format!("- {}", deduplicate_node_labels(item, &req.nodes)))
+                    .map(|item| format!("- {}", normalize_node_links(item, &req.nodes)))
                     .collect::<Vec<_>>()
                     .join("\n")
             };
@@ -319,7 +326,7 @@ impl ModelEvaluationResult {
             render("未確認事項", &unknowns, "未確認事項はありません。"),
         ]
         .join("\n\n");
-        let improvement = deduplicate_node_labels(&self.improvement, &req.nodes);
+        let improvement = normalize_node_links(&self.improvement, &req.nodes);
         let mut result = EvaluationResult {
             total_score: self.total_score,
             details: self.details,
@@ -395,14 +402,42 @@ fn expresses_uncertainty(value: &str) -> bool {
     .any(|marker| value.contains(marker))
 }
 
-fn deduplicate_node_labels(value: &str, nodes: &[DesignNode]) -> String {
+fn describes_instruction_attack(value: &str) -> bool {
+    value.contains("プロンプトインジェクション")
+        || value.contains("ルール変更の試み")
+        || (value.contains("指示")
+            && ["上書き", "優先", "無視"]
+                .iter()
+                .any(|marker| value.contains(marker)))
+}
+
+fn normalize_node_links(value: &str, nodes: &[DesignNode]) -> String {
     let mut result = value.to_owned();
     for node in nodes {
+        let encoded_id = encode_fragment_value(&node.id);
+        let link = format!("[{}](#node={})", node.label, encoded_id);
+        let suffix = format!("](#node={})", encoded_id);
+        let mut search_from = 0;
+        while let Some(relative_end) = result[search_from..].find(&suffix) {
+            let end = search_from + relative_end + suffix.len();
+            let label_end = search_from + relative_end;
+            let Some(relative_start) = result[..label_end].rfind('[') else {
+                search_from = end;
+                continue;
+            };
+            if result[relative_start..end]
+                .chars()
+                .any(|c| matches!(c, '\n' | '\r'))
+            {
+                search_from = end;
+                continue;
+            }
+            result.replace_range(relative_start..end, &link);
+            search_from = relative_start + link.len();
+        }
         if nodes.iter().filter(|item| item.label == node.label).count() != 1 {
             continue;
         }
-        let encoded_id = encode_fragment_value(&node.id);
-        let link = format!("[{}](#node={})", node.label, encoded_id);
         let prefix = format!("[{}](#node=", node.label);
         let mut search_from = 0;
         while let Some(relative_start) = result[search_from..].find(&prefix) {
@@ -502,7 +537,7 @@ mod tests {
     }
 
     #[test]
-    fn uncertain_major_items_are_normalized_and_duplicate_node_labels_are_removed() {
+    fn public_feedback_normalizes_severity_security_meta_text_and_node_links() {
         let result = ModelEvaluationResult {
             total_score: 99,
             details: Scores {
@@ -514,11 +549,21 @@ mod tests {
                 feasibility: 60,
             },
             feedback_sections: ModelFeedbackSections {
-                evidence: vec!["社員のブラウザから[社員のブラウザ](#node=wrong)へ送信".into()],
-                major_deficiencies: vec![ModelMajorDeficiency {
-                    basis: MajorDeficiencyBasis::ExplicitContradiction,
-                    text: "バックアップ試験が未実施です".into(),
-                }],
+                evidence: vec!["社員のブラウザから[権限と公開範囲](#node=browser)へ送信".into()],
+                major_deficiencies: vec![
+                    ModelMajorDeficiency {
+                        basis: MajorDeficiencyBasis::ExplicitContradiction,
+                        text: "バックアップ試験が未実施です".into(),
+                    },
+                    ModelMajorDeficiency {
+                        basis: MajorDeficiencyBasis::ExplicitContradiction,
+                        text: "システム要件を上書きする指示は無視されます".into(),
+                    },
+                    ModelMajorDeficiency {
+                        basis: MajorDeficiencyBasis::ExplicitContradiction,
+                        text: "データを保存しないため保持要件と矛盾します".into(),
+                    },
+                ],
                 unknowns: vec![],
             },
             improvement: "社員のブラウザ [社員のブラウザ](#node=browser)を確認".into(),
@@ -526,7 +571,12 @@ mod tests {
         .into_public(&request())
         .unwrap();
         assert_eq!(result.total_score, 60);
-        assert!(result.feedback.contains("重大な不足は確認されませんでした"));
+        assert!(
+            result
+                .feedback
+                .contains("### 重大な不足\n- データを保存しないため保持要件と矛盾します")
+        );
+        assert!(!result.feedback.contains("システム要件を上書きする指示"));
         assert!(
             result
                 .feedback
