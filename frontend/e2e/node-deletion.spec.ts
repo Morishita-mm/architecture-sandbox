@@ -98,7 +98,7 @@ test('deletion keys edit text and cannot delete the hidden design from other tab
   await label.press('Home');
   await label.press('Delete');
   await expect(label).toHaveValue('PI');
-  const description = page.getByPlaceholder('役割や詳細設定などを記述...');
+  const description = page.getByLabel('役割のメモ（任意）', { exact: true });
   await description.fill('Memo!');
   await description.press('Backspace');
   await expect(description).toHaveValue('Memo');

@@ -1,0 +1,48 @@
+.canvas-node {
+  --node-accent: #64748b;
+  padding: 7px 12px;
+  border: 1px solid #cbd5e1; border-radius: 10px; background: #fff; color: #243247;
+  position: relative; text-align: left;
+  box-shadow: 0 2px 3px #24364b06, 0 5px 14px #24364b08, inset 3px 0 0 color-mix(in srgb, var(--node-accent) 72%, white);
+  transition: border-color .15s, box-shadow .15s;
+}
+.canvas-node:hover { border-color: #a2b4cd; box-shadow: 0 3px 12px #24364b13, inset 3px 0 0 var(--node-accent); }
+.canvas-node-heading { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.canvas-node-icon { display: grid; place-items: center; flex: 0 0 29px; height: 29px; border-radius: 7px; background: color-mix(in srgb, var(--node-accent) 10%, white); color: color-mix(in srgb, var(--node-accent) 55%, #243349); font-size: 19px; }
+.canvas-node-copy { min-width: 0; flex: 1; }
+.canvas-node-name { font-size: 13px; font-weight: 650; line-height: 18px; overflow-wrap: anywhere; }
+.canvas-node-subtitle { margin-top: 1px; color: #68788e; font-size: 10px; line-height: 12px; overflow-wrap: anywhere; }
+.canvas-node-note { position: absolute; bottom: 5px; right: 5px; color: #8393a8; font-size: 11px; line-height: 1; }
+.canvas-node.is-selected { border-color: #3674e9; box-shadow: 0 0 0 3px #2563eb18, 0 5px 16px #24364b0d, inset 3px 0 0 #3674e9; }
+.canvas-node.is-traced { outline: 3px solid #b4cdfa; outline-offset: 3px; }
+.canvas-node.is-stopped { border-style: dashed; background: #fffcf8; }
+.canvas-node-status { display: flex; align-items: center; gap: 5px; margin-top: 7px; padding-top: 6px; border-top: 1px solid #f2e1cc; color: #9b541e; font-size: 11px; font-weight: 600; line-height: 16px; }
+.canvas-node-status svg { font-size: 14px; }
+.canvas-node-fixed { margin-top: 5px; color: #68788e; font-size: 10px; }
+.canvas-node-step { position: absolute; left: -12px; top: -12px; display: grid; place-items: center; width: 24px; height: 24px; background: #2563eb; color: white; border: 2px solid white; border-radius: 50%; font-size: 11px; font-weight: 700; box-shadow: 0 1px 4px #2563eb30; z-index: 3; }
+.canvas-node .react-flow__handle { width: 20px; height: 20px; border: 0; background: transparent; z-index: 2; }
+.canvas-node .react-flow__handle::after { content: ''; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 8px; height: 8px; border: 1.5px solid #8193aa; border-radius: 50%; background: white; box-shadow: 0 0 0 2px white; pointer-events: none; }
+.canvas-node .react-flow__handle.source::after { background: #8193aa; }
+.canvas-node .react-flow__handle:hover::after, .canvas-node .react-flow__handle.connecting::after { background: #2563eb; border-color: #2563eb; }
+.diagram-edge-casing { fill: none; stroke: #fff; stroke-width: 6px; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.react-flow__edge.animated .diagram-edge-casing { stroke-dasharray: none; animation: none; }
+.react-flow__edge:hover .react-flow__edge-path { stroke: #2563eb; }
+.react-flow__edge.selected .react-flow__edge-path { stroke: #2563eb; }
+.react-flow__edge-text { paint-order: stroke; }
+.react-flow__controls { border: 1px solid #dce4ed; border-radius: 9px; overflow: hidden; box-shadow: 0 2px 8px #24364b0a; }
+.react-flow__controls-button { background: #fff; border-bottom-color: #e8edf3; fill: #53657c; }
+@media (pointer: coarse) { .canvas-node .react-flow__handle { width: 28px; height: 28px; } }
+@media (prefers-reduced-motion: reduce) { .react-flow__edge.animated path { animation: none; } }
+.diagram-packet { pointer-events: none; offset-rotate: auto; animation: diagram-packet-forward 1.2s linear both; }
+.diagram-packet.is-reverse { animation-name: diagram-packet-reverse; }
+@keyframes diagram-packet-forward { from { offset-distance: 0%; } to { offset-distance: 100%; } }
+@keyframes diagram-packet-reverse { from { offset-distance: 100%; } to { offset-distance: 0%; } }
+@media (prefers-reduced-motion: reduce) { .diagram-packet, .diagram-packet.is-reverse { animation: none; offset-distance: 50%; } }
+
+.canvas-node-screen { margin-top: 2px; min-height: 16px; font-size: 11px; line-height: 16px; color: #68788e; overflow-wrap: anywhere; }
+.canvas-node-screen.is-success { color: #166449; font-weight: 650; }
+.canvas-node-screen.is-blocked { color: #a33b23; font-weight: 650; }
+.canvas-node-screen.is-waiting { color: #2358a5; }
+.canvas-node-action { display: block; width: 100%; min-height: 36px; margin-top: 7px; padding: 6px; border: 1px solid #b8cef4; border-radius: 6px; background: #eef4ff; color: #17499b; font: inherit; font-size: 11px; font-weight: 650; cursor: pointer; }
+.canvas-node-action:hover { background: #dfeaff; border-color: #3674e9; }
+.canvas-node-action:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }

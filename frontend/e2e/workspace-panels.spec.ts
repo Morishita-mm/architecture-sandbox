@@ -32,6 +32,11 @@ test('desktop panel toggles preserve node screen positions, zoom and saved coord
   const node = page.locator('.react-flow__node[data-id="app"]');
   for (const width of [1280, 1000]) {
     await page.setViewportSize({ width, height: 800 });
+    const history = (await page.getByRole('group', { name: '構成図の履歴', exact: true }).boundingBox())!;
+    const panels = (await page.getByRole('group', { name: 'サイドパネルの表示' }).boundingBox())!;
+    const tab = (await page.getByRole('button', { name: 'アーキテクチャ設計', exact: true }).boundingBox())!;
+    expect(panels.y).toBeGreaterThanOrEqual(tab.y + tab.height);
+    expect(Math.abs(panels.y + panels.height / 2 - history.y - history.height / 2)).toBeLessThan(1);
     // Include a status banner and a responsive sidebar width before taking the baseline.
     await page.getByRole('button', { name: 'プロジェクト保存', exact: true }).click();
     await expect(page.getByRole('status')).toBeVisible();
@@ -102,6 +107,10 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 390, height: 844 
     const memo = page.getByRole('textbox', { name: '要件メモ', exact: true });
     const memoToggle = page.getByRole('button', { name: '要件メモの表示切り替え' });
     const componentsToggle = page.getByRole('button', { name: 'コンポーネントの表示切り替え' });
+    if (mobile) {
+      await expect(memo).toBeHidden();
+      await memoToggle.click();
+    }
     await expect(memo).toBeVisible();
     await expect(memoToggle).toHaveAttribute('aria-expanded', 'true');
     const memoPanel = page.getByRole('complementary', { name: '要件メモ', exact: true });
@@ -168,11 +177,11 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 390, height: 844 
     await trigger.click();
     const guide = page.getByRole('dialog', { name: 'ユーザーガイド', exact: true });
     const contents = guide.getByRole('navigation', { name: 'ガイドの目次' });
-    await expect(contents.getByRole('button')).toHaveCount(5);
+    await expect(contents.getByRole('button')).toHaveCount(7);
     await guide.getByRole('button', { name: '操作ガイドを閉じる' }).focus();
     await expect(guide).toHaveJSProperty('open', true);
     await page.keyboard.press('Tab');
-    await expect(contents.getByRole('button', { name: /基本的な流れ/ })).toBeFocused();
+    await expect(contents.getByRole('button', { name: /チュートリアルの進め方/ })).toBeFocused();
     await contents.getByRole('button', { name: /キャンバス操作/ }).click();
     await expect(guide.getByRole('heading', { name: 'キャンバスの操作方法' })).toBeVisible();
     await expect(contents).toBeHidden();

@@ -1,21 +1,24 @@
 import React from 'react';
+import { BiPlus } from 'react-icons/bi';
 
 interface Props {
   value: string;
   onChange: (val: string) => void;
+  onAddRecord: () => void;
 }
 
-export const MemoPad: React.FC<Props> = ({ value, onChange }) => {
+export const MemoPad: React.FC<Props> = ({ value, onChange, onAddRecord }) => {
   return (
     <aside className="memo-pad" style={containerStyle} aria-label="要件メモ" tabIndex={-1}>
       <h2 className="side-panel-heading" style={headerStyle}>要件メモ</h2>
+      <div className="memo-record-action"><button className="ui-button" onClick={onAddRecord} aria-haspopup="dialog"><BiPlus size={18} aria-hidden="true" />要件と設計を記録</button></div>
       <textarea
         aria-label="要件メモ"
         style={textAreaStyle}
         maxLength={100000}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="ヒアリングした要件をここにメモしましょう&#13;&#10;・予算：〇〇&#13;&#10;・ピークタイム：〇〇"
+        placeholder="わかったこと、まだ確かめたいことを自由にメモ"
       />
     </aside>
   );

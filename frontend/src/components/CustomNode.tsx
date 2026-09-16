@@ -1,89 +1,34 @@
-import React, { memo } from "react";
-import { Handle, Position, type NodeProps } from "reactflow";
-import type { AppNodeData } from "../types";
-import { getNodeStyle } from "../utils/nodeStyles";
-import { CiMemoPad } from "react-icons/ci";
+import { memo, useContext, type CSSProperties } from 'react';
+import { Handle, Position, type NodeProps } from 'reactflow';
+import { BiNote, BiPauseCircle } from 'react-icons/bi';
+import type { AppNodeData } from '../types';
+import { getNodeStyle, NODE_CARD_WIDTH, NODE_CARD_MIN_HEIGHT } from '../utils/nodeStyles';
+import { NodePresentationContext } from './nodePresentation';
+import { responsibilities } from '../utils/designModel';
+import { componentGuides } from '../constants/componentGuides';
+import { ComponentIcon } from './ComponentIcon';
 
-// ベースのスタイル
-const baseNodeStyle: React.CSSProperties = {
-  padding: "12px 16px",
-  borderRadius: "8px",
-  color: "var(--app-text)",
-  minWidth: "150px",
-  textAlign: "center",
-  boxShadow: "var(--app-shadow)",
-  position: "relative",
-  transition: "box-shadow 0.15s, border-color 0.15s",
-};
-
-const labelStyle: React.CSSProperties = {
-  fontSize: "14px",
-  fontWeight: "bold",
-  margin: 0,
-  pointerEvents: "none",
-};
-
-const descIconStyle: React.CSSProperties = {
-  position: "absolute",
-  bottom: "5px",
-  right: "5px",
-  fontSize: "10px",
-  color: "var(--app-muted)",
-  opacity: 0.7,
-};
-
-export const CustomNode = memo(({ data, selected }: NodeProps<AppNodeData>) => {
-  const styleConfig = getNodeStyle(data.originalType, data.customColor);
-
-  const containerStyle: React.CSSProperties = {
-    ...baseNodeStyle,
-    background: styleConfig.bg,
-    border: `2px solid ${selected ? "var(--app-primary)" : styleConfig.border}`,
-    boxShadow: selected
-      ? "0 0 0 3px rgba(33, 100, 232, 0.16)"
-      : baseNodeStyle.boxShadow,
-  };
-
-  const badgeStyle: React.CSSProperties = {
-    position: "absolute",
-    bottom: "calc(100% + 6px)",
-    right: "10px",
-    background: styleConfig.badge,
-    color: "var(--app-text)",
-    fontSize: "10px",
-    padding: "2px 6px",
-    borderRadius: "4px",
-    border: `1px solid ${styleConfig.border}`,
-    fontWeight: "bold",
-    textTransform: "uppercase",
-    whiteSpace: "nowrap",
-    pointerEvents: "none",
-  };
-
-  const isRenamed = data.label !== data.originalType;
-
-  return (
-    <div className="canvas-node" style={containerStyle}>
-      <Handle
-        type="target"
-        position={Position.Top}
-        style={{ background: "var(--app-muted)" }}
-      />
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        style={{ background: "var(--app-muted)" }}
-      />
-
-      {isRenamed && <div style={badgeStyle}>{data.originalType}</div>}
-
-      <div style={labelStyle}>{data.label}</div>
-
-      {data.description && (
-        <div style={descIconStyle} title={data.description}>
-          <CiMemoPad />
-        </div>
-      )}
+export const CustomNode = memo(({ id, data, selected }: NodeProps<AppNodeData>) => {
+  const presentation = useContext(NodePresentationContext)[id];
+  const style = getNodeStyle(data.originalType, data.customColor);
+  const subtitle = data.label !== data.originalType ? data.originalType : componentGuides[data.originalType]?.name;
+  return <div className={`canvas-node${selected ? ' is-selected' : ''}${presentation?.step ? ' is-traced' : ''}${presentation?.status ? ' is-stopped' : ''}`}
+    style={{ '--node-accent': data.customColor ?? style.border, width: NODE_CARD_WIDTH, minHeight: NODE_CARD_MIN_HEIGHT } as CSSProperties}>
+    <Handle aria-label={`${data.label}への入力接続点`} type="target" position={Position.Top} />
+    {!presentation?.fixed && <Handle aria-label={`${data.label}からの出力接続点`} type="source" position={Position.Bottom} />}
+    {presentation?.step && <span className="canvas-node-step">{presentation.step}</span>}
+    <div className="canvas-node-heading">
+      <span className="canvas-node-icon"><ComponentIcon type={data.originalType} category={style.category} /></span>
+      <div className="canvas-node-copy"><div className="canvas-node-name">{data.label}</div>{presentation?.screen ? <div className={`canvas-node-screen is-${presentation.screen.state}`} aria-label="利用者の画面" role="status">{presentation.screen.text}</div> : subtitle && <div className="canvas-node-subtitle">{subtitle}</div>}</div>
+      {data.description && !presentation?.action && <span className="canvas-node-note" title={data.description}><BiNote aria-hidden="true" /></span>}
     </div>
-  );
+    {presentation?.action && <button type="button" className="canvas-node-action nodrag nopan" onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') e.stopPropagation(); }} onClick={e => { e.stopPropagation(); presentation.action!.onClick(); }}>{presentation.action.label}</button>}
+    {(data.design?.scope === 'external' || data.design?.responsibility || data.design?.replicas) && <div className="node-design-badges">
+      {data.design?.scope === 'external' && <span>外部サービス</span>}
+      {data.design?.responsibility && <span>{responsibilities[data.design.responsibility]}</span>}
+      {data.design?.replicas && <span>{data.design.replicas}台・実行単位</span>}
+    </div>}
+    {presentation?.status && <div className="canvas-node-status"><BiPauseCircle aria-hidden="true" />{presentation.status}</div>}
+    {presentation?.fixed && <div className="canvas-node-fixed">教材側の相手・追加対象外</div>}
+  </div>;
 });

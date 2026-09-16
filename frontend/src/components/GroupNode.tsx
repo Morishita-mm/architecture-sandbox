@@ -6,6 +6,7 @@ import type { AppNodeData } from "../types";
 export const GroupNode = memo(
   ({ id, data, selected }: NodeProps<AppNodeData>) => {
     const styleConfig = getNodeStyle(data.originalType, data.customColor);
+    const isSecurityGroup = data.originalType === 'Security Group';
 
     const [minWidth, minHeight] = useStore((store) => {
       let width = 100;
@@ -22,7 +23,7 @@ export const GroupNode = memo(
       width: "100%",
       height: "100%",
       backgroundColor: styleConfig.bg,
-      border: `2px dashed ${selected ? "#2196F3" : styleConfig.border}`,
+      border: `2px ${isSecurityGroup ? 'solid' : 'dashed'} ${selected ? "#2196F3" : styleConfig.border}`,
       borderRadius: "4px",
       position: "relative",
       transition: "all 0.2s",
@@ -62,6 +63,7 @@ export const GroupNode = memo(
 
         <div style={containerStyle}>
           <div style={labelStyle}>{data.label}</div>
+          {isSecurityGroup && <p className="security-group-note">通信の許可ルール<br />部品の設定から関連付けます</p>}
           {data.label !== data.originalType && (
             <div style={badgeStyle}>{data.originalType}</div>
           )}

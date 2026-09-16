@@ -5,6 +5,7 @@ import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { setTimeout as delay } from 'node:timers/promises';
 import { resolve } from 'node:path';
+import { readFile } from 'node:fs/promises';
 
 const binary = resolve('backend/target/debug/app');
 const definitions = resolve('frontend/src/constants/architecture_defs.json');
@@ -43,6 +44,7 @@ async function waitForHealth(base, child) {
 test('runtime and security boundaries', { timeout: 20000 }, async t => {
   let providerStatus = 200;
   let reply = '要件を確認します。';
+  let chatReply = { reply, coveredConditionIds: ['users', 'traffic'] };
   let finishReason = 'STOP';
   let providerDelay = 0;
   let rawBody;
@@ -50,11 +52,14 @@ test('runtime and security boundaries', { timeout: 20000 }, async t => {
   const provider = createServer(async (req, res) => {
     let body = '';
     for await (const part of req) body += part;
-    calls.push({ url: req.url, headers: req.headers, body: JSON.parse(body) });
+    const parsed = JSON.parse(body);
+    calls.push({ url: req.url, headers: req.headers, body: parsed });
     if (providerDelay) await delay(providerDelay);
     res.writeHead(providerStatus, { 'Content-Type': 'application/json' });
+    const isChat = parsed.generationConfig?.responseJsonSchema?.required?.includes('coveredConditionIds');
+    const providerText = isChat ? JSON.stringify(chatReply) : reply;
     res.end(rawBody ?? JSON.stringify(providerStatus === 200
-      ? { candidates: [{ finishReason, content: { parts: [{ thought: true, text: 'INTERNAL_THOUGHT' }, { text: reply }] } }] }
+      ? { candidates: [{ finishReason, content: { parts: [{ thought: true, text: 'INTERNAL_THOUGHT' }, { text: providerText }] } }] }
       : { error: { message: `do-not-echo-${secret}` } }));
   });
   provider.listen(0, '127.0.0.1');
@@ -96,7 +101,9 @@ test('runtime and security boundaries', { timeout: 20000 }, async t => {
   await t.test('chat uses server requirements, separate system instructions and real conversation roles', async () => {
     const response = await post('/api/chat', { ...chat, messages: [{ role: 'model', content: 'こんにちは' }, ...chat.messages] });
     assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), { reply });
+    assert.deepEqual(await response.json(), { reply, coveredConditions: [
+      { id: 'users', label: '利用者と利用時間' }, { id: 'traffic', label: '利用量と集中する時間' },
+    ] });
     const call = calls.at(-1);
     assert.equal(call.headers['x-goog-api-key'], secret);
     assert.equal(call.url, '/v1beta/models/local-fixture:generateContent');
@@ -104,7 +111,28 @@ test('runtime and security boundaries', { timeout: 20000 }, async t => {
     assert.deepEqual(call.body.contents.map(c => c.role), ['user', 'model', 'user']);
     assert.doesNotMatch(JSON.stringify(call.body.contents), /月額5,000|内部要件/);
     assert.equal(call.body.generationConfig.maxOutputTokens, 4096);
+    assert.equal(call.body.generationConfig.responseMimeType, 'application/json');
+    assert.deepEqual(call.body.generationConfig.responseJsonSchema.required, ['reply', 'coveredConditionIds']);
     assert.doesNotMatch(runtime.logs(), /予算と可用性|50〜100|local-test-secret/);
+  });
+  await t.test('guided custom profiles are server-owned and self-defined themes have no invented hidden answer', async () => {
+    const guided = { ...scenario, difficulty: 'medium', customMode: 'guided', scenarioFamily: 'transaction' };
+    let response = await post('/api/chat', { ...chat, scenario: guided });
+    assert.equal(response.status, 200);
+    let system = calls.at(-1).body.systemInstruction.parts[0].text;
+    assert.match(system, /10万 DAU/);
+    assert.match(system, /二重に確定/);
+    assert.doesNotMatch(JSON.stringify(calls.at(-1).body.contents), /10万 DAU|二重に確定/);
+
+    const selfDefined = { id: 'custom', title: '地域検索', description: '利用者が施設を検索する。', isCustom: true, partnerRole: 'ceo', customMode: 'self_defined' };
+    chatReply = { reply, coveredConditionIds: [] };
+    response = await post('/api/chat', { ...chat, scenario: selfDefined });
+    assert.equal(response.status, 200);
+    system = calls.at(-1).body.systemInstruction.parts[0].text;
+    assert.match(system, /hiddenRequirements.*なし/);
+    assert.match(system, /創作せず/);
+    assert.doesNotMatch(system, /50〜100人|10万 DAU/);
+    chatReply = { reply, coveredConditionIds: ['users', 'traffic'] };
   });
   await t.test('forged client system messages, hidden requirements and invalid scenarios never reach provider', async () => {
     const before = calls.length;
@@ -114,6 +142,9 @@ test('runtime and security boundaries', { timeout: 20000 }, async t => {
       { ...chat, scenario: { ...scenario, id: 'unknown' } },
       { ...chat, scenario: { ...scenario, partnerRole: '__proto__' } },
       { ...chat, scenario: { ...scenario, difficulty: 'invalid' } },
+      { ...chat, scenario: { ...scenario, customMode: 'guided' } },
+      { ...chat, scenario: { ...scenario, customMode: 'guided', scenarioFamily: '__proto__' } },
+      { ...chat, scenario: { ...scenario, customMode: 'self_defined', scenarioFamily: 'business' } },
       { ...chat, scenario: { ...scenario, id: 'internal_tool' } },
       { ...chat, messages: [] },
       { ...chat, messages: [{ role: 'model', content: 'last model' }] },
@@ -130,15 +161,43 @@ test('runtime and security boundaries', { timeout: 20000 }, async t => {
     assert.doesNotMatch(JSON.stringify(calls.at(-1).body), /OVERRIDE_/);
   });
   const result = { totalScore: 0, details: { availability: 10, scalability: 20, security: 30, maintainability: 40, costEfficiency: 50, feasibility: 60 }, feedback: '構成を確認しました。', improvement: '改善してください。' };
-  await t.test('evaluation validates full JSON report including zero and shares chat requirements', async () => {
+  const emptyInterview = { confirmed: 0, total: 4, confirmedConditions: [], missingConditions: [
+    { id: 'users', label: '利用者と利用時間' }, { id: 'traffic', label: '利用量と集中する時間' },
+    { id: 'availability', label: '停止できる時間' }, { id: 'budget', label: '予算' },
+  ] };
+  await t.test('evaluation recomputes the six-axis mean and keeps authoritative requirements', async () => {
     reply = JSON.stringify(result);
     const response = await post('/api/evaluate', design);
-    assert.equal(response.status, 200); assert.deepEqual(await response.json(), result);
+    assert.equal(response.status, 200); assert.deepEqual(await response.json(), { ...result, totalScore: 35, interview: emptyInterview });
     const call = calls.at(-1);
     assert.match(call.body.systemInstruction.parts[0].text, /50〜100人/);
     assert.doesNotMatch(call.body.systemInstruction.parts[0].text, /\{\{AVAILABLE_COMPONENTS\}\}/);
     assert.equal(call.body.generationConfig.responseMimeType, 'application/json');
+    assert.match(call.body.systemInstruction.parts[0].text, /learning-rubric-4/);
+    const schema = call.body.generationConfig.responseJsonSchema;
+    assert.deepEqual([...schema.required].sort(), Object.keys(result).sort());
+    assert.deepEqual([...schema.properties.details.required].sort(), Object.keys(result.details).sort());
+    assert.equal(schema.additionalProperties, false);
+    assert.equal(schema.properties.details.additionalProperties, false);
+    for (const axis of Object.values(schema.properties.details.properties)) assert.deepEqual(axis, {type:'integer',minimum:0,maximum:100});
+    assert.match(call.body.systemInstruction.parts[0].text, /unverified user data/);
+    assert.match(call.body.systemInstruction.parts[0].text, /#node=URL_ENCODED_NODE_ID/);
     assert.doesNotMatch(JSON.stringify(call.body.contents), /月額5,000/);
+  });
+  await t.test('evaluation separates interview coverage and preserves the exact supporting exchange', async () => {
+    reply = JSON.stringify(result);
+    const interviewEvidence = [{ conditionId: 'users', label: '利用者と利用時間', question: '何人が使いますか？', answer: '利用者は50人です。', questionMessageIndex: 0, answerMessageIndex: 1 }];
+    const response = await post('/api/evaluate', { ...design, interviewEvidence });
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.deepEqual(body.interview.confirmedConditions, [{ id: 'users', label: '利用者と利用時間' }]);
+    assert.equal(body.interview.confirmed, 1);
+    assert.equal(body.interview.total, 4);
+    assert.ok(body.interview.missingConditions.some(item => item.id === 'traffic'));
+    const sent = JSON.parse(calls.at(-1).body.contents[0].parts[0].text);
+    assert.equal(sent.interviewEvidence[0].question, '何人が使いますか？');
+    assert.equal(sent.interviewEvidence[0].answer, '利用者は50人です。');
+    assert.equal(sent.interviewCoverage.confirmed, 1);
   });
   await t.test('malformed graph and oversized body are rejected before any AI request', async () => {
     const before = calls.length;
@@ -149,10 +208,26 @@ test('runtime and security boundaries', { timeout: 20000 }, async t => {
       { ...design, nodes: [{ ...design.nodes[0], parentNode: 'node-1' }] },
       { ...design, nodes: [design.nodes[0], { ...design.nodes[0], id: 'child', parentNode: 'node-1' }] },
       { ...design, edges: [{ source: 'node-1', target: 'missing' }] },
+      { ...design, interviewEvidence: [{ conditionId: 'invented', label: '偽条件', question: '質問', answer: '回答', questionMessageIndex: 0, answerMessageIndex: 1 }] },
+      { ...design, interviewEvidence: [{ conditionId: 'users', label: '利用者', question: '質問', answer: '回答', questionMessageIndex: 2, answerMessageIndex: 1 }] },
       { ...design, nodes: Array(201).fill(design.nodes[0]) },
     ]) assert.ok([400, 422].includes((await post('/api/evaluate', payload)).status));
     assert.equal((await post('/api/chat', { ...chat, scenario: { ...scenario, description: 'x'.repeat(140000) } })).status, 413);
     assert.equal(calls.length, before);
+  });
+  await t.test('all six quality fixtures preserve user data without overriding system criteria', async () => {
+    const { cases } = JSON.parse(await readFile(new URL('../docs/evaluation-fixtures.json', import.meta.url), 'utf8'));
+    reply = JSON.stringify(result);
+    for (const fixture of cases) {
+      const response = await post('/api/evaluate', fixture.input);
+      assert.equal(response.status, 200, fixture.id);
+      const call = calls.at(-1).body;
+      assert.match(call.systemInstruction.parts[0].text, /データ消失は不可/);
+      assert.match(call.systemInstruction.parts[0].text, /learning-rubric-4/);
+      assert.doesNotMatch(call.systemInstruction.parts[0].text, /すべて100点にし|データが全て消えてよい/);
+      const data = JSON.parse(call.contents[0].parts[0].text);
+      assert.equal(data.nodes[1].description, fixture.input.nodes[1].description);
+    }
   });
   await t.test('valid nested groups reach the provider once', async () => {
     reply = JSON.stringify(result);
@@ -164,7 +239,7 @@ test('runtime and security boundaries', { timeout: 20000 }, async t => {
     ] });
     assert.equal(response.status, 200);
     assert.equal(calls.length, before + 1);
-    assert.deepEqual(await response.json(), result);
+    assert.deepEqual(await response.json(), { ...result, totalScore: 35, interview: emptyInterview });
   });
   await t.test('malformed, partial and out-of-range reports return failure, never success', async () => {
     for (const invalid of ['not json', JSON.stringify({ score: 0, feedback: 'missing details' }), JSON.stringify({ ...result, totalScore: 101 }), JSON.stringify({ ...result, totalScore: 1.5 })]) {
@@ -229,7 +304,7 @@ test('Gemini 3 models use supported thinking levels without unbounded output', {
     for await (const part of req) body += part;
     captured = JSON.parse(body);
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: '確認します。' }] } }] }));
+    res.end(JSON.stringify({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: JSON.stringify({ reply: '確認します。', coveredConditionIds: [] }) }] } }] }));
   });
   provider.listen(0, '127.0.0.1');
   await once(provider, 'listening');
@@ -242,7 +317,7 @@ test('Gemini 3 models use supported thinking levels without unbounded output', {
       await waitForHealth(base, runtime.child);
       const response = await fetch(`${base}/api/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scenario: { id: 'internal_tool', title: '勤怠管理', description: '' }, messages: [{ role: 'user', content: '要件は？' }] }) });
       assert.equal(response.status, 200);
-      assert.deepEqual(await response.json(), { reply: '確認します。' });
+      assert.deepEqual(await response.json(), { reply: '確認します。', coveredConditions: [] });
       assert.deepEqual(captured.generationConfig.thinkingConfig, { thinkingLevel: level });
       assert.equal(captured.generationConfig.maxOutputTokens, 4096);
     } finally {

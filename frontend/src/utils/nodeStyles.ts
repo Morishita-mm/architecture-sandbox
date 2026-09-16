@@ -1,7 +1,11 @@
 import defs from "../constants/architecture_defs.json";
 
+export const NODE_CARD_WIDTH = 208;
+export const NODE_CARD_MIN_HEIGHT = 50;
+
 // 色定義の型
 interface NodeStyle {
+  category: string;
   bg: string;
   border: string;
   badge: string;
@@ -12,6 +16,7 @@ const STYLE_MAP: Record<string, NodeStyle> = {};
 
 // デフォルトスタイル
 const DEFAULT_STYLE: NodeStyle = {
+  category: 'other',
   bg: "#ffffff",
   border: "#777777",
   badge: "#eeeeee",
@@ -24,6 +29,7 @@ if (defs && Array.isArray(defs.categories)) {
     category.items.forEach((item) => {
       // item.type をキーにしてスタイルを登録
       STYLE_MAP[item.type] = {
+        category: category.id,
         bg: bgColor,
         border: color,
         // バッジの背景もノード背景と同じ（あるいは必要に応じて変更）に設定
@@ -43,6 +49,7 @@ export const getNodeStyle = (type: string, customColor?: string): NodeStyle => {
   // ユーザー指定色がある場合、それをベースにしたスタイルを返す
   if (customColor) {
     return {
+      category: STYLE_MAP[type]?.category ?? 'other',
       bg: customColor,
       border: "#333333",
       badge: "rgba(255,255,255,0.5)",

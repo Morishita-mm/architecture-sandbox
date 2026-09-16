@@ -31,7 +31,7 @@ jobs:
         working-directory: backend
       - run: cargo test --locked && cargo build --locked
         working-directory: backend
-      - run: node --test scripts/backend.test.mjs
+      - run: node --test scripts/backend.test.mjs scripts/evaluation-live.test.mjs
       - run: docker build --platform linux/amd64 -f Dockerfile.prod --label "org.opencontainers.image.revision=$GITHUB_SHA" -t architecture-sandbox:tested .
       - run: node scripts/container-smoke.mjs architecture-sandbox:tested
 

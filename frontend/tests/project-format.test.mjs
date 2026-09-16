@@ -43,7 +43,7 @@ test('group hierarchy is ordered and saved, arbitrary style and extra fields are
   assert.deepEqual(parseProject(serializeProject(loaded)), loaded);
 });
 for (const [name, mutate] of [
-  ['unknown schema', p => { p.schemaVersion = 3; }],
+  ['unknown schema', p => { p.schemaVersion = 4; }],
   ['duplicate node id', p => { p.diagram.nodes.push(structuredClone(p.diagram.nodes[0])); }],
   ['dangling parent', p => { p.diagram.nodes[0].parentNode = 'missing'; }],
   ['parent cycle', p => { p.diagram.nodes[0].type = 'group'; p.diagram.nodes[0].data.originalType = 'Subnet'; p.diagram.nodes[0].parentNode = p.diagram.nodes[0].id; }],
@@ -78,8 +78,43 @@ test('custom and legacy challenge links retain difficulty/role, recover preset s
   assert.deepEqual(parseChallenge(Buffer.from(JSON.stringify(old)).toString('base64')), custom);
   assert.equal(parseChallenge(Buffer.from(JSON.stringify({ ...old, title: '社内勤怠管理システム' })).toString('base64')).id, 'internal_tool');
 });
+test('guided and self-defined custom modes round trip without mixing their fields', () => {
+  const guided = { id: 'custom', title: 'フリマ', description: '利用者が商品を売買する', isCustom: true, difficulty: 'large', partnerRole: 'cto', customMode: 'guided', scenarioFamily: 'transaction' };
+  const selfDefined = { id: 'custom', title: '社内検索', description: '社員が資料を検索する。保存期間は未定。', isCustom: true, partnerRole: 'ceo', customMode: 'self_defined' };
+  for (const scenario of [guided, selfDefined]) {
+    const p = project(); p.scenario = scenario;
+    const normalized = normalizeProject(p);
+    assert.equal(normalized.schemaVersion, 3);
+    assert.deepEqual(normalized.scenario, scenario);
+    assert.deepEqual(parseChallenge(new URL(createChallengeUrl(scenario, 'https://sandbox.morimizu.dev')).searchParams.get('challenge')), scenario);
+  }
+  for (const scenario of [
+    { ...guided, scenarioFamily: undefined },
+    { ...guided, scenarioFamily: '__proto__' },
+    { ...selfDefined, scenarioFamily: 'business' },
+    { ...guided, customMode: 'invented' },
+  ]) assert.throws(() => normalizeProject({ ...project(), scenario }));
+});
+test('interview evidence round trips with its exact question and answer and changes evaluation identity', async () => {
+  const p = project();
+  p.interviewEvidence = [{ conditionId: 'users', label: '利用者と利用時間', question: p.chatHistory[0].content, answer: p.chatHistory[1].content, questionMessageIndex: 0, answerMessageIndex: 1 }];
+  const normalized = normalizeProject(p);
+  assert.equal(normalized.schemaVersion, 3);
+  assert.deepEqual(parseProject(serializeProject(normalized)).interviewEvidence, p.interviewEvidence);
+  for (const invalid of [
+    { ...p.interviewEvidence[0], conditionId: '' },
+    { ...p.interviewEvidence[0], question: '別の質問' },
+    { ...p.interviewEvidence[0], questionMessageIndex: 1 },
+    { ...p.interviewEvidence[0], answerMessageIndex: 0 },
+  ]) assert.throws(() => normalizeProject({ ...p, interviewEvidence: [invalid] }));
+});
 test('invalid and out-of-range AI scores cannot reach the report', () => {
   for (const value of [null, { score: 0 }, { ...result, totalScore: 101 }, { ...result, totalScore: 0.5 }, { ...result, details: [] }]) assert.throws(() => parseEvaluation(value));
+});
+test('interview assessment counts must match their condition lists', () => {
+  const interview = { confirmed: 1, total: 2, confirmedConditions: [{ id: 'users', label: '利用者' }], missingConditions: [{ id: 'traffic', label: '利用量' }] };
+  assert.deepEqual(parseEvaluation({ ...result, interview }).interview, interview);
+  assert.throws(() => parseEvaluation({ ...result, interview: { ...interview, confirmed: 2 } }));
 });
 test('bounded AI context retains the latest user turn without mutating saved history', () => {
   const messages = Array.from({ length: 200 }, (_, i) => ({ role: i === 199 ? 'user' : 'model', content: String(i).padEnd(4000, 'a') }));

@@ -14,7 +14,7 @@ async function load(page: Page) {
   await page.route('**/*', route => new URL(route.request().url()).hostname === '127.0.0.1' ? route.continue() : route.abort());
   await page.goto('/');
   await page.locator('input[type=file]').setInputFiles({ name: 'existing.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(project)) });
-  await expect(page.getByPlaceholder('要件について質問する（例：予算はどのくらいですか？）')).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'メッセージ', exact: true })).toBeVisible();
 }
 function deferred() {
   let resolve!: () => void;
@@ -69,7 +69,7 @@ test('delayed chat survives design/evaluation tab changes and is saved once', as
     requests++; seen.resolve(); await release.promise;
     await route.fulfill({ json: { reply }, headers: { 'access-control-allow-origin': '*' } });
   });
-  const input = page.getByPlaceholder('要件について質問する（例：予算はどのくらいですか？）');
+  const input = page.getByRole('textbox', { name: 'メッセージ', exact: true });
   const [firstLine, secondLine] = question.split('\n');
   await input.fill(firstLine);
   await input.press('Shift+Enter');
@@ -102,7 +102,7 @@ test('IME confirmation does not send; the send button preserves the multiline me
     received.push(route.request().postDataJSON().messages);
     await route.fulfill({ json: { reply }, headers: { 'access-control-allow-origin': '*' } });
   });
-  const input = page.getByPlaceholder('要件について質問する（例：予算はどのくらいですか？）');
+  const input = page.getByRole('textbox', { name: 'メッセージ', exact: true });
   await input.fill(question);
   await input.dispatchEvent('keydown', { key: 'Enter', code: 'Enter', isComposing: true });
   await expect(input).toHaveValue(question);
@@ -121,12 +121,13 @@ test('leaving a project aborts its request and never inserts an old reply in a n
     seen.resolve(); await release.promise;
     await route.fulfill({ json: { reply }, headers: { 'access-control-allow-origin': '*' } });
   });
-  await page.getByPlaceholder('要件について質問する（例：予算はどのくらいですか？）').fill(question);
+  await page.getByRole('textbox', { name: 'メッセージ', exact: true }).fill(question);
   await page.getByRole('button', { name: '送信', exact: true }).click(); await seen.promise;
   const failed = page.waitForEvent('requestfailed', request => request.url().endsWith('/api/chat'));
   await page.getByTitle('シナリオ選択画面に戻る').click();
   release.resolve(); await failed;
+  await page.getByRole('button', { name: /設計課題に取り組む/ }).click();
   await page.getByText('社内勤怠管理システム', { exact: true }).click();
-  await expect(page.getByPlaceholder('要件について質問する（例：予算はどのくらいですか？）')).toBeEnabled();
+  await expect(page.getByRole('textbox', { name: 'メッセージ', exact: true })).toBeEnabled();
   expect((await save(page)).chatHistory.some((m: { content: string }) => m.content === reply || m.content === question)).toBe(false);
 });

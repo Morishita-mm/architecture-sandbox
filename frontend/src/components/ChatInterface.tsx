@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { BiUser, BiBot } from "react-icons/bi";
 
-import type { Scenario, ChatMessage } from "../types"; // 共通型を使用
+import type { Scenario, ChatMessage, InterviewEvidence } from "../types"; // 共通型を使用
 
 import { chatContext, publicScenario } from "../utils/projectFormat";
 import { postJson } from "../utils/api";
@@ -11,20 +11,25 @@ interface Props {
   scenario: Scenario;
   messages: ChatMessage[]; // 親から受け取る
   onSendMessage: (newHistory: ChatMessage[]) => void; // 更新関数も親からもらう
+  evidence: InterviewEvidence[];
+  onUpdateEvidence: (evidence: InterviewEvidence[]) => void;
+  request: React.RefObject<AbortController | null>;
 }
 
 export const ChatInterface: React.FC<Props> = ({
   scenario,
   messages,
   onSendMessage,
+  evidence,
+  onUpdateEvidence,
+  request,
 }) => {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const request = useRef<AbortController | null>(null);
-  useEffect(() => () => request.current?.abort(), []);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  useEffect(() => () => request.current?.abort(), [request]);
+  const messagesAreaRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
     const textarea = inputRef.current;
@@ -48,7 +53,8 @@ export const ChatInterface: React.FC<Props> = ({
 
   // 自動スクロール
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const area = messagesAreaRef.current;
+    if (area) area.scrollTop = area.scrollHeight;
   }, [messages]);
 
   const displayMessages = messages;
@@ -75,16 +81,31 @@ export const ChatInterface: React.FC<Props> = ({
         scenario: publicScenario(scenario), messages: chatContext(newHistory),
       }, controller.signal);
       if (!data || typeof data !== "object" || !("reply" in data) || typeof data.reply !== "string" || !data.reply.trim() || [...data.reply].length > 4000) throw new Error("応答の形式が不正です。");
-      if (!controller.signal.aborted) onSendMessage([...newHistory, { role: "model", content: data.reply }]);
+      const covered = "coveredConditions" in data ? data.coveredConditions : [];
+      if (!Array.isArray(covered) || covered.length > 20 || covered.some(item => !item || typeof item !== 'object' || typeof item.id !== 'string' || !item.id || item.id.length > 40 || typeof item.label !== 'string' || !item.label.trim() || [...item.label].length > 80)) throw new Error("応答の条件記録が不正です。");
+      if (!controller.signal.aborted) {
+        const byId = new Map(evidence.map(item => [item.conditionId, item]));
+        for (const item of covered as { id: string; label: string }[]) byId.set(item.id, {
+          conditionId: item.id, label: item.label, question: userMessage.content, answer: data.reply,
+          questionMessageIndex: newHistory.length - 1, answerMessageIndex: newHistory.length,
+        });
+        onUpdateEvidence([...byId.values()]);
+        onSendMessage([...newHistory, { role: "model", content: data.reply }]);
+      }
     } catch (error) {
       if (!controller.signal.aborted) {
         setError(error instanceof Error ? error.message : "通信エラーが発生しました。");
         setInput(userMessage.content);
         onSendMessage(messages);
       }
+      if (controller.signal.reason === 'leave') {
+        setError('応答を中断しました。必要なら同じ質問を再送してください。');
+        setInput(userMessage.content);
+        onSendMessage(messages);
+      }
     } finally {
       request.current = null;
-      if (!controller.signal.aborted) setIsLoading(false);
+      if (!controller.signal.aborted || controller.signal.reason === 'leave') setIsLoading(false);
     }
   };
 
@@ -102,7 +123,7 @@ export const ChatInterface: React.FC<Props> = ({
 
   return (
     <div style={containerStyle}>
-      <div style={messagesAreaStyle}>
+      <div ref={messagesAreaRef} style={messagesAreaStyle}>
         {displayMessages.map((msg, idx) => (
           <div
             key={idx}
@@ -131,8 +152,12 @@ export const ChatInterface: React.FC<Props> = ({
         {isLoading && (
           <div style={{ textAlign: "center", color: "#999" }}>入力中...</div>
         )}
-        <div ref={messagesEndRef} />
       </div>
+
+      {evidence.length > 0 && <aside className="interview-progress" aria-label="聞き取りで確認した条件">
+        <strong>確認できた条件 {evidence.length}件</strong>
+        <div>{evidence.map(item => <span key={item.conditionId}>{item.label}</span>)}</div>
+      </aside>}
 
       {error && <p role="alert" style={{ color: "var(--app-danger)", padding: "0 20px" }}>{error}</p>}
       <div style={inputAreaStyle}>
@@ -141,12 +166,11 @@ export const ChatInterface: React.FC<Props> = ({
           ref={inputRef}
           rows={1}
           aria-label="メッセージ"
-          aria-describedby="chat-input-help"
           maxLength={4000}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="要件について質問する（例：予算はどのくらいですか？）"
+          placeholder="要件について質問する"
           style={inputStyle}
           disabled={isLoading}
         />
@@ -157,9 +181,6 @@ export const ChatInterface: React.FC<Props> = ({
         >
           送信
         </button>
-      </div>
-      <div id="chat-input-help" style={inputHelpStyle}>
-        Enterで送信・Shift + Enterで改行
       </div>
     </div>
   );
@@ -212,7 +233,7 @@ const bubbleStyle: React.CSSProperties = {
 };
 
 const inputAreaStyle: React.CSSProperties = {
-  padding: "20px 20px 8px",
+  padding: "20px",
   borderTop: "1px solid var(--app-border)",
   display: "flex",
   gap: "10px",
@@ -234,13 +255,6 @@ const inputStyle: React.CSSProperties = {
   minHeight: "50px",
   maxHeight: "98px",
   overflowY: "auto",
-};
-
-const inputHelpStyle: React.CSSProperties = {
-  padding: "0 20px 12px",
-  fontSize: "12px",
-  color: "var(--app-muted)",
-  backgroundColor: "var(--app-subtle)",
 };
 
 const sendButtonStyle: React.CSSProperties = {

@@ -1,0 +1,23 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["totalScore", "details", "feedback", "improvement"],
+  "properties": {
+    "totalScore": {"type": "integer", "minimum": 0, "maximum": 100},
+    "details": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["availability", "scalability", "security", "maintainability", "costEfficiency", "feasibility"],
+      "properties": {
+        "availability": {"type": "integer", "minimum": 0, "maximum": 100},
+        "scalability": {"type": "integer", "minimum": 0, "maximum": 100},
+        "security": {"type": "integer", "minimum": 0, "maximum": 100},
+        "maintainability": {"type": "integer", "minimum": 0, "maximum": 100},
+        "costEfficiency": {"type": "integer", "minimum": 0, "maximum": 100},
+        "feasibility": {"type": "integer", "minimum": 0, "maximum": 100}
+      }
+    },
+    "feedback": {"type": "string"},
+    "improvement": {"type": "string"}
+  }
+}

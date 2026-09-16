@@ -1,0 +1,63 @@
+{
+  "reviewerId": null,
+  "reviewedAt": null,
+  "reviewerType": "human",
+  "phase": "independent-input-labels",
+  "status": "not-started",
+  "cases": [
+    {
+      "reviewId": "設計A",
+      "majorDefects": null,
+      "unknowns": null,
+      "acceptableAlternatives": null,
+      "evidence": null,
+      "disagreements": null,
+      "judgment": null
+    },
+    {
+      "reviewId": "設計B",
+      "majorDefects": null,
+      "unknowns": null,
+      "acceptableAlternatives": null,
+      "evidence": null,
+      "disagreements": null,
+      "judgment": null
+    },
+    {
+      "reviewId": "設計C",
+      "majorDefects": null,
+      "unknowns": null,
+      "acceptableAlternatives": null,
+      "evidence": null,
+      "disagreements": null,
+      "judgment": null
+    },
+    {
+      "reviewId": "設計D",
+      "majorDefects": null,
+      "unknowns": null,
+      "acceptableAlternatives": null,
+      "evidence": null,
+      "disagreements": null,
+      "judgment": null
+    },
+    {
+      "reviewId": "設計E",
+      "majorDefects": null,
+      "unknowns": null,
+      "acceptableAlternatives": null,
+      "evidence": null,
+      "disagreements": null,
+      "judgment": null
+    },
+    {
+      "reviewId": "設計F",
+      "majorDefects": null,
+      "unknowns": null,
+      "acceptableAlternatives": null,
+      "evidence": null,
+      "disagreements": null,
+      "judgment": null
+    }
+  ]
+}
