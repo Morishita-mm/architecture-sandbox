@@ -4,6 +4,7 @@ const LearningCourse = lazy(() => import("./components/LearningCourse").then(mod
 import { ScenarioSetup } from "./components/ScenarioSetup";
 import type { Scenario, ProjectSaveData } from "./types";
 import { ScenarioSelectionScreen } from "./components/ScenarioSelectionScreen";
+import { startFixedScenario } from "./scenarios";
 
 // アプリのフェーズを管理するための型
 type AppPhase = "SCENARIO_SELECTION" | "THEME_SELECTION" | "CUSTOM_DEFINITION" | "CANVAS" | "LEARNING";
@@ -34,7 +35,7 @@ function App() {
       setPhase("CUSTOM_DEFINITION");
     } else {
       // デフォルトシナリオの場合、キャンバスへ遷移
-      setSelectedScenario(scenario);
+      setSelectedScenario(startFixedScenario(scenario));
       setPhase("CANVAS");
     }
   };

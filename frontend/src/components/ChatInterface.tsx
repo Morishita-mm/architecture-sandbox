@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { BiUser, BiBot } from "react-icons/bi";
 
-import type { Scenario, ChatMessage, InterviewEvidence } from "../types"; // 共通型を使用
+import type { Scenario, ChatMessage, InterviewEvidence, NegotiationProposal, RequirementRevision } from "../types"; // 共通型を使用
 
 import { chatContext, publicScenario } from "../utils/projectFormat";
 import { postJson } from "../utils/api";
 import { API_BASE_URL } from "../config";
+import { PROFILE_LABELS } from "../scenarios";
 
 interface Props {
   scenario: Scenario;
@@ -13,6 +14,8 @@ interface Props {
   onSendMessage: (newHistory: ChatMessage[]) => void; // 更新関数も親からもらう
   evidence: InterviewEvidence[];
   onUpdateEvidence: (evidence: InterviewEvidence[]) => void;
+  requirementRevisions: RequirementRevision[];
+  onAcceptNegotiation: (proposal: NegotiationProposal) => void;
   request: React.RefObject<AbortController | null>;
 }
 
@@ -22,11 +25,14 @@ export const ChatInterface: React.FC<Props> = ({
   onSendMessage,
   evidence,
   onUpdateEvidence,
+  requirementRevisions,
+  onAcceptNegotiation,
   request,
 }) => {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [pendingProposals, setPendingProposals] = useState<NegotiationProposal[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => () => request.current?.abort(), [request]);
   const messagesAreaRef = useRef<HTMLDivElement>(null);
@@ -83,6 +89,13 @@ export const ChatInterface: React.FC<Props> = ({
       if (!data || typeof data !== "object" || !("reply" in data) || typeof data.reply !== "string" || !data.reply.trim() || [...data.reply].length > 4000) throw new Error("応答の形式が不正です。");
       const covered = "coveredConditions" in data ? data.coveredConditions : [];
       if (!Array.isArray(covered) || covered.length > 20 || covered.some(item => !item || typeof item !== 'object' || typeof item.id !== 'string' || !item.id || item.id.length > 40 || typeof item.label !== 'string' || !item.label.trim() || [...item.label].length > 80)) throw new Error("応答の条件記録が不正です。");
+      const proposals = "negotiationProposals" in data ? data.negotiationProposals : [];
+      if (!Array.isArray(proposals) || proposals.length > 4 || proposals.some(item => !item || typeof item !== 'object'
+        || typeof item.optionId !== 'string' || !item.optionId || item.optionId.length > 80
+        || typeof item.conditionId !== 'string' || !item.conditionId || item.conditionId.length > 40
+        || typeof item.label !== 'string' || !item.label.trim() || [...item.label].length > 80
+        || typeof item.currentValue !== 'string' || !item.currentValue.trim() || [...item.currentValue].length > 2000
+        || typeof item.proposedValue !== 'string' || !item.proposedValue.trim() || [...item.proposedValue].length > 2000)) throw new Error("応答の仕様変更案が不正です。");
       if (!controller.signal.aborted) {
         const byId = new Map(evidence.map(item => [item.conditionId, item]));
         for (const item of covered as { id: string; label: string }[]) byId.set(item.id, {
@@ -90,6 +103,7 @@ export const ChatInterface: React.FC<Props> = ({
           questionMessageIndex: newHistory.length - 1, answerMessageIndex: newHistory.length,
         });
         onUpdateEvidence([...byId.values()]);
+        setPendingProposals(proposals as NegotiationProposal[]);
         onSendMessage([...newHistory, { role: "model", content: data.reply }]);
       }
     } catch (error) {
@@ -123,6 +137,10 @@ export const ChatInterface: React.FC<Props> = ({
 
   return (
     <div style={containerStyle}>
+      {scenario.profileId && <header className="scenario-case-summary">
+        <div><span>今回のケース</span><strong>{PROFILE_LABELS[scenario.profileId]}</strong></div>
+        <div><span>評価に使う仕様</span><strong>v{scenario.specificationVersion ?? 1}</strong></div>
+      </header>}
       <div ref={messagesAreaRef} style={messagesAreaStyle}>
         {displayMessages.map((msg, idx) => (
           <div
@@ -157,6 +175,20 @@ export const ChatInterface: React.FC<Props> = ({
       {evidence.length > 0 && <aside className="interview-progress" aria-label="聞き取りで確認した条件">
         <strong>確認できた条件 {evidence.length}件</strong>
         <div>{evidence.map(item => <span key={item.conditionId}>{item.label}</span>)}</div>
+      </aside>}
+
+      {(requirementRevisions.length > 0 || pendingProposals.length > 0) && <aside className="specification-progress" aria-label="合意仕様の変更">
+        <strong>合意仕様 v{scenario.specificationVersion ?? 1}</strong>
+        {requirementRevisions.length > 0 && <p>確定済み: {requirementRevisions.map(item => item.label).join('、')}</p>}
+        {pendingProposals.map(proposal => <div className="negotiation-proposal" key={proposal.optionId}>
+          <p><strong>{proposal.label}の変更案</strong></p>
+          <p><span>現在</span>{proposal.currentValue}</p>
+          <p><span>変更後</span>{proposal.proposedValue}</p>
+          <div>
+            <button className="ui-button ui-button-success" onClick={() => { onAcceptNegotiation(proposal); setPendingProposals(items => items.filter(item => item.optionId !== proposal.optionId)); }}>この内容で仕様を確定</button>
+            <button className="ui-button" onClick={() => setPendingProposals(items => items.filter(item => item.optionId !== proposal.optionId))}>今回は変更しない</button>
+          </div>
+        </div>)}
       </aside>}
 
       {error && <p role="alert" style={{ color: "var(--app-danger)", padding: "0 20px" }}>{error}</p>}

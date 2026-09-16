@@ -2,6 +2,7 @@ export type ScenarioDifficulty = 'small' | 'medium' | 'large';
 export type PartnerRole = 'cfo' | 'cto' | 'ceo';
 export type CustomScenarioMode = 'guided' | 'self_defined';
 export type ScenarioFamily = 'business' | 'content' | 'realtime' | 'transaction';
+export type ScenarioProfile = 'attendance-office' | 'attendance-shift' | 'attendance-field' | 'sns-private-community' | 'sns-photo-discovery' | 'sns-live-event';
 
 export interface Scenario {
   id: string;
@@ -13,6 +14,9 @@ export interface Scenario {
   partnerRole?: PartnerRole;
   customMode?: CustomScenarioMode;
   scenarioFamily?: ScenarioFamily;
+  profileId?: ScenarioProfile;
+  acceptedNegotiationIds?: string[];
+  specificationVersion?: number;
 }
 
 export interface DetailedScores {
@@ -27,9 +31,23 @@ export interface DetailedScores {
 export interface EvaluationResult {
   totalScore: number;
   details: DetailedScores;
+  weights: DetailedScores;
   feedback: string;
   improvement: string;
   interview?: InterviewAssessment;
+}
+
+export interface NegotiationProposal {
+  optionId: string;
+  conditionId: string;
+  label: string;
+  currentValue: string;
+  proposedValue: string;
+}
+
+export interface RequirementRevision extends NegotiationProposal {
+  version: number;
+  acceptedAt: string;
 }
 
 export interface ChatMessage {
@@ -108,7 +126,7 @@ export interface SimpleEdgeData {
  * プロジェクトの保存ファイル全体の構造
  */
 export interface ProjectSaveData {
-  schemaVersion: 2 | 3;
+  schemaVersion: 2 | 3 | 4;
   version: string;
   timestamp: string;
   projectId: string;
@@ -120,5 +138,6 @@ export interface ProjectSaveData {
   };
   chatHistory: ChatMessage[];
   interviewEvidence: InterviewEvidence[];
+  requirementRevisions?: RequirementRevision[];
   evaluation: EvaluationResult | null;
 }

@@ -14,8 +14,17 @@
         "type": "string",
         "maxLength": 40
       }
+    },
+    "negotiationOptionIds": {
+      "type": "array",
+      "maxItems": 4,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "maxLength": 80
+      }
     }
   },
-  "required": ["reply", "coveredConditionIds"],
+  "required": ["reply", "coveredConditionIds", "negotiationOptionIds"],
   "additionalProperties": false
 }

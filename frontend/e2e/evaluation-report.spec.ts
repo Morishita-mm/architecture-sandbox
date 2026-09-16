@@ -10,6 +10,7 @@ const project = {
 // Synthetic evaluation for UI verification. This does not call or measure the AI.
 const result = {
   totalScore: 66, details: { availability: 60, scalability: 72, security: 68, maintainability: 74, costEfficiency: 64, feasibility: 58 },
+  weights: { availability: 1, scalability: 1, security: 1, maintainability: 1, costEfficiency: 1, feasibility: 1 },
   feedback: '確認した根拠: [Web Browser](#node=client)から[App Server](#node=app)、[RDBMS (SQL)](#node=db)へ、投稿を届けて保存する経路がつながっています。部品ごとに、表示・処理・保存の役割を分けています。 重大な不足: アプリが1台停止した場合に、利用者の要求を受け付ける別の経路がありません。停止しても投稿を続けられるという条件に対して、この構成では処理が止まります。 未確認事項: データを復元する手順と、利用が増えたときの対応方針はまだ記録されていません。要件に応じて、どこまで備えるかを確認しましょう。',
   improvement: '1. **停止したときの経路を考える**\n   [App Server](#node=app)が使えなくなったとき、別の処理先へ届けられる構成を試しましょう。\n2. **記録を戻す方法を決める**\n   データを失った場合、どの時点まで復元したいかを確認しましょう。',
   interview: { confirmed: 2, total: 4, confirmedConditions: [{ id: 'users', label: '利用者と利用時間' }, { id: 'traffic', label: '利用量と集中する時間' }], missingConditions: [{ id: 'availability', label: '停止できる時間' }, { id: 'budget', label: '予算' }] },

@@ -9,7 +9,7 @@ const project = {
     { id: 'db', type: 'custom', position: { x: 40, y: 240 }, data: { originalType: 'RDBMS (SQL)', label: '勤怠DB', description: '' } },
   ], edges: [{ id: 'link', source: 'app', target: 'db' }] },
 };
-const result = { totalScore: 85, details: { availability: 80, scalability: 80, security: 80, maintainability: 90, costEfficiency: 90, feasibility: 90 }, feedback: '構成を確認しました。', improvement: '復元方針を確認しましょう。' };
+const result = { totalScore: 85, details: { availability: 80, scalability: 80, security: 80, maintainability: 90, costEfficiency: 90, feasibility: 90 }, weights: { availability: 1, scalability: 1, security: 1, maintainability: 1, costEfficiency: 1, feasibility: 1 }, feedback: '構成を確認しました。', improvement: '復元方針を確認しましょう。' };
 
 async function visit(page: Page) {
   await page.route('**/*', route => {

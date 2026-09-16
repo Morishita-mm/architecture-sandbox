@@ -9,6 +9,16 @@ pub struct ScenarioCondition {
     pub label: String,
 }
 
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NegotiationProposal {
+    pub option_id: String,
+    pub condition_id: String,
+    pub label: String,
+    pub current_value: String,
+    pub proposed_value: String,
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Scenario {
@@ -21,6 +31,15 @@ pub struct Scenario {
     pub partner_role: Option<PartnerRole>,
     pub custom_mode: Option<CustomMode>,
     pub scenario_family: Option<ScenarioFamily>,
+    pub profile_id: Option<ScenarioProfile>,
+    #[serde(default)]
+    pub accepted_negotiation_ids: Vec<String>,
+    #[serde(default = "default_specification_version")]
+    pub specification_version: u16,
+}
+
+fn default_specification_version() -> u16 {
+    1
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
@@ -55,24 +74,282 @@ pub enum ScenarioFamily {
     Transaction,
 }
 
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "kebab-case")]
+pub enum ScenarioProfile {
+    AttendanceOffice,
+    AttendanceShift,
+    AttendanceField,
+    SnsPrivateCommunity,
+    SnsPhotoDiscovery,
+    SnsLiveEvent,
+}
+
 pub fn bounded(value: &str, max: usize) -> bool {
     !value.trim().is_empty() && value.chars().count() <= max
 }
 
+#[derive(Clone, Copy)]
+struct NegotiationOption {
+    id: &'static str,
+    condition_id: &'static str,
+    revised_value: &'static str,
+}
+
+impl ScenarioProfile {
+    fn matches(self, scenario_id: &str) -> bool {
+        matches!(
+            (scenario_id, self),
+            (
+                "internal_tool",
+                Self::AttendanceOffice | Self::AttendanceShift | Self::AttendanceField
+            ) | (
+                "sns_app",
+                Self::SnsPrivateCommunity | Self::SnsPhotoDiscovery | Self::SnsLiveEvent
+            )
+        )
+    }
+}
+
 impl Scenario {
+    fn profile_requirements(&self) -> Value {
+        match self.profile_id.expect("profile checked by caller") {
+            ScenarioProfile::AttendanceOffice => json!({
+                "users":"社員50人。出勤・退勤は最大100打刻/営業日。社員は自分の記録を確認し、人事2人が月次CSVを出す",
+                "traffic":"40人が始業前5分に出勤。平均0.13件/秒、最も重なる1秒は5件",
+                "response":"打刻の受付結果は2秒以内。月次CSVは依頼から5分以内",
+                "availability":"平日9〜18時を優先。アプリ1台の停止は営業時間中1時間以内、夜間停止は1回30分まで",
+                "data":"打刻を3年保存し、保存確認後に受付完了とする。受付済み記録をアプリ1台の停止で失わず、訂正前の値と担当者を残す",
+                "access":"社員は自分、人事2人は全員の記録を閲覧できる",
+                "operations":"兼任1人で運用し、定常作業は週1時間以内を希望",
+                "budget":"月1万円を目標"
+            }),
+            ScenarioProfile::AttendanceShift => json!({
+                "users":"工場の社員3,000人が24時間利用。休憩を含め最大12,000打刻/日",
+                "traffic":"交代時に2,400人が2分で打刻。平均20件/秒、最も重なる1秒は100件",
+                "response":"打刻の受付結果は1秒以内。日次集計は翌朝6時まで",
+                "reliability":"アプリ1台が停止しても60秒以内に受付を再開し、応答がない操作は再試行できる",
+                "data":"打刻を3年保存し、受付済み記録を失わない。再送しても同じ打刻を二重に記録しない",
+                "access":"責任者は担当部署、人事は全体を閲覧できる",
+                "operations":"運用担当2人。深夜の手作業による台数調整を避ける",
+                "budget":"月20万円を目標"
+            }),
+            ScenarioProfile::AttendanceField => json!({
+                "users":"訪問業務の社員500人、20拠点。最大2,000打刻/日",
+                "traffic":"復旧時は最大2,000件を5分以内に同期。平均6.7件/秒、初期最大50件/秒",
+                "response":"オンライン受付は2秒以内、オフライン仮保存は1秒以内",
+                "offline":"通信断または中央停止が30分続いても同じ端末へ仮保存し、復旧後または次回起動から5分以内に同期",
+                "data":"仮保存と中央受付を区別し、再送の二重計上を防ぐ。打刻時刻と到着時刻、訂正履歴を残し、中央の記録は3年保存",
+                "access":"社員は自分、責任者は担当拠点、人事は全体を閲覧できる",
+                "operations":"運用担当2人。未同期の状態を確認でき、日次集計は翌日でよい",
+                "budget":"月5万円を目標"
+            }),
+            ScenarioProfile::SnsPrivateCommunity => json!({
+                "users":"会員1,000 DAU、100投稿/日、一覧1万回/日",
+                "traffic":"活動後5分は一覧20回/秒、投稿は最大2件/秒",
+                "response":"一覧データ1秒以内、先頭10枚は3秒以内、投稿受付はアップロード後2秒以内",
+                "freshness":"投稿は60秒以内に会員の一覧へ反映",
+                "storage":"平均2MBの元画像と投稿を1年保存。削除後は新規閲覧を拒否し、物理削除は24時間以内",
+                "reliability":"受付済み投稿をアプリ1台の停止で失わず、8〜20時は2時間以内、時間外は翌朝10時までに復旧",
+                "access":"招待会員だけが閲覧・投稿でき、URLを知る非会員にも画像を返さない",
+                "operations":"兼任1人で運用。動画・DM・推薦は対象外",
+                "budget":"月2万円を目標"
+            }),
+            ScenarioProfile::SnsPhotoDiscovery => json!({
+                "users":"100万 DAU。日本40%、北米30%、欧州30%。10万投稿/日、一覧1,000万回/日",
+                "traffic":"15分間に一覧2,000回/秒、投稿60件/秒。元画像は平均2MB",
+                "response":"各地域で一覧データ1秒以内、先頭10枚は2秒以内、投稿受付はアップロード後2秒以内",
+                "freshness":"投稿は30秒以内、いいね数は60秒以内に反映",
+                "storage":"元画像と投稿を1年保存。元画像だけで約73TB/年。閲覧用軽量画像を別に持てる",
+                "reliability":"24時間利用。アプリ1台の停止後60秒以内に閲覧を再開し、受付済み投稿を失わない",
+                "access":"投稿・削除は本人だけ。削除後60秒以内に一覧と画像配信の新規閲覧を拒否",
+                "operations":"運用担当6人。ランキングは日次、推薦AIと動画は対象外",
+                "budget":"月3,000万円を目標"
+            }),
+            ScenarioProfile::SnsLiveEvent => json!({
+                "users":"イベント参加者10万 DAU、2万投稿/日、一覧200万回/日。対象地域は日本",
+                "traffic":"発表直後1分間に一覧2万回/秒、投稿100件/秒",
+                "response":"一覧データ0.5秒以内、先頭10枚は3秒以内、投稿受付はアップロード後1秒以内",
+                "freshness":"受付済み投稿は2秒以内、いいね数は30秒以内に反映",
+                "storage":"平均2MBの元画像と投稿を30日保存し、期間後に消えることを利用者へ示す",
+                "reliability":"アプリ1台の停止後60秒以内に受付を再開し、受付済み投稿を失わない",
+                "overload":"処理不能時は受付前に待機・再試行を案内し、成功したように見せて捨てない",
+                "data":"再送で同じ投稿を二重に作らず、投稿・削除は本人だけ。削除は60秒以内に反映",
+                "operations":"運用担当3人。開催中は対応し、イベント外は予定した1時間の夜間停止を許容",
+                "budget":"月500万円を目標"
+            }),
+        }
+    }
+
+    fn negotiation_options(&self) -> &'static [NegotiationOption] {
+        match self.profile_id {
+            Some(ScenarioProfile::AttendanceOffice) => &[
+                NegotiationOption {
+                    id: "attendance-office-budget-20k",
+                    condition_id: "budget",
+                    revised_value: "運用負担を減らせる根拠があれば月2万円まで許容",
+                },
+                NegotiationOption {
+                    id: "attendance-office-csv-next-day",
+                    condition_id: "response",
+                    revised_value: "打刻の受付結果は2秒以内。月次CSVは事前予約し翌営業日まででよい",
+                },
+            ],
+            Some(ScenarioProfile::AttendanceShift) => &[
+                NegotiationOption {
+                    id: "attendance-shift-report-8am",
+                    condition_id: "response",
+                    revised_value: "打刻の受付結果は1秒以内。日次集計は翌朝8時まで",
+                },
+                NegotiationOption {
+                    id: "attendance-shift-budget-300k",
+                    condition_id: "budget",
+                    revised_value: "故障対応と運用負担を改善する根拠があれば月30万円まで許容",
+                },
+            ],
+            Some(ScenarioProfile::AttendanceField) => &[
+                NegotiationOption {
+                    id: "attendance-field-sync-15m",
+                    condition_id: "offline",
+                    revised_value: "未同期状態を本部に示せるなら、復旧後または次回起動から15分以内に同期",
+                },
+                NegotiationOption {
+                    id: "attendance-field-budget-80k",
+                    condition_id: "budget",
+                    revised_value: "仮保存と同期の運用負担を減らす根拠があれば月8万円まで許容",
+                },
+            ],
+            Some(ScenarioProfile::SnsPrivateCommunity) => &[
+                NegotiationOption {
+                    id: "sns-private-retention-90d",
+                    condition_id: "storage",
+                    revised_value: "費用を抑えるため元画像と投稿を90日保存。削除後は新規閲覧を拒否し、物理削除は24時間以内",
+                },
+                NegotiationOption {
+                    id: "sns-private-budget-30k",
+                    condition_id: "budget",
+                    revised_value: "運用負担を減らせる根拠があれば月3万円まで許容",
+                },
+            ],
+            Some(ScenarioProfile::SnsPhotoDiscovery) => &[
+                NegotiationOption {
+                    id: "sns-discovery-retention-180d",
+                    condition_id: "storage",
+                    revised_value: "元画像と投稿を180日保存。閲覧用軽量画像を別に持てる",
+                },
+                NegotiationOption {
+                    id: "sns-discovery-freshness-60s",
+                    condition_id: "freshness",
+                    revised_value: "投稿は60秒以内、いいね数も60秒以内に反映",
+                },
+            ],
+            Some(ScenarioProfile::SnsLiveEvent) => &[
+                NegotiationOption {
+                    id: "sns-event-likes-60s",
+                    condition_id: "freshness",
+                    revised_value: "受付済み投稿は2秒以内、いいね数は60秒以内に反映",
+                },
+                NegotiationOption {
+                    id: "sns-event-budget-7m",
+                    condition_id: "budget",
+                    revised_value: "混雑時の受付と処理を改善する根拠があれば月700万円まで許容",
+                },
+            ],
+            None => &[],
+        }
+    }
+
+    pub fn available_negotiation_ids(&self) -> Vec<&'static str> {
+        self.negotiation_options()
+            .iter()
+            .filter(|option| {
+                !self
+                    .accepted_negotiation_ids
+                    .iter()
+                    .any(|id| id == option.id)
+            })
+            .map(|option| option.id)
+            .collect()
+    }
+
+    pub fn negotiation_context(&self) -> Value {
+        Value::Array(
+            self.available_negotiation_ids()
+                .into_iter()
+                .filter_map(|id| self.negotiation_proposal(id))
+                .map(|proposal| {
+                    json!({
+                        "optionId": proposal.option_id,
+                        "conditionId": proposal.condition_id,
+                        "currentValue": proposal.current_value,
+                        "proposedValue": proposal.proposed_value
+                    })
+                })
+                .collect(),
+        )
+    }
+
+    pub fn negotiation_proposal(&self, id: &str) -> Option<NegotiationProposal> {
+        let option = self.negotiation_options().iter().find(|option| {
+            option.id == id && !self.accepted_negotiation_ids.iter().any(|item| item == id)
+        })?;
+        Some(NegotiationProposal {
+            option_id: option.id.to_owned(),
+            condition_id: option.condition_id.to_owned(),
+            label: condition_label(option.condition_id).to_owned(),
+            current_value: self.condition_value(option.condition_id)?,
+            proposed_value: option.revised_value.to_owned(),
+        })
+    }
+
+    pub fn score_weights(&self) -> [u16; 6] {
+        match self.profile_id {
+            Some(ScenarioProfile::AttendanceOffice) => [35, 5, 20, 20, 20, 0],
+            Some(ScenarioProfile::AttendanceShift) => [75, 15, 0, 10, 0, 0],
+            Some(ScenarioProfile::AttendanceField) => [70, 0, 20, 10, 0, 0],
+            Some(ScenarioProfile::SnsPrivateCommunity) => [15, 10, 30, 20, 25, 0],
+            Some(ScenarioProfile::SnsPhotoDiscovery) => [20, 55, 0, 0, 25, 0],
+            Some(ScenarioProfile::SnsLiveEvent) => [30, 70, 0, 0, 0, 0],
+            None => [0; 6],
+        }
+    }
     pub fn validate(&self) -> bool {
+        let negotiations_valid = self.accepted_negotiation_ids.len() <= 10
+            && self.specification_version as usize == self.accepted_negotiation_ids.len() + 1
+            && self
+                .accepted_negotiation_ids
+                .iter()
+                .all(|id| bounded(id, 80))
+            && self
+                .accepted_negotiation_ids
+                .iter()
+                .collect::<std::collections::HashSet<_>>()
+                .len()
+                == self.accepted_negotiation_ids.len()
+            && self.accepted_negotiation_ids.iter().all(|id| {
+                self.negotiation_options()
+                    .iter()
+                    .any(|option| option.id == id)
+            });
         bounded(&self.title, 120)
             && self.description.chars().count() <= 2000
+            && negotiations_valid
             && match self.id.as_str() {
                 "internal_tool" | "sns_app" => {
                     !self.is_custom
                         && self.difficulty.is_none()
                         && self.custom_mode.is_none()
                         && self.scenario_family.is_none()
+                        && self
+                            .profile_id
+                            .is_none_or(|profile| profile.matches(self.id.as_str()))
                 }
                 "custom" => {
                     self.is_custom
                         && bounded(&self.description, 2000)
+                        && self.profile_id.is_none()
+                        && self.accepted_negotiation_ids.is_empty()
+                        && self.specification_version == 1
                         && match self.custom_mode {
                             None => self.scenario_family.is_none(),
                             Some(CustomMode::Guided) => {
@@ -89,7 +366,8 @@ impl Scenario {
 
     // Shared by the interviewer and evaluator; never serialized into public DTOs.
     pub fn requirements(&self) -> Value {
-        match self.id.as_str() {
+        let mut requirements = match self.id.as_str() {
+            "internal_tool" | "sns_app" if self.profile_id.is_some() => self.profile_requirements(),
             "internal_tool" => {
                 json!({"users":"社員50人", "traffic":"朝9時のみ集中、それ以外は低負荷", "availability":"夜間の短時間停止は許容、データ消失は不可", "budget":"低予算、過剰設計を避ける"})
             }
@@ -113,7 +391,19 @@ impl Scenario {
                     json!({"users":"1000万ユーザー、グローバル展開", "traffic":"単一障害点の排除とデータロス防止", "budget":"可用性とレイテンシを最優先", "availability":"24時間365日の稼働が必須"})
                 }
             },
+        };
+        if let Value::Object(values) = &mut requirements {
+            for accepted in &self.accepted_negotiation_ids {
+                if let Some(option) = self
+                    .negotiation_options()
+                    .iter()
+                    .find(|option| option.id == accepted)
+                {
+                    values.insert(option.condition_id.to_owned(), json!(option.revised_value));
+                }
+            }
         }
+        requirements
     }
 
     pub fn condition_catalog(&self) -> Vec<ScenarioCondition> {
@@ -285,14 +575,31 @@ impl Scenario {
     }
 
     pub fn public_context(&self) -> Value {
+        let profile = match self.profile_id {
+            Some(ScenarioProfile::AttendanceOffice) => Some("50人の会社で、無理なく運用する"),
+            Some(ScenarioProfile::AttendanceShift) => Some("工場の交代時に、打刻が一斉に集中する"),
+            Some(ScenarioProfile::AttendanceField) => {
+                Some("訪問先で電波が切れても、出退勤を記録する")
+            }
+            Some(ScenarioProfile::SnsPrivateCommunity) => {
+                Some("招待した仲間だけで、写真を共有する")
+            }
+            Some(ScenarioProfile::SnsPhotoDiscovery) => {
+                Some("世界中から、写真を気持ちよく閲覧する")
+            }
+            Some(ScenarioProfile::SnsLiveEvent) => Some("イベント中の写真とコメントを、すぐ届ける"),
+            None => None,
+        };
         match self.id.as_str() {
             "internal_tool" => {
-                json!({"title":"社内勤怠管理システム", "description":"社員が出退勤を記録するシステム"})
+                json!({"title":"社内勤怠管理システム", "description":"社員が出退勤を記録するシステム", "case":profile, "specificationVersion":self.specification_version})
             }
             "sns_app" => {
-                json!({"title":"画像投稿SNS", "description":"写真を投稿しタイムラインで閲覧するアプリ"})
+                json!({"title":"画像投稿SNS", "description":"写真を投稿しタイムラインで閲覧するアプリ", "case":profile, "specificationVersion":self.specification_version})
             }
-            _ => json!({"title":self.title,"description":self.description}),
+            _ => {
+                json!({"title":self.title,"description":self.description,"specificationVersion":self.specification_version})
+            }
         }
     }
 
@@ -357,6 +664,9 @@ mod tests {
             partner_role: Some(PartnerRole::Cto),
             custom_mode: Some(mode),
             scenario_family: family,
+            profile_id: None,
+            accepted_negotiation_ids: vec![],
+            specification_version: 1,
         }
     }
 
@@ -406,5 +716,40 @@ mod tests {
                 .label,
             "利用者と利用時間"
         );
+    }
+
+    #[test]
+    fn fixed_profile_keeps_requirements_and_applies_only_known_negotiation() {
+        let mut scenario: Scenario = serde_json::from_value(json!({
+            "id":"internal_tool",
+            "title":"勤怠",
+            "description":"勤怠",
+            "profileId":"attendance-shift"
+        }))
+        .unwrap();
+        assert!(scenario.validate());
+        assert_eq!(
+            scenario.requirements()["traffic"],
+            "交代時に2,400人が2分で打刻。平均20件/秒、最も重なる1秒は100件"
+        );
+        assert_eq!(scenario.score_weights(), [75, 15, 0, 10, 0, 0]);
+        assert!(
+            scenario
+                .negotiation_proposal("attendance-shift-report-8am")
+                .is_some()
+        );
+
+        scenario.accepted_negotiation_ids = vec!["attendance-shift-report-8am".into()];
+        scenario.specification_version = 2;
+        assert!(scenario.validate());
+        assert!(
+            scenario.requirements()["response"]
+                .as_str()
+                .unwrap()
+                .contains("8時")
+        );
+
+        scenario.accepted_negotiation_ids = vec!["attendance-field-sync-15m".into()];
+        assert!(!scenario.validate());
     }
 }

@@ -1,4 +1,4 @@
-use super::scenario::{Scenario, ScenarioCondition, bounded};
+use super::scenario::{NegotiationProposal, Scenario, ScenarioCondition, bounded};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -27,6 +27,8 @@ pub struct ChatRequest {
 pub struct ModelChatResponse {
     pub reply: String,
     pub covered_condition_ids: Vec<String>,
+    #[serde(default)]
+    pub negotiation_option_ids: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -34,6 +36,8 @@ pub struct ModelChatResponse {
 pub struct ChatResponse {
     pub reply: String,
     pub covered_conditions: Vec<ScenarioCondition>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub negotiation_proposals: Vec<NegotiationProposal>,
 }
 
 impl ChatRequest {
@@ -59,10 +63,19 @@ impl ModelChatResponse {
     pub fn into_public(self, scenario: &Scenario) -> Result<ChatResponse, ()> {
         if !bounded(&self.reply, 4000)
             || self.covered_condition_ids.len() > 20
+            || self.negotiation_option_ids.len() > 4
             || self
                 .covered_condition_ids
                 .iter()
                 .any(|id| !bounded(id, 40) || !scenario.has_condition(id))
+        {
+            return Err(());
+        }
+        let available = scenario.available_negotiation_ids();
+        if self
+            .negotiation_option_ids
+            .iter()
+            .any(|id| !bounded(id, 80) || !available.iter().any(|item| item == id))
         {
             return Err(());
         }
@@ -88,9 +101,17 @@ impl ModelChatResponse {
             .filter(|id| seen.insert(id.clone()))
             .filter_map(|id| catalog.iter().find(|item| item.id == id).cloned())
             .collect();
+        let mut proposal_ids = std::collections::HashSet::new();
+        let negotiation_proposals = self
+            .negotiation_option_ids
+            .into_iter()
+            .filter(|id| proposal_ids.insert(id.clone()))
+            .filter_map(|id| scenario.negotiation_proposal(&id))
+            .collect();
         Ok(ChatResponse {
             reply: self.reply,
             covered_conditions,
+            negotiation_proposals,
         })
     }
 }
@@ -136,6 +157,7 @@ mod tests {
         let valid = ModelChatResponse {
             reply: "社員50人です".into(),
             covered_condition_ids: vec!["users".into(), "users".into()],
+            negotiation_option_ids: vec![],
         }
         .into_public(&scenario())
         .unwrap();
@@ -145,6 +167,7 @@ mod tests {
             ModelChatResponse {
                 reply: "任意の条件".into(),
                 covered_condition_ids: vec!["invented".into()],
+                negotiation_option_ids: vec![],
             }
             .into_public(&scenario())
             .is_err()
@@ -156,6 +179,7 @@ mod tests {
         let response = ModelChatResponse {
             reply: "朝9時にみんなが一斉に打刻します。".into(),
             covered_condition_ids: vec![],
+            negotiation_option_ids: vec![],
         }
         .into_public(&scenario())
         .unwrap();

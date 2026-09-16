@@ -27,13 +27,50 @@ function finite(value: unknown, min: number, max: number): number {
 }
 function score(value: unknown): number { const n = finite(value, 0, 100); if (!Number.isInteger(n)) invalid(); return n; }
 
+const profilesByScenario = {
+  internal_tool: new Set(['attendance-office', 'attendance-shift', 'attendance-field']),
+  sns_app: new Set(['sns-private-community', 'sns-photo-discovery', 'sns-live-event']),
+} as const;
+const negotiationIds = new Set([
+  'attendance-office-budget-20k', 'attendance-office-csv-next-day',
+  'attendance-shift-report-8am', 'attendance-shift-budget-300k',
+  'attendance-field-sync-15m', 'attendance-field-budget-80k',
+  'sns-private-retention-90d', 'sns-private-budget-30k',
+  'sns-discovery-retention-180d', 'sns-discovery-freshness-60s',
+  'sns-event-likes-60s', 'sns-event-budget-7m',
+]);
+const negotiationIdsByProfile: Record<string, ReadonlySet<string>> = {
+  'attendance-office': new Set(['attendance-office-budget-20k', 'attendance-office-csv-next-day']),
+  'attendance-shift': new Set(['attendance-shift-report-8am', 'attendance-shift-budget-300k']),
+  'attendance-field': new Set(['attendance-field-sync-15m', 'attendance-field-budget-80k']),
+  'sns-private-community': new Set(['sns-private-retention-90d', 'sns-private-budget-30k']),
+  'sns-photo-discovery': new Set(['sns-discovery-retention-180d', 'sns-discovery-freshness-60s']),
+  'sns-live-event': new Set(['sns-event-likes-60s', 'sns-event-budget-7m']),
+};
+
+function scenarioSpecification(v: Record<string, unknown>, id: string) {
+  const profileId = v.profileId;
+  if (profileId === undefined) {
+    if (v.acceptedNegotiationIds !== undefined || v.specificationVersion !== undefined) invalid();
+    return {};
+  }
+  const validProfiles = profilesByScenario[id as keyof typeof profilesByScenario] as ReadonlySet<string> | undefined;
+  if (typeof profileId !== 'string' || !validProfiles?.has(profileId)) invalid();
+  const acceptedNegotiationIds = list(v.acceptedNegotiationIds ?? [], 10).map(value => text(value, 80, true));
+  if (new Set(acceptedNegotiationIds).size !== acceptedNegotiationIds.length
+    || acceptedNegotiationIds.some(value => !negotiationIds.has(value) || !negotiationIdsByProfile[profileId].has(value))) invalid();
+  const specificationVersion = finite(v.specificationVersion ?? 1, 1, 11);
+  if (!Number.isInteger(specificationVersion) || specificationVersion !== acceptedNegotiationIds.length + 1) invalid();
+  return { profileId: profileId as Scenario['profileId'], acceptedNegotiationIds, specificationVersion };
+}
+
 export function publicScenario(value: unknown): Scenario {
   const v = object(value);
   const id = text(v.id, 100, true);
   const partnerRole = v.partnerRole ?? 'ceo';
   if (partnerRole !== 'ceo' && partnerRole !== 'cto' && partnerRole !== 'cfo') invalid();
   const preset = SCENARIOS.find(s => !s.isCustom && s.id === id);
-  if (preset) return { ...preset, partnerRole };
+  if (preset) return { ...preset, description: v.profileId === undefined ? preset.description : text(v.description, 2000, true), partnerRole, ...scenarioSpecification(v, id) };
   // Legacy share links assigned a challenge_* ID even to presets.
   const legacyPreset = id.startsWith('challenge_') && SCENARIOS.find(s => !s.isCustom && s.title === v.title);
   if (legacyPreset) return { ...legacyPreset, partnerRole };
@@ -69,15 +106,21 @@ export function parseEvaluation(value: unknown): EvaluationResult {
     if (confirmedConditions.length !== confirmed || confirmedConditions.length + missingConditions.length !== total) invalid();
     interview = { confirmed, total, confirmedConditions, missingConditions };
   }
+  const weights = v.weights === undefined ? { availability: 1, scalability: 1, security: 1, maintainability: 1, costEfficiency: 1, feasibility: 1 } : (() => {
+    const w = object(v.weights);
+    const parsed = { availability: score(w.availability), scalability: score(w.scalability), security: score(w.security), maintainability: score(w.maintainability), costEfficiency: score(w.costEfficiency), feasibility: score(w.feasibility) };
+    if (Object.values(parsed).reduce((sum, value) => sum + value, 0) === 0) invalid();
+    return parsed;
+  })();
   return { totalScore: score(v.totalScore ?? v.score), details: {
     availability: score(d.availability), scalability: score(d.scalability), security: score(d.security),
     maintainability: score(d.maintainability), costEfficiency: score(d.costEfficiency), feasibility: score(d.feasibility),
-  }, feedback: text(v.feedback, 12000, true), improvement: text(v.improvement, 12000, true), ...(interview ? { interview } : {}) };
+  }, weights, feedback: text(v.feedback, 12000, true), improvement: text(v.improvement, 12000, true), ...(interview ? { interview } : {}) };
 }
 
 export function normalizeProject(value: unknown): ProjectSaveData {
   const v = object(value);
-  if (v.schemaVersion !== undefined && v.schemaVersion !== 2 && v.schemaVersion !== 3) invalid();
+  if (v.schemaVersion !== undefined && v.schemaVersion !== 2 && v.schemaVersion !== 3 && v.schemaVersion !== 4) invalid();
   const diagram = object(v.diagram);
   const nodes: SimpleNodeData[] = list(diagram.nodes, 200).map(value => {
     const n = object(value); const d = object(n.data); const p = object(n.position);
@@ -146,6 +189,25 @@ export function normalizeProject(value: unknown): ProjectSaveData {
     return { conditionId: text(item.conditionId, 40, true), label: text(item.label, 80, true), question, answer, questionMessageIndex, answerMessageIndex };
   });
   if (new Set(interviewEvidence.map(item => item.conditionId)).size !== interviewEvidence.length) invalid();
+  const scenario = publicScenario(v.scenario);
+  const requirementRevisions = list(v.requirementRevisions ?? [], 10).map((value, index) => {
+    const item = object(value);
+    const version = finite(item.version, 2, 11);
+    if (!Number.isInteger(version) || version !== index + 2) invalid();
+    const acceptedAt = text(item.acceptedAt, 40, true);
+    if (!Number.isFinite(Date.parse(acceptedAt))) invalid();
+    return {
+      version,
+      acceptedAt,
+      optionId: text(item.optionId, 80, true),
+      conditionId: text(item.conditionId, 40, true),
+      label: text(item.label, 80, true),
+      currentValue: text(item.currentValue, 2000, true),
+      proposedValue: text(item.proposedValue, 2000, true),
+    };
+  });
+  if (requirementRevisions.length !== (scenario.acceptedNegotiationIds?.length ?? 0)
+    || requirementRevisions.some((revision, index) => revision.optionId !== scenario.acceptedNegotiationIds?.[index])) invalid();
   const version = text(v.version, 20, true);
   if (!/^\d{1,8}\.\d$/.test(version)) invalid();
   const timestamp = text(v.timestamp, 40, true);
@@ -157,11 +219,12 @@ export function normalizeProject(value: unknown): ProjectSaveData {
     catch (error) { if (v.schemaVersion !== undefined) throw error; }
   }
   // Old readers reject v3 instead of silently dropping these new annotations.
-  const scenario = publicScenario(v.scenario);
   const extended = nodes.some(n => n.data.design !== undefined) || edges.some(e => e.data !== undefined) || scenario.customMode !== undefined || interviewEvidence.length > 0;
-  return { schemaVersion: extended || v.schemaVersion === 3 ? 3 : 2, version, timestamp, projectId: text(v.projectId, 100, true),
+  const schemaVersion = scenario.profileId || requirementRevisions.length || v.schemaVersion === 4 ? 4 : extended || v.schemaVersion === 3 ? 3 : 2;
+  return { schemaVersion, version, timestamp, projectId: text(v.projectId, 100, true),
     scenario, memo: text(v.memo ?? '', 100000),
-    diagram: { nodes: ordered, edges }, chatHistory, interviewEvidence, evaluation };
+    diagram: { nodes: ordered, edges }, chatHistory, interviewEvidence,
+    ...(schemaVersion === 4 ? { requirementRevisions } : {}), evaluation };
 }
 
 function decodeJsonOrLegacyBase64(content: string): unknown {

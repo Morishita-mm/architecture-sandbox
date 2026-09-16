@@ -72,7 +72,7 @@ export const ScenarioSelectionScreen: React.FC<
     const { project } = draft;
     try {
       // Apply the same evaluation policy as the editor's project export.
-      const current = draft.evaluationKey === evaluationKey(project.scenario, project.diagram);
+      const current = draft.evaluationKey === evaluationKey(project.scenario, project.diagram, project.interviewEvidence);
       saveProjectToLocalFile({ ...project, evaluation: current ? project.evaluation : null }, `${project.scenario.title.trim() || 'untitled'}_v${project.version}.json`);
       setDraftExport({ id: project.projectId, error: false, message: `JSONのダウンロードを開始しました。「既存プロジェクトを読み込む」から再開できます。${project.evaluation && !current ? '変更前・対応未確認の評価は含めていません。' : ''}` });
     } catch {
