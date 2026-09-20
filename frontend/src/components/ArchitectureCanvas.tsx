@@ -9,8 +9,9 @@ import {
 } from "reactflow";
 
 import { DiagramCanvas } from "./DiagramCanvas";
+import { PanelResizeHandle } from "./PanelResizeHandle";
 import { Sidebar } from "./Sidebar";
-import { BiChat, BiNetworkChart, BiBarChart, BiCube, BiNotepad, BiBulb } from "react-icons/bi";
+import { BiChat, BiNetworkChart, BiBarChart, BiChevronLeft, BiChevronRight, BiBulb } from "react-icons/bi";
 import type {
   EvaluationResult,
   ChatMessage,
@@ -115,6 +116,7 @@ function ArchitectureFlow({
     setActiveTab('design'); setMobilePanel(null); setSelectedNodeId(nodeId ?? null); setSelectedEdgeId(edgeId ?? null);
     requestAnimationFrame(() => { document.getElementById(nodeId ? 'node-label' : 'edge-payload')?.focus(); });
   };
+  const [panelWidths, setPanelWidths] = useState<Partial<Record<SidePanel, number>>>({});
   const [isMemoOpen, setIsMemoOpen] = useState(true);
   const [isComponentsOpen, setIsComponentsOpen] = useState(true);
   const [mobilePanel, setMobilePanel] = useState<SidePanel | null>(null);
@@ -132,6 +134,11 @@ function ArchitectureFlow({
     canvasOrigin.current = { x, y };
   };
 
+  const resizePanel = (panel: SidePanel, width: number) => {
+    rememberCanvasOrigin();
+    setPanelWidths(previous => ({ ...previous, [panel]: width }));
+  };
+
   useLayoutEffect(() => {
     const previous = canvasOrigin.current;
     canvasOrigin.current = null;
@@ -142,7 +149,7 @@ function ArchitectureFlow({
       const viewport = getViewport();
       setViewport({ ...viewport, x: viewport.x + previous.x - x, y: viewport.y + previous.y - y });
     }
-  }, [activeTab, componentsVisible, memoVisible, getViewport, setViewport]);
+  }, [activeTab, componentsVisible, memoVisible, panelWidths, getViewport, setViewport]);
 
   useEffect(() => {
     const media = window.matchMedia("(max-width: 760px)");
@@ -642,7 +649,7 @@ function ArchitectureFlow({
         {autosave.status === 'saved' ? 'このブラウザに自動保存済み' : autosave.status === 'saving' ? 'このブラウザに保存中…' : '自動保存できません。入力や空き容量を確認し、ファイルにも保存してください。'}
         {autosave.status === 'error' && <button className="ui-button" onClick={autosave.retry}>保存を再試行</button>}
       </div>
-      {notice && <div role="status" style={{ padding: "8px 20px", background: "#fff3cd", display: "flex", justifyContent: "space-between" }}><span>{notice}</span><button onClick={() => setNotice("")} aria-label="通知を閉じる">閉じる</button></div>}
+      {notice && <div role="status" style={{ padding: "8px 20px", background: "var(--app-warning-soft)", display: "flex", justifyContent: "space-between" }}><span>{notice}</span><button onClick={() => setNotice("")} aria-label="通知を閉じる">閉じる</button></div>}
       {leaveWithoutSaving && autosave.status !== 'saved' && <div className="draft-exit">
         <p>保存できなかった変更は失われます。必要な作業は先にJSONファイルへ保存してください。</p>
         <button className="ui-button" onClick={() => { chatRequest.current?.abort('leave'); evaluationRequest.current?.abort('leave'); onBackToSelection(); }}>ブラウザに保存せずホームへ戻る</button>
@@ -659,6 +666,7 @@ function ArchitectureFlow({
           <button
             style={activeTab === "chat" ? activeTabStyle : tabStyle}
             onClick={() => selectTab("chat")}
+            aria-pressed={activeTab === "chat"}
           >
             <BiChat style={{ marginRight: "6px", verticalAlign: "middle" }} />{" "}
             要件定義・交渉
@@ -666,6 +674,7 @@ function ArchitectureFlow({
           <button
             style={activeTab === "design" ? activeTabStyle : tabStyle}
             onClick={() => selectTab("design")}
+            aria-pressed={activeTab === "design"}
           >
             <BiNetworkChart
               style={{ marginRight: "6px", verticalAlign: "middle" }}
@@ -675,6 +684,7 @@ function ArchitectureFlow({
           <button
             style={activeTab === "evaluate" ? activeTabStyle : tabStyle}
             onClick={() => selectTab("evaluate")}
+            aria-pressed={activeTab === "evaluate"}
           >
             <BiBarChart
               style={{ marginRight: "6px", verticalAlign: "middle" }}
@@ -693,21 +703,25 @@ function ArchitectureFlow({
         </>}
         <button className="panel-toggle learning-hint-trigger" onClick={() => setHelpTopic('learning')} aria-haspopup="dialog"><BiBulb size={18} aria-hidden="true" />設計のヒント</button>
         <button className="panel-toggle learning-hint-trigger" onClick={() => setIsReviewOpen(true)} aria-haspopup="dialog"><BiNetworkChart size={18} aria-hidden="true" />設計を確かめる</button>
-        <div className="workspace-panel-actions" role="group" aria-label="サイドパネルの表示">
-          {activeTab === "design" && (
-            <button ref={componentsToggleRef} className="panel-toggle" onClick={() => togglePanel("components")} aria-expanded={componentsVisible} aria-controls="components-panel" aria-label="コンポーネントの表示切り替え" title={componentsVisible ? "コンポーネントを閉じる" : "コンポーネントを開く"}>
-              <BiCube size={18} aria-hidden="true" />コンポーネント
+        </div>
+        <div className="workspace-content" style={{ display: "flex", flex: 1, overflow: "hidden",
+          ...(panelWidths.components ? { "--app-sidebar-width": `min(${panelWidths.components}px, 35vw)` } : {}),
+          ...(panelWidths.memo ? { "--app-memo-width": `min(${panelWidths.memo}px, 35vw)` } : {}),
+        } as React.CSSProperties}>
+          <div className="workspace-panel-actions" role="group" aria-label="サイドパネルの表示">
+            {activeTab === "design" && (
+              <button ref={componentsToggleRef} className="side-panel-handle side-panel-handle-left" onClick={() => togglePanel("components")} aria-expanded={componentsVisible} aria-controls="components-panel" aria-label="コンポーネントの表示切り替え" title={componentsVisible ? "コンポーネントを閉じる" : "コンポーネントを開く"}>
+                {componentsVisible ? <BiChevronLeft aria-hidden="true" /> : <BiChevronRight aria-hidden="true" />}
+              </button>
+            )}
+            <button ref={memoToggleRef} className="side-panel-handle side-panel-handle-right" onClick={() => togglePanel("memo")} aria-expanded={memoVisible} aria-controls="memo-panel" aria-label="要件メモの表示切り替え" title={memoVisible ? "要件メモを閉じる" : "要件メモを開く"}>
+              {memoVisible ? <BiChevronRight aria-hidden="true" /> : <BiChevronLeft aria-hidden="true" />}
             </button>
-          )}
-          <button ref={memoToggleRef} className="panel-toggle" onClick={() => togglePanel("memo")} aria-expanded={memoVisible} aria-controls="memo-panel" aria-label="要件メモの表示切り替え" title={memoVisible ? "要件メモを閉じる" : "要件メモを開く"}>
-            <BiNotepad size={18} aria-hidden="true" />要件メモ
-          </button>
-        </div>
-        </div>
-        <div className="workspace-content" style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+          </div>
           {isCompact && (memoVisible || componentsVisible) && <button className="side-panel-backdrop" aria-label="サイドパネルを閉じる" onClick={() => closePanel(memoVisible ? "memo" : "components")} />}
           <div id="components-panel" className="workspace-side-panel side-panel-left" hidden={!componentsVisible} onKeyDown={event => onPanelKeyDown(event, "components")}>
             <Sidebar onAdd={onAddFromSidebar} />
+            {!isCompact && <PanelResizeHandle side="left" label="コンポーネント" width={panelWidths.components ?? (window.innerWidth <= 1100 ? 208 : 232)} onResize={width => resizePanel("components", width)} />}
           </div>
           <div
             className="workspace-main"
@@ -783,7 +797,7 @@ function ArchitectureFlow({
                       style={{
                         padding: "9px 14px",
                         fontSize: "13px",
-                        backgroundColor: isLoading ? "var(--app-border)" : "var(--app-success)",
+                        backgroundColor: isLoading ? "var(--app-border)" : "var(--app-success-fill)",
                         color: "white",
                         border: "none",
                         borderRadius: "8px",
@@ -818,6 +832,7 @@ function ArchitectureFlow({
             </div>
           </div>
           <div id="memo-panel" className="workspace-side-panel side-panel-right" hidden={!memoVisible} onKeyDown={event => onPanelKeyDown(event, "memo")}>
+            {!isCompact && <PanelResizeHandle side="right" label="要件メモ" width={panelWidths.memo ?? (window.innerWidth <= 1100 ? 210 : 240)} onResize={width => resizePanel("memo", width)} />}
             <MemoPad value={memo} onChange={setMemo} onAddRecord={() => setIsNoteOpen(true)} />
           </div>
         </div>
@@ -849,24 +864,27 @@ export function ArchitectureCanvas({
 const tabBarStyle: React.CSSProperties = {
   display: "flex",
   backgroundColor: "var(--app-subtle)",
-  padding: "0 var(--tabs-inset, 16px)",
+  padding: "8px var(--tabs-inset, 16px)",
+  gap: "4px",
   flex: 1,
   overflowX: "auto",
 };
 const tabStyle: React.CSSProperties = {
   padding: "var(--tab-padding, 13px 22px)",
-  border: "none",
   background: "var(--tab-hover, transparent)",
   cursor: "pointer",
   whiteSpace: "nowrap",
   flexShrink: 0,
   fontSize: "var(--tab-font, 14px)",
   color: "var(--app-muted)",
-  borderBottom: "2px solid transparent",
+  border: "1px solid transparent",
+  borderRadius: "9px",
 };
 const activeTabStyle: React.CSSProperties = {
   ...tabStyle,
   color: "var(--app-primary)",
   fontWeight: "bold",
-  borderBottom: "2px solid var(--app-primary)",
+  border: "1px solid var(--app-border)",
+  background: "var(--app-surface)",
+  boxShadow: "var(--app-shadow)",
 };

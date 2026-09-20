@@ -29,8 +29,8 @@ export function DiagramCanvas({ nodes = [], edges = [], miniMap = false, present
       const emphasized = travelling || edge.selected;
       const color = travelling && packet.response ? '#087f70' : emphasized ? '#2563eb' : '#71839b';
       return { ...edge, label: edge.data ? connectionLabel(edge.data) : undefined,
-        labelStyle: { fontSize: 11, fontWeight: 500, fill: emphasized ? '#1e4db7' : '#4b5e76' },
-        labelBgStyle: { fill: '#ffffff', stroke: emphasized ? '#afc8f7' : '#dce4ee', strokeWidth: 1 },
+        labelStyle: { fontSize: 11, fontWeight: 500, fill: emphasized ? 'var(--app-primary)' : 'var(--app-muted)' },
+        labelBgStyle: { fill: 'var(--app-surface)', stroke: emphasized ? 'var(--app-primary)' : 'var(--app-border)', strokeWidth: 1 },
         animated: false,
         style: { ...edge.style, stroke: color, strokeWidth: emphasized ? 2.5 : 1.75, strokeLinecap: 'round', strokeLinejoin: 'round' },
         markerEnd: travelling && packet.reverse ? undefined : { type: MarkerType.ArrowClosed, color, width: 18, height: 18 },
@@ -51,7 +51,7 @@ export function DiagramCanvas({ nodes = [], edges = [], miniMap = false, present
       onNodesDelete?.(deleted);
     }}
   >
-    <Background color="#d4dce6" gap={20} size={1} />
+    <Background color="var(--app-border)" gap={20} size={1} />
     <Controls fitViewOptions={fitOptions} />
     {miniMap && <MiniMap />}
     {children}

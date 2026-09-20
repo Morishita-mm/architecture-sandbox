@@ -1,3 +1,4 @@
+import { ThemeToggle } from './ThemeToggle';
 import React, { useState, useEffect, useRef } from "react";
 import { SCENARIOS } from "../scenarios";
 import type { Scenario, ProjectSaveData } from "../types";
@@ -42,9 +43,16 @@ export const ScenarioSelectionScreen: React.FC<
   ScenarioSelectionScreenProps
 > = ({ onSelectScenario, onProjectLoad, onStartLearning, choosingTheme, onChooseTheme, onHome }) => {
   const heading = useRef<HTMLHeadingElement>(null);
+  const previousChoosingTheme = useRef(choosingTheme);
   const [course] = useState(readStages);
   const finishedLessons = course.progress.cleared.length;
-  useEffect(() => { heading.current?.focus({ preventScroll: true }); }, [choosingTheme]);
+  useEffect(() => {
+    // Announce in-app navigation without focusing the title on initial load.
+    if (choosingTheme || previousChoosingTheme.current !== choosingTheme) {
+      heading.current?.focus({ preventScroll: true });
+    }
+    previousChoosingTheme.current = choosingTheme;
+  }, [choosingTheme]);
   const [loadError, setLoadError] = useState("");
   const [helpTopic, setHelpTopic] = useState<'index' | 'learning' | null>(null);
   const [drafts, setDrafts] = useState<LocalDraft[]>([]);
@@ -132,7 +140,7 @@ export const ScenarioSelectionScreen: React.FC<
   };
 
   const challengeModalStyle: React.CSSProperties = {
-    backgroundColor: "white",
+    backgroundColor: "var(--app-surface)",
     width: "90%",
     maxWidth: "500px",
     borderRadius: "12px",
@@ -142,12 +150,12 @@ export const ScenarioSelectionScreen: React.FC<
   };
 
   const challengeHeaderStyle: React.CSSProperties = {
-    backgroundColor: "#FFCCBC",
+    backgroundColor: "var(--app-warning-soft)",
     padding: "20px",
     display: "flex",
     alignItems: "center",
     gap: "10px",
-    borderBottom: "1px solid #FFAB91",
+    borderBottom: "1px solid var(--app-border)",
   };
 
   const challengeInfoStyle: React.CSSProperties = {
@@ -171,7 +179,7 @@ export const ScenarioSelectionScreen: React.FC<
     padding: "10px 20px",
     border: "1px solid var(--app-border)",
     borderRadius: "6px",
-    backgroundColor: "white",
+    backgroundColor: "var(--app-surface)",
     cursor: "pointer",
     fontWeight: "bold",
     color: "var(--app-muted)",
@@ -194,6 +202,7 @@ export const ScenarioSelectionScreen: React.FC<
   return (
     <div className="welcome-screen">
       <div className="welcome-tools">
+        <ThemeToggle />
         {choosingTheme && <button className="ui-button welcome-home" onClick={onHome}><BiArrowBack aria-hidden="true" />ホーム</button>}
         <button className="ui-button" onClick={() => setHelpTopic('index')}>
           <BiHelpCircle size={18} /> 操作ガイド
@@ -207,7 +216,7 @@ export const ScenarioSelectionScreen: React.FC<
           <div style={challengeModalStyle}>
             <div style={challengeHeaderStyle}>
               <FaFire size={24} color="#FF5722" />
-              <h2 style={{ margin: 0, color: "#BF360C" }}>
+              <h2 style={{ margin: 0, color: "var(--app-warning)" }}>
                 設計チャレンジが届きました！
               </h2>
             </div>

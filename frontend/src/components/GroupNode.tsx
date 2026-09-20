@@ -22,7 +22,7 @@ export const GroupNode = memo(
     const containerStyle: React.CSSProperties = {
       width: "100%",
       height: "100%",
-      backgroundColor: styleConfig.bg,
+      backgroundColor: `light-dark(${styleConfig.bg}, color-mix(in srgb, ${styleConfig.border} 12%, var(--app-surface)))`,
       border: `2px ${isSecurityGroup ? 'solid' : 'dashed'} ${selected ? "#2196F3" : styleConfig.border}`,
       borderRadius: "4px",
       position: "relative",
@@ -35,7 +35,7 @@ export const GroupNode = memo(
       left: "0",
       fontSize: "12px",
       fontWeight: "bold",
-      color: styleConfig.border,
+      color: "var(--app-text)",
       backgroundColor: "transparent",
       padding: "2px 0",
       whiteSpace: "nowrap",
@@ -46,7 +46,7 @@ export const GroupNode = memo(
       top: "4px",
       right: "4px",
       fontSize: "10px",
-      color: "rgba(0,0,0,0.4)",
+      color: "var(--app-muted)",
       pointerEvents: "none",
     };
 

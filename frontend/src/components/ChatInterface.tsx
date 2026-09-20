@@ -1,12 +1,17 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from "react";
-import { BiUser, BiBot } from "react-icons/bi";
+import { BiCheck, BiChevronDown, BiUpArrowAlt, BiLoaderAlt } from "react-icons/bi";
+import "./ChatInterface.css";
 
 import type { Scenario, ChatMessage, InterviewEvidence, NegotiationProposal, RequirementRevision } from "../types"; // 共通型を使用
 
 import { chatContext, publicScenario } from "../utils/projectFormat";
 import { postJson } from "../utils/api";
 import { API_BASE_URL } from "../config";
+import { PartnerAvatar } from "./PartnerAvatar";
+import { PARTNER_LABELS } from "../constants/partners";
 import { PROFILE_LABELS } from "../scenarios";
+
+const localChat = import.meta.env.DEV && import.meta.env.VITE_LOCAL_CHAT !== "false";
 
 interface Props {
   scenario: Scenario;
@@ -64,6 +69,7 @@ export const ChatInterface: React.FC<Props> = ({
   }, [messages]);
 
   const displayMessages = messages;
+  const partnerRole = scenario.partnerRole ?? "ceo";
 
   const handleSend = async () => {
     if (!input.trim() || request.current) return;
@@ -83,7 +89,9 @@ export const ChatInterface: React.FC<Props> = ({
     setIsLoading(true);
 
     try {
-      const data = await postJson(`${API_BASE_URL}/api/chat`, {
+      const data = localChat
+        ? await (await import("../utils/localChat")).localChatReply(controller.signal)
+        : await postJson(`${API_BASE_URL}/api/chat`, {
         scenario: publicScenario(scenario), messages: chatContext(newHistory),
       }, controller.signal);
       if (!data || typeof data !== "object" || !("reply" in data) || typeof data.reply !== "string" || !data.reply.trim() || [...data.reply].length > 4000) throw new Error("応答の形式が不正です。");
@@ -136,45 +144,30 @@ export const ChatInterface: React.FC<Props> = ({
   };
 
   return (
-    <div style={containerStyle}>
+    <section className="chat-panel" aria-label="要件の相談">
       {scenario.profileId && <header className="scenario-case-summary">
         <div><span>今回のケース</span><strong>{PROFILE_LABELS[scenario.profileId]}</strong></div>
         <div><span>評価に使う仕様</span><strong>v{scenario.specificationVersion ?? 1}</strong></div>
       </header>}
-      <div ref={messagesAreaRef} style={messagesAreaStyle}>
+      <div ref={messagesAreaRef} className="chat-messages" role="log" aria-label="会話履歴" aria-live="polite" aria-relevant="additions">
         {displayMessages.map((msg, idx) => (
-          <div
-            key={idx}
-            style={{
-              ...messageRowStyle,
-              justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
-            }}
-          >
-            {msg.role === "model" && <div style={iconStyle}>
-              <BiBot size={24} color="var(--app-muted)" />
-              </div>}
-            <div
-              style={{
-                ...bubbleStyle,
-                backgroundColor: msg.role === "user" ? "var(--app-primary)" : "#f1f4f7",
-                color: msg.role === "user" ? "white" : "var(--app-text)",
-              }}
-            >
-              {msg.content}
+          <article key={idx} className={`chat-message chat-message-${msg.role}`}>
+            <div className="chat-message-author">
+              {msg.role === 'model' && <PartnerAvatar role={partnerRole} />}
+              <span>{msg.role === 'user' ? 'あなた' : PARTNER_LABELS[partnerRole]}</span>
             </div>
-            {msg.role === "user" && <div style={iconStyle}>
-              <BiUser size={24} color="var(--app-primary)" />
-              </div>}
-          </div>
+            <div className="chat-message-content">{msg.content}</div>
+          </article>
         ))}
-        {isLoading && (
-          <div style={{ textAlign: "center", color: "#999" }}>入力中...</div>
-        )}
+        {isLoading && <ThinkingState />}
       </div>
 
       {evidence.length > 0 && <aside className="interview-progress" aria-label="聞き取りで確認した条件">
-        <strong>確認できた条件 {evidence.length}件</strong>
-        <div>{evidence.map(item => <span key={item.conditionId}>{item.label}</span>)}</div>
+        <div className="chat-evidence-heading"><BiCheck aria-hidden="true" /><strong>確認できた条件 {evidence.length}件</strong><span>選択して詳細を表示</span></div>
+        <div className="chat-evidence-chips">{evidence.map(item => <details className="chat-evidence-chip" key={item.conditionId}>
+          <summary><BiCheck aria-hidden="true" />{item.label}<BiChevronDown aria-hidden="true" /></summary>
+          <div><strong>確認した質問</strong><p>{item.question}</p><strong>相手の回答</strong><p>{item.answer}</p></div>
+        </details>)}</div>
       </aside>}
 
       {(requirementRevisions.length > 0 || pendingProposals.length > 0) && <aside className="specification-progress" aria-label="合意仕様の変更">
@@ -192,7 +185,8 @@ export const ChatInterface: React.FC<Props> = ({
       </aside>}
 
       {error && <p role="alert" style={{ color: "var(--app-danger)", padding: "0 20px" }}>{error}</p>}
-      <div style={inputAreaStyle}>
+      <div className="chat-input-area">
+        <div className="chat-input-box">
         <textarea
           className="chat-composer"
           ref={inputRef}
@@ -203,100 +197,33 @@ export const ChatInterface: React.FC<Props> = ({
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="要件について質問する"
-          style={inputStyle}
           disabled={isLoading}
         />
         <button
           onClick={handleSend}
-          style={sendButtonStyle}
-          disabled={isLoading}
+          className="chat-send"
+          aria-label="送信"
+          title="送信（Enter）"
+          disabled={isLoading || !input.trim()}
         >
-          送信
+          <BiUpArrowAlt size={24} aria-hidden="true" />
         </button>
+        </div>
+        <div className="chat-input-hint"><span>{localChat && "ローカルの定型応答 · "}Enterで送信 · Shift + Enterで改行</span><span>{input.length.toLocaleString()} / 4,000</span></div>
       </div>
-    </div>
+    </section>
   );
 };
 
-// --- Styles (CSS-in-JS) ---
-const containerStyle: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  height: "100%",
-  backgroundColor: "#fff",
-  maxWidth: "800px",
-  margin: "0 auto",
-  borderLeft: "1px solid var(--app-border)",
-  borderRight: "1px solid var(--app-border)",
-};
-
-const messagesAreaStyle: React.CSSProperties = {
-  flex: 1,
-  minHeight: 0,
-  overflowY: "auto",
-  padding: "24px",
-  display: "flex",
-  flexDirection: "column",
-  gap: "20px",
-};
-
-const messageRowStyle: React.CSSProperties = {
-  display: "flex",
-  alignItems: "flex-start",
-  gap: "10px",
-};
-
-const iconStyle: React.CSSProperties = {
-  flexShrink: 0,
-  display: "grid",
-  placeItems: "center",
-  width: "28px",
-  height: "32px",
-  marginTop: "5px",
-};
-
-const bubbleStyle: React.CSSProperties = {
-  padding: "12px 16px",
-  borderRadius: "12px",
-  maxWidth: "78%",
-  lineHeight: "1.75",
-  fontSize: "15px",
-  whiteSpace: "pre-wrap",
-};
-
-const inputAreaStyle: React.CSSProperties = {
-  padding: "20px",
-  borderTop: "1px solid var(--app-border)",
-  display: "flex",
-  gap: "10px",
-  backgroundColor: "var(--app-subtle)",
-};
-
-const inputStyle: React.CSSProperties = {
-  flex: 1,
-  minWidth: 0,
-  padding: "12px",
-  borderRadius: "8px",
-  border: "1px solid var(--app-border)",
-  fontSize: "15px",
-  fontFamily: "inherit",
-  lineHeight: "24px",
-  boxSizing: "border-box",
-  resize: "none",
-  // One to three 24px lines, plus 24px padding and 2px borders.
-  minHeight: "50px",
-  maxHeight: "98px",
-  overflowY: "auto",
-};
-
-const sendButtonStyle: React.CSSProperties = {
-  alignSelf: "flex-end",
-  height: "50px",
-  padding: "0 20px",
-  borderRadius: "8px",
-  border: "none",
-  backgroundColor: "var(--app-primary)",
-  color: "white",
-  cursor: "pointer",
-  fontWeight: "bold",
-};
+function ThinkingState() {
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    const started = Date.now();
+    const timer = window.setInterval(() => setSeconds(Math.floor((Date.now() - started) / 1000)), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+  return <details className="chat-thinking">
+    <summary><BiLoaderAlt className="chat-thinking-spinner" aria-hidden="true" /><span role="status">回答を待っています</span><span className="chat-thinking-time">{seconds}秒</span><BiChevronDown aria-hidden="true" /></summary>
+    <p>質問を送信しました。相談相手からの回答を受信すると、ここに表示します。</p>
+  </details>;
+}

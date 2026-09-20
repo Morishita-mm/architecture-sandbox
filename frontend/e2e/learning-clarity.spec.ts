@@ -14,6 +14,7 @@ for (const mobile of [false, true]) test.describe(mobile ? 'mobile learning clar
   test('home and themes are separate screens; theme selection and basic properties stay accessible', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('.scenario-card')).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Architecture Sandbox', exact: true })).not.toBeFocused();
     await capture(page, 'home');
     await page.getByRole('button', { name: /設計課題に取り組む/ }).click();
     await expect(page.getByRole('heading', { name: '設計するテーマを選ぶ' })).toBeFocused();
