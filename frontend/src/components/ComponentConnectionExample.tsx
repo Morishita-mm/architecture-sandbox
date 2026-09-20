@@ -10,7 +10,7 @@ export function ComponentConnectionExample({ type }: { type: string }) {
   return <figure className="connection-example">
     <h3>{example.scope ? '配置と接続の例' : example.association ? '適用の例' : '接続の例'}</h3>
     <div role="img" aria-label={`${example.scope ? `${example.scope}の中に配置：` : ''}${description}`}>
-      <div aria-hidden="true" className={example.scope ? 'connection-example-scope' : undefined} style={scopeStyle && { borderColor: scopeStyle.border, background: scopeStyle.bg }}>
+      <div aria-hidden="true" className={example.scope ? 'connection-example-scope' : undefined} style={scopeStyle && { borderColor: scopeStyle.border, background: `light-dark(${scopeStyle.bg}, color-mix(in srgb, ${scopeStyle.border} 12%, var(--app-surface)))` }}>
         {example.scope && <div className="connection-example-scope-label">{example.scope}<small>この部品</small></div>}
         <div className={`connection-example-flow${example.association ? ' connection-example-association' : ''}`}>
           {example.stages.map((stage, index) => <Fragment key={index}>
@@ -18,7 +18,7 @@ export function ComponentConnectionExample({ type }: { type: string }) {
             <div className={`connection-example-stage${stage.length > 1 && index > 0 ? ' connection-example-branch' : ''}`}>
               {stage.map((nodeType, nodeIndex) => {
                 const style = getNodeStyle(nodeType);
-                return <div key={nodeIndex} className="connection-example-node" style={{ borderColor: style.border, background: style.bg }}>
+                return <div key={nodeIndex} className="connection-example-node" style={{ borderColor: style.border, background: `light-dark(${style.bg}, color-mix(in srgb, ${style.border} 12%, var(--app-surface)))` }}>
                   {nodeType === type && <small>この部品</small>}
                   <strong>{nodeType}{stage.filter(item => item === nodeType).length > 1 ? ` ${nodeIndex + 1}` : ''}</strong>
                 </div>;

@@ -145,8 +145,8 @@ export const EvaluationPanel: React.FC<Props> = ({
         <div className="evaluation-chart" role="img" aria-label="6つの観点のレーダーチャート。各点数は「観点ごとのスコア」に記載しています。">
           <ResponsiveContainer width="100%" height="100%">
             <RadarChart cx="50%" cy="50%" outerRadius="72%" data={chartData}>
-              <PolarGrid stroke="#d6e0ee" />
-              <PolarAngleAxis dataKey="subject" tick={{ fontSize: 12, fill: '#4b607d' }} />
+              <PolarGrid stroke="var(--app-border)" />
+              <PolarAngleAxis dataKey="subject" tick={{ fontSize: 12, fill: 'var(--app-muted)' }} />
               <PolarRadiusAxis angle={30} domain={[0, 100]} tickCount={6} tick={false} axisLine={false} />
               <Radar name="Score" dataKey="A" stroke="var(--app-primary)" strokeWidth={2.5} fill="var(--app-primary)" fillOpacity={0.2} dot={{ r: 3, fill: 'var(--app-primary)' }} isAnimationActive={false} />
             </RadarChart>

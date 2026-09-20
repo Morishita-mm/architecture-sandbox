@@ -1,0 +1,43 @@
+/* Semantic colors resolve automatically against the root color-scheme. */
+:root {
+  color-scheme: light dark;
+  --app-bg: light-dark(#f5f6f8, #141619);
+  --app-surface: light-dark(#fff, #1c1f24);
+  --app-subtle: light-dark(#f1f3f6, #252930);
+  --app-text: light-dark(#272d38, #e5e7ec);
+  --app-muted: light-dark(#616c7b, #a5adba);
+  --app-border: light-dark(#dce1e8, #383e49);
+  --app-primary: light-dark(#3659bd, #a4b8ff);
+  --app-primary-soft: light-dark(#edf1fc, #282f44);
+  --app-action: light-dark(#3659bd, #455fc3);
+  --app-success: light-dark(#23734f, #89d4b0);
+  --app-success-soft: light-dark(#edf8f1, #20372c);
+  --app-success-fill: light-dark(#23734f, #286347);
+  --app-danger: light-dark(#b03f46, #f4a2a8);
+  --app-danger-soft: light-dark(#fff1f1, #40282e);
+  --app-danger-fill: light-dark(#b03f46, #a13844);
+  --app-warning: light-dark(#886021, #e2bc79);
+  --app-warning-soft: light-dark(#fff7e8, #393124);
+  --app-note: light-dark(#fffdf3, #2b2921);
+  --app-note-header: light-dark(#f8f2dc, #353125);
+  --app-on-action: #fff;
+  --app-radius: 10px;
+  --app-shadow: 0 2px 8px light-dark(#24364b08, #00000020);
+  color: var(--app-text);
+  background: var(--app-bg);
+}
+:root[data-theme='light'] { color-scheme: light; }
+:root[data-theme='dark'] { color-scheme: dark; }
+input, textarea, select { color: var(--app-text); background-color: var(--app-surface); }
+button:disabled { cursor: not-allowed; }
+.ui-button-primary:hover:not(:disabled), .ui-button-success:hover:not(:disabled) { filter: brightness(1.08); }
+.theme-toggle { min-width: 38px; }
+.welcome-tools { gap: 8px; }
+.scenario-setup-header .theme-toggle { margin-left: auto; flex-shrink: 0; }
+.react-flow__minimap { background: var(--app-surface); }
+.react-flow__minimap-mask { fill: light-dark(#e8ecf180, #141619aa); }
+.react-flow__minimap-node { fill: var(--app-muted); }
+@media (max-width: 600px) {
+  .theme-toggle span { display: none; }
+  .scenario-setup-header { flex-wrap: wrap; }
+}

@@ -276,7 +276,7 @@ export const HelpModal: React.FC<Props> = ({ isOpen, onClose, initialTopic, init
                   <p
                     style={{
                       fontSize: "12px",
-                      color: "#888",
+                      color: "var(--app-muted)",
                       margin: "5px 0 15px 0",
                     }}
                   >
@@ -475,7 +475,7 @@ const Kbd: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 // --- Styles ---
 
 const modalStyle: React.CSSProperties = {
-  backgroundColor: "white",
+  backgroundColor: "var(--app-surface)",
   width: "900px",
   height: "var(--help-dialog-height, 660px)",
   maxWidth: "95vw",
@@ -494,14 +494,14 @@ const headerStyle: React.CSSProperties = {
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
-  backgroundColor: "#fff",
+  backgroundColor: "var(--app-surface)",
 };
 
 const contentAreaStyle: React.CSSProperties = {
   flex: 1,
   padding: "var(--help-content-padding, 24px 32px)",
   overflowY: "auto",
-  backgroundColor: "#fff",
+  backgroundColor: "var(--app-surface)",
 };
 
 const footerStyle: React.CSSProperties = {
@@ -515,7 +515,7 @@ const closeButtonStyle: React.CSSProperties = {
   background: "none",
   border: "none",
   cursor: "pointer",
-  color: "#888",
+  color: "var(--app-muted)",
   padding: "5px",
   display: "flex",
   transition: "color 0.2s",
@@ -523,7 +523,7 @@ const closeButtonStyle: React.CSSProperties = {
 
 const primaryButtonStyle: React.CSSProperties = {
   padding: "10px 30px",
-  backgroundColor: "var(--app-primary)",
+  backgroundColor: "var(--app-action)",
   color: "white",
   border: "none",
   borderRadius: "6px",
@@ -546,11 +546,11 @@ const stepContainerStyle: React.CSSProperties = {
 };
 
 const tipBoxStyle: React.CSSProperties = {
-  backgroundColor: "#fff3cd",
-  border: "1px solid #ffeeba",
+  backgroundColor: "var(--app-warning-soft)",
+  border: "1px solid var(--app-border)",
   borderRadius: "6px",
   padding: "15px",
-  color: "#856404",
+  color: "var(--app-warning)",
   fontSize: "14px",
   marginTop: "20px",
   lineHeight: "1.6",
@@ -598,7 +598,7 @@ const badNodeStyle: React.CSSProperties = {
   padding: "10px",
   border: "2px solid var(--app-border)",
   borderRadius: "8px",
-  backgroundColor: "white",
+  backgroundColor: "var(--app-surface)",
   color: "var(--app-text)",
   textAlign: "center",
   width: "120px",
@@ -610,7 +610,7 @@ const goodNodeStyle: React.CSSProperties = {
   border: "2px solid var(--app-primary)",
   borderRadius: "8px",
   backgroundColor: "var(--app-primary-soft)",
-  color: "#0D47A1",
+  color: "var(--app-primary)",
   textAlign: "center",
   width: "180px",
   margin: "0 auto",

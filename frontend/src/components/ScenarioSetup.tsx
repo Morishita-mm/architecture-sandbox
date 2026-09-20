@@ -1,3 +1,4 @@
+import { ThemeToggle } from './ThemeToggle';
 import React, { useState } from "react";
 import { BiBookContent, BiChevronRight, BiMessageSquareDetail, BiRocket, BiServer, BiSlider, BiWallet } from "react-icons/bi";
 
@@ -47,6 +48,7 @@ export const ScenarioSetup: React.FC<Props> = ({ initialScenario, onConfirm, onC
       <header className="scenario-setup-header">
         <BiSlider aria-hidden="true" />
         <div><p>カスタム設計</p><h1 id="scenario-setup-title">自分のテーマで設計する</h1></div>
+        <ThemeToggle />
       </header>
 
       <form onSubmit={handleSubmit}>

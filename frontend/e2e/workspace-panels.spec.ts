@@ -32,11 +32,6 @@ test('desktop panel toggles preserve node screen positions, zoom and saved coord
   const node = page.locator('.react-flow__node[data-id="app"]');
   for (const width of [1280, 1000]) {
     await page.setViewportSize({ width, height: 800 });
-    const history = (await page.getByRole('group', { name: '構成図の履歴', exact: true }).boundingBox())!;
-    const panels = (await page.getByRole('group', { name: 'サイドパネルの表示' }).boundingBox())!;
-    const tab = (await page.getByRole('button', { name: 'アーキテクチャ設計', exact: true }).boundingBox())!;
-    expect(panels.y).toBeGreaterThanOrEqual(tab.y + tab.height);
-    expect(Math.abs(panels.y + panels.height / 2 - history.y - history.height / 2)).toBeLessThan(1);
     // Include a status banner and a responsive sidebar width before taking the baseline.
     await page.getByRole('button', { name: 'プロジェクト保存', exact: true }).click();
     await expect(page.getByRole('status')).toBeVisible();
@@ -46,6 +41,17 @@ test('desktop panel toggles preserve node screen positions, zoom and saved coord
         const toggle = page.getByRole('button', { name, exact: true });
         await toggle.click();
         await expect(toggle).toHaveAttribute('aria-expanded', expanded);
+        const handle = (await toggle.boundingBox())!;
+        const work = (await page.locator('.workspace-content').boundingBox())!;
+        const left = name.startsWith('コンポーネント');
+        const panel = page.locator(left ? '#components-panel' : '#memo-panel');
+        if (expanded === 'true') {
+          const bounds = (await panel.boundingBox())!;
+          expect(Math.abs(left ? handle.x - bounds.x - bounds.width : handle.x + handle.width - bounds.x)).toBeLessThan(1);
+        } else {
+          expect(Math.abs(left ? handle.x - work.x : handle.x + handle.width - work.x - work.width)).toBeLessThan(1);
+        }
+        expect(Math.abs(handle.y + handle.height / 2 - work.y - work.height / 2)).toBeLessThan(1);
         await expect.poll(async () => {
           const after = await node.boundingBox();
           return Math.max(...(['x', 'y', 'width', 'height'] as const).map(key => Math.abs(after![key] - before![key])));
@@ -198,3 +204,46 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 390, height: 844 
     await expect(contents).toBeVisible();
   });
 }
+
+
+test('desktop panels resize by dragging and keyboard, retain content, and leave room for the canvas', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await visit(page);
+  await page.locator('input[type=file]').setInputFiles({ name: 'project.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(project)) });
+  await page.getByRole('button', { name: 'アーキテクチャ設計', exact: true }).click();
+  const node = page.locator('.react-flow__node[data-id="app"]');
+  await page.getByRole('button', { name: 'zoom in', exact: true }).click();
+  await expect.poll(() => page.locator('.react-flow__viewport').evaluate(element => Number(element.style.transform.match(/scale\(([\d.]+)\)/)?.[1]))).toBeCloseTo(1.2, 4);
+  const original = (await node.boundingBox())!;
+  for (const [id, label, direction] of [['components', 'コンポーネント', 1], ['memo', '要件メモ', -1]] as const) {
+    const panel = page.locator(`#${id}-panel`);
+    const separator = page.getByRole('separator', { name: `${label}の幅を調整` });
+    const before = (await panel.boundingBox())!.width;
+    const edge = (await separator.boundingBox())!;
+    await page.mouse.move(edge.x + edge.width / 2, edge.y + 80);
+    await page.mouse.down();
+    await page.mouse.move(edge.x + edge.width / 2 + 100 * direction, edge.y + 80, { steps: 8 });
+    await page.mouse.up();
+    await expect.poll(async () => (await panel.boundingBox())!.width).toBeCloseTo(before + 100, 0);
+    await expect.poll(async () => Math.abs((await node.boundingBox())!.x - original.x)).toBeLessThan(1);
+    await separator.press(direction === 1 ? 'ArrowRight' : 'ArrowLeft');
+    await expect.poll(async () => (await panel.boundingBox())!.width).toBeCloseTo(before + 120, 0);
+    const toggle = page.getByRole('button', { name: `${label}の表示切り替え` });
+    await expect.poll(async () => Math.abs((await node.boundingBox())!.x - original.x)).toBeLessThan(1);
+    await toggle.click();
+    await expect.poll(async () => Math.abs((await node.boundingBox())!.x - original.x)).toBeLessThan(1);
+    await toggle.click();
+    await expect.poll(async () => Math.abs((await node.boundingBox())!.x - original.x)).toBeLessThan(1);
+    await expect.poll(async () => (await panel.boundingBox())!.width).toBeCloseTo(before + 120, 0);
+    await separator.press('End');
+    await expect.poll(async () => Math.abs((await node.boundingBox())!.x - original.x)).toBeLessThan(1);
+    expect((await panel.boundingBox())!.width).toBeLessThanOrEqual(448);
+  }
+  await expect(page.getByRole('textbox', { name: '要件メモ', exact: true })).toHaveValue('既存メモ');
+  expect((await page.locator('.workspace-main').boundingBox())!.width).toBeGreaterThanOrEqual(384);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const memoToggle = page.getByRole('button', { name: '要件メモの表示切り替え' });
+  if (await memoToggle.getAttribute('aria-expanded') === 'false') await memoToggle.click();
+  await expect(page.getByRole('separator')).toHaveCount(0);
+  expect((await page.locator('#memo-panel').boundingBox())!.width).toBe(342);
+});

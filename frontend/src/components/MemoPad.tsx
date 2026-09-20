@@ -37,8 +37,8 @@ const headerStyle: React.CSSProperties = {
   padding: '8px 12px 8px 16px',
   fontWeight: 'bold',
   backgroundColor: 'var(--app-note-header)',
-  color: '#736344',
-  borderBottom: '1px solid #e9e0c4',
+  color: 'var(--app-warning)',
+  borderBottom: '1px solid var(--app-border)',
 };
 
 const textAreaStyle: React.CSSProperties = {
